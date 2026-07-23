@@ -1,0 +1,3 @@
+﻿relationship,total_rows,matched_rows,unmatched_rows,null_key_rows,match_rate_pct
+Review → User,6990280,6990247,33,0,99.999528
+Review → Business,6990280,6990280,0,0,100.0

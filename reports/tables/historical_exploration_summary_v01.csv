@@ -1,0 +1,3 @@
+﻿churn,baseline_new_business_count_mean,baseline_new_business_count_median,recent_new_business_count_mean,recent_new_business_count_median,baseline_new_business_rate_mean,baseline_new_business_rate_median,recent_new_business_rate_mean,recent_new_business_rate_median,new_business_rate_decline_mean,new_business_rate_decline_median,new_business_count_diff_mean,new_business_count_diff_median
+0,20.669897032101755,16.0,15.389460932768019,12.0,0.9609652412744857,1.0,0.9395516412541951,1.0,0.02141360002029061,0.0,-5.280436099333737,-6.0
+1,17.382838283828384,14.0,6.963696369636963,5.0,0.9785628037832949,1.0,0.9483774898214749,1.0,0.030185313961819994,0.0,-10.41914191419142,-9.0

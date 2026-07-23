@@ -1,0 +1,15 @@
+﻿feature,missing_count,infinite_count
+baseline_review_count,0,0
+baseline_active_months,0,0
+recent_review_count,0,0
+recent_active_months,0,0
+churn,0,0
+review_count_diff,0,0
+review_count_ratio,0,0
+review_count_decline_rate,0,0
+active_month_diff,0,0
+active_month_ratio,0,0
+active_month_decline_rate,0,0
+baseline_reviews_per_active_month,0,0
+recent_reviews_per_active_month,0,0
+reviews_per_active_month_decline_rate,0,0

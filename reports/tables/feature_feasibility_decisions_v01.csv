@@ -1,0 +1,18 @@
+﻿feature_group,feature,decision,priority,reason
+리뷰 활동량,review_count_decline_rate,채택,P0,이탈자 리뷰 감소율이 크게 나타남
+리뷰 활동량,active_month_decline_rate,채택,P0,이탈자 활동 월수가 크게 감소
+리뷰 활동량,reviews_per_active_month_decline_rate,채택 후보,P1,활동한 월의 리뷰 밀도 감소 반영
+작성 간격,recent_mean_interval_days,채택,P0,이탈자의 최근 작성 간격 증가
+작성 간격,mean_interval_increase_days,채택,P0,기준 기간 대비 작성 간격 증가 반영
+작성 간격,recent_recency_days,채택,P0,이탈자의 마지막 리뷰 이후 공백이 큼
+작성 간격,recent_interval_available,채택,P0,최근 리뷰 1건 사용자의 결측 상태 보존
+신규 음식점,new_business_rate_decline,제외,-,중앙값 0이며 이탈 집단 차이가 작음
+음식점 범위,unique_business_decline_rate,설명용,P2,리뷰 감소율과 상관관계가 매우 높음
+카테고리,unique_category_decline_rate,설명용,P2,리뷰 수 감소의 영향을 크게 받음
+카테고리,category_entropy_decline,제외,-,집단 차이가 거의 없음
+카테고리,simpson_diversity_decline,제외,-,리뷰 수 구간 통제 후 차이가 사라짐
+탐방 반경,log_p90_radius_decline,실험용,P1,전체 차이는 있으나 음식점 수 구간별 일관성 부족
+활동 중심지,log_center_shift,보조 후보,P1,장거리 중심지 이동 비율이 이탈자에게 높음
+평점,mean_rating_change,보조 후보,P1,이탈자 평균 평점이 소폭 하락
+평점,low_rating_rate_increase,보조 후보,P1,이탈자의 저평점 비율 평균 증가
+리뷰 반응,useful/cool/funny,제외,-,반응 발생 시점이 없어 미래 정보 누수 가능

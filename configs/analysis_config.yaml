@@ -1,0 +1,24 @@
+project:
+  name: yelp-reviewer-churn
+  cohort_version: v01
+  random_state: 42
+
+business_scope:
+  required_category: Restaurants
+
+power_reviewer:
+  baseline_start: "2017-01-01"
+  baseline_end: "2018-01-01"
+  minimum_review_count: 10
+  minimum_active_months: 3
+
+recent_activity:
+  observation_start: "2018-01-01"
+  observation_end: "2019-01-01"
+  continuity_start: "2018-07-01"
+  minimum_continuity_reviews: 1
+
+target:
+  prediction_start: "2019-01-01"
+  prediction_end: "2020-01-01"
+  churn_max_review_count: 0

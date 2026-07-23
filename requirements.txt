@@ -1,0 +1,35 @@
+# 데이터 처리
+pandas
+numpy
+pyarrow
+duckdb
+
+# 시각화
+matplotlib
+seaborn
+plotly
+
+# 머신러닝
+scikit-learn
+imbalanced-learn
+joblib
+
+# 공간·거리 계산
+geopy
+
+# 모델 설명
+shap
+
+# 노트북 환경
+jupyterlab
+ipykernel
+
+# 설정 및 진행률
+PyYAML
+tqdm
+
+# 테스트
+pytest
+
+# 대시보드
+streamlit

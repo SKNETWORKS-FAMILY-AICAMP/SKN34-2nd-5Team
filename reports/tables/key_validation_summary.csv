@@ -1,0 +1,4 @@
+﻿dataset,key_column,total_rows,unique_keys,duplicate_keys,null_keys
+Review,review_id,6990280,6990280,0,0
+User,user_id,1987897,1987897,0,0
+Business,business_id,150346,150346,0,0
