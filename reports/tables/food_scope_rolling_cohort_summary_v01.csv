@@ -1,0 +1,11 @@
+﻿scope,selection_year,observation_year,target_year,candidate_users,churn_users,retained_users,churn_rate_pct
+Restaurants,2013,2014,2015,2234,337,1897,15.09
+Restaurants,2014,2015,2016,2762,444,2318,16.08
+Restaurants,2015,2016,2017,3320,517,2803,15.57
+Restaurants,2016,2017,2018,3537,510,3027,14.42
+Restaurants,2017,2018,2019,3908,606,3302,15.51
+Restaurants 또는 Food,2013,2014,2015,2424,379,2045,15.64
+Restaurants 또는 Food,2014,2015,2016,3041,488,2553,16.05
+Restaurants 또는 Food,2015,2016,2017,3680,579,3101,15.73
+Restaurants 또는 Food,2016,2017,2018,3891,553,3338,14.21
+Restaurants 또는 Food,2017,2018,2019,4350,707,3643,16.25

@@ -1,0 +1,16 @@
+﻿feature,missing_count,infinite_count
+baseline_unique_business_count,0,0
+recent_unique_business_count,0,0
+recent_revisited_business_count,0,0
+recent_new_vs_baseline_count,0,0
+unique_business_count_diff,0,0
+unique_business_ratio,0,0
+unique_business_decline_rate,0,0
+recent_revisit_rate,0,0
+recent_new_vs_baseline_rate,0,0
+baseline_new_business_count,0,0
+recent_new_business_count,0,0
+baseline_new_business_rate,0,0
+recent_new_business_rate,0,0
+new_business_count_diff,0,0
+new_business_rate_decline,0,0

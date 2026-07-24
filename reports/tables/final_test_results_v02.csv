@@ -1,0 +1,2 @@
+﻿model,feature_set,feature_count,train_selection_years,test_selection_year,test_target_year,evaluation_policy,threshold,accuracy,precision,recall,f1,roc_auc,pr_auc,true_negative,false_positive,false_negative,true_positive,predicted_churn_rate
+Baseline Core HGB,activity+interval+business,43,2009~2016,2017,2019,standard_threshold_reference,0.5,0.7341833052682223,0.34363767074047447,0.7134328358208956,0.4638524987869966,0.812526270283227,0.42640961795456694,2574,913,192,478,0.33461630983882606

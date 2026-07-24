@@ -1,0 +1,14 @@
+﻿feature,missing_count,infinite_count
+baseline_mean_interval_days,0,0
+baseline_median_interval_days,0,0
+baseline_max_interval_days,0,0
+baseline_recency_days,0,0
+recent_mean_interval_days,858,0
+recent_median_interval_days,858,0
+recent_max_interval_days,858,0
+recent_recency_days,0,0
+recent_interval_available,0,0
+mean_interval_increase_days,858,0
+median_interval_increase_days,858,0
+max_interval_increase_days,858,0
+recency_increase_days,0,0

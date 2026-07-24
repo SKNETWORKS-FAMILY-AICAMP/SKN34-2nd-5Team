@@ -1,0 +1,2 @@
+﻿policy,target_rate,target_users,true_positive,false_positive,false_negative,true_negative,precision,recall,f1,lift
+Top 20% CRM targeting,0.2,832,346,486,324,3001,0.41586538461538464,0.5164179104477612,0.4607190412782956,2.5802274684270956

@@ -1,0 +1,510 @@
+﻿category,business_count,food_only_business_rate_pct
+Shopping,2746,22.31
+Coffee & Tea,2650,21.53
+Grocery,2312,18.78
+Specialty Food,2222,18.05
+Ice Cream & Frozen Yogurt,1569,12.75
+Convenience Stores,1384,11.24
+Desserts,1348,10.95
+Drugstores,1319,10.72
+Bakeries,1261,10.24
+Wine & Spirits,1259,10.23
+Beer,1259,10.23
+Juice Bars & Smoothies,669,5.44
+Donuts,622,5.05
+Nightlife,602,4.89
+Health & Medical,566,4.6
+Fashion,538,4.37
+Bars,535,4.35
+Event Planning & Services,534,4.34
+Department Stores,476,3.87
+Arts & Entertainment,473,3.84
+Breweries,456,3.7
+Health Markets,425,3.45
+Beauty & Spas,421,3.42
+Automotive,416,3.38
+Fruits & Veggies,407,3.31
+Pharmacy,404,3.28
+Cosmetics & Beauty Supply,383,3.11
+Farmers Market,376,3.05
+Discount Store,362,2.94
+Gas Stations,358,2.91
+Flowers & Gifts,350,2.84
+Cupcakes,325,2.64
+Meat Shops,324,2.63
+Candy Stores,317,2.58
+Electronics,310,2.52
+Photography Stores & Services,310,2.52
+Home & Garden,305,2.48
+Chocolatiers & Shops,285,2.32
+Caterers,277,2.25
+Food Trucks,265,2.15
+Wineries,260,2.11
+Local Flavor,252,2.05
+Custom Cakes,222,1.8
+Organic Stores,221,1.8
+Bubble Tea,200,1.62
+Shaved Ice,199,1.62
+Food Delivery Services,187,1.52
+Florists,177,1.44
+Gift Shops,174,1.41
+Ethnic Food,143,1.16
+Beer Bar,141,1.15
+Bagels,138,1.12
+Coffee Roasteries,138,1.12
+Hotels & Travel,138,1.12
+Furniture Stores,130,1.06
+Wine Bars,130,1.06
+Vitamins & Supplements,126,1.02
+Tea Rooms,126,1.02
+Mobile Phones,122,0.99
+Seafood Markets,120,0.97
+Venues & Event Spaces,120,0.97
+Wine Tasting Room,120,0.97
+Local Services,116,0.94
+Tours,107,0.87
+Tobacco Shops,106,0.86
+Wholesale Stores,106,0.86
+Gelato,106,0.86
+Pubs,106,0.86
+International Grocery,103,0.84
+Active Life,98,0.8
+Street Vendors,96,0.78
+Herbs & Spices,96,0.78
+Butcher,96,0.78
+Acai Bowls,92,0.75
+Distilleries,85,0.69
+Do-It-Yourself Food,84,0.68
+Imported Food,83,0.67
+Party & Event Planning,80,0.65
+Education,75,0.61
+Cocktail Bars,71,0.58
+Arts & Crafts,70,0.57
+Brewpubs,68,0.55
+Cheese Shops,65,0.53
+Nutritionists,61,0.5
+Patisserie/Cake Shop,61,0.5
+Internet Cafes,59,0.48
+Home Decor,59,0.48
+Home Services,57,0.46
+Festivals,54,0.44
+Music Venues,53,0.43
+Pretzels,53,0.43
+Wedding Planning,53,0.43
+Lounges,52,0.42
+Beer Gardens,52,0.42
+Tires,51,0.41
+Nurseries & Gardening,50,0.41
+Popcorn Shops,48,0.39
+Wine Tours,44,0.36
+Music & Video,44,0.36
+Mags,44,0.36
+Books,44,0.36
+Shopping Centers,44,0.36
+Kitchen & Bath,41,0.33
+Professional Services,41,0.33
+Service Stations,41,0.33
+Farms,38,0.31
+Personal Chefs,37,0.3
+Macarons,35,0.28
+Fitness & Instruction,35,0.28
+CSA,35,0.28
+Brewing Supplies,34,0.28
+Olive Oil,34,0.28
+Art Galleries,32,0.26
+Cooking Classes,31,0.25
+Accessories,30,0.24
+Sporting Goods,30,0.24
+Vape Shops,29,0.24
+Party Supplies,29,0.24
+Tasting Classes,29,0.24
+Specialty Schools,28,0.23
+Beer Tours,28,0.23
+Toy Stores,27,0.22
+Appliances,26,0.21
+Head Shops,26,0.21
+Weight Loss Centers,25,0.2
+Car Wash,25,0.2
+Kombucha,25,0.2
+Eyewear & Opticians,25,0.2
+Poke,23,0.19
+Hookah Bars,23,0.19
+Cooking Schools,22,0.18
+Pets,22,0.18
+Pick Your Own Farms,21,0.17
+Bookstores,21,0.17
+Sports Bars,21,0.17
+Jewelry,21,0.17
+Community Service/Non-Profit,20,0.16
+Women's Clothing,20,0.16
+Hobby Shops,20,0.16
+Transportation,19,0.15
+Wine Tasting Classes,19,0.15
+Cideries,19,0.15
+Water Purification Services,18,0.15
+Beverage Store,18,0.15
+Doctors,17,0.14
+Food Tours,17,0.14
+Honey,16,0.13
+Massage,16,0.13
+Souvenir Shops,16,0.13
+Wholesalers,16,0.13
+Water Delivery,16,0.13
+Used,15,0.12
+Vintage & Consignment,15,0.12
+Outlet Stores,15,0.12
+Pet Stores,15,0.12
+Shaved Snow,15,0.12
+Hotels,14,0.11
+Urgent Care,14,0.11
+Yoga,14,0.11
+Dive Bars,14,0.11
+Arcades,14,0.11
+Limos,14,0.11
+Herbal Shops,14,0.11
+Personal Shopping,13,0.11
+Couriers & Delivery Services,13,0.11
+Kids Activities,13,0.11
+Naturopathic/Holistic,13,0.11
+Office Equipment,13,0.11
+Pumpkin Patches,13,0.11
+Public Services & Government,13,0.11
+Skin Care,13,0.11
+Karaoke,12,0.1
+Auto Repair,12,0.1
+Floral Designers,12,0.1
+Massage Therapy,12,0.1
+Medical Centers,12,0.1
+Bikes,11,0.09
+Gyms,11,0.09
+Spiritual Shop,11,0.09
+Water Stores,11,0.09
+Bus Tours,11,0.09
+Day Spas,10,0.08
+Ethnic Grocery,10,0.08
+Flea Markets,10,0.08
+Parks,10,0.08
+Christmas Trees,10,0.08
+Pet Services,10,0.08
+Party Bus Rentals,10,0.08
+Whiskey Bars,10,0.08
+Acupuncture,10,0.08
+Cards & Stationery,10,0.08
+Antiques,10,0.08
+Smokehouse,9,0.07
+Candle Stores,9,0.07
+Adult Entertainment,9,0.07
+Donairs,9,0.07
+Bike Repair/Maintenance,9,0.07
+Customized Merchandise,9,0.07
+Trainers,9,0.07
+Public Markets,9,0.07
+Walking Tours,9,0.07
+Attraction Farms,8,0.06
+Propane,8,0.06
+Empanadas,8,0.06
+Optometrists,8,0.06
+Museums,8,0.06
+Thrift Stores,8,0.06
+Delicatessen,8,0.06
+Contractors,8,0.06
+Medical Supplies,7,0.06
+Jazz & Blues,7,0.06
+Art Classes,7,0.06
+Playgrounds,7,0.06
+Real Estate,7,0.06
+Traditional Chinese Medicine,7,0.06
+Cigar Bars,7,0.06
+Music & DVDs,7,0.06
+Bridal,7,0.06
+Party Equipment Rentals,7,0.06
+Travel Services,6,0.05
+Pasta Shops,6,0.05
+Pool Halls,6,0.05
+Pop-up Shops,6,0.05
+Gardeners,6,0.05
+Men's Clothing,6,0.05
+Coffeeshops,6,0.05
+Videos & Video Game Rental,6,0.05
+Cannabis Dispensaries,6,0.05
+Dance Clubs,6,0.05
+Hair Salons,6,0.05
+Home Health Care,6,0.05
+Historical Tours,6,0.05
+Appliances & Repair,5,0.04
+Art Supplies,5,0.04
+Auto Parts & Supplies,5,0.04
+Auto Detailing,5,0.04
+Special Education,5,0.04
+Summer Camps,5,0.04
+Supernatural Readings,5,0.04
+Taxis,5,0.04
+Restaurant Supplies,5,0.04
+Social Clubs,5,0.04
+Photographers,5,0.04
+Pet Groomers,5,0.04
+Kitchen Supplies,5,0.04
+Alternative Medicine,5,0.04
+Newspapers & Magazines,5,0.04
+Adult,5,0.04
+Chiropractors,5,0.04
+Knife Sharpening,5,0.04
+Meaderies,5,0.04
+Golf,5,0.04
+Fishing,5,0.04
+Performing Arts,5,0.04
+Outdoor Gear,5,0.04
+Nail Salons,5,0.04
+Cinema,5,0.04
+Computers,5,0.04
+Building Supplies,5,0.04
+Oil Change Stations,5,0.04
+Yelp Events,4,0.03
+Health Coach,4,0.03
+Pilates,4,0.03
+Plumbing,4,0.03
+Printing Services,4,0.03
+Saunas,4,0.03
+Tanning,4,0.03
+Gay Bars,4,0.03
+Mini Golf,4,0.03
+Notaries,4,0.03
+Landscaping,4,0.03
+Medical Spas,4,0.03
+LAN Centers,4,0.03
+Landmarks & Historical Buildings,4,0.03
+Vinyl Records,4,0.03
+Walk-in Clinics,4,0.03
+Airport Shuttles,3,0.02
+Airports,3,0.02
+Mailbox Centers,3,0.02
+Livestock Feed & Supply,3,0.02
+Coffee & Tea Supplies,3,0.02
+Mountain Biking,3,0.02
+Comic Books,3,0.02
+Interior Design,3,0.02
+Indoor Playcentre,3,0.02
+Commercial Truck Repair,3,0.02
+Horseback Riding,3,0.02
+Cannabis Clinics,3,0.02
+Parking,3,0.02
+Perfume,3,0.02
+Shared Office Spaces,3,0.02
+Shipping Centers,3,0.02
+Cultural Center,3,0.02
+Counseling & Mental Health,3,0.02
+Adult Education,3,0.02
+Educational Services,3,0.02
+Bartenders,3,0.02
+Sports Clubs,3,0.02
+Ethical Grocery,3,0.02
+Baby Gear & Furniture,3,0.02
+Team Building Activities,3,0.02
+Smog Check Stations,3,0.02
+Barbers,3,0.02
+Bed & Breakfast,3,0.02
+Reflexology,3,0.02
+Shoe Stores,3,0.02
+Body Shops,3,0.02
+Physical Therapy,3,0.02
+Pet Adoption,3,0.02
+Boating,3,0.02
+Recycling Center,3,0.02
+Religious Organizations,3,0.02
+Resorts,3,0.02
+Cheese Tasting Classes,2,0.02
+Paint & Sip,2,0.02
+Motorcycle Gear,2,0.02
+Landscape Architects,2,0.02
+IT Services & Computer Repair,2,0.02
+Piano Bars,2,0.02
+Pool & Billiards,2,0.02
+Fireplace Services,2,0.02
+Courthouses,2,0.02
+Security Systems,2,0.02
+Botanical Gardens,2,0.02
+Post Offices,2,0.02
+Financial Services,2,0.02
+Marinas,2,0.02
+Speakeasies,2,0.02
+Skate Parks,2,0.02
+Pet Training,2,0.02
+Food Banks,2,0.02
+Public Transportation,2,0.02
+Fitness/Exercise Equipment,2,0.02
+Web Design,2,0.02
+Ticket Sales,2,0.02
+Tanning Beds,2,0.02
+Drive-Thru Bars,2,0.02
+Zoos,2,0.02
+Art Tours,2,0.02
+Art Schools,2,0.02
+Dry Cleaning & Laundry,2,0.02
+Emergency Rooms,2,0.02
+Diagnostic Services,2,0.02
+Escape Games,2,0.02
+Skating Rinks,2,0.02
+Spray Tanning,2,0.02
+Sports Wear,2,0.02
+Bike Rentals,2,0.02
+Barre Classes,2,0.02
+Bike tours,2,0.02
+Marketing,2,0.02
+Hypnosis/Hypnotherapy,2,0.02
+Irish Pub,2,0.02
+Hydroponics,2,0.02
+Colonics,2,0.02
+Car Rental,2,0.02
+Officiants,2,0.02
+Grilling Equipment,2,0.02
+Guest Houses,2,0.02
+Keys & Locksmiths,2,0.02
+Hardware Stores,2,0.02
+Pest Control,2,0.02
+Party Characters,2,0.02
+Campgrounds,2,0.02
+Commercial Real Estate,2,0.02
+Hunting & Fishing Supplies,2,0.02
+Used Bookstore,2,0.02
+Hats,2,0.02
+Amusement Parks,2,0.02
+Accountants,2,0.02
+Leisure Centers,2,0.02
+Leather Goods,2,0.02
+Child Care & Day Care,1,0.01
+Car Window Tinting,1,0.01
+Lighting Stores,1,0.01
+Children's Clothing,1,0.01
+Chinese Martial Arts,1,0.01
+Churches,1,0.01
+Casinos,1,0.01
+Champagne Bars,1,0.01
+Check Cashing/Pay-day Loans,1,0.01
+Heating & Air Conditioning/HVAC,1,0.01
+Hair Stylists,1,0.01
+Hair Removal,1,0.01
+Paint-Your-Own Pottery,1,0.01
+Pawn Shops,1,0.01
+Pedicabs,1,0.01
+Personal Assistants,1,0.01
+Grill Services,1,0.01
+Business Consulting,1,0.01
+Horse Boarding,1,0.01
+Community Gardens,1,0.01
+Homeowner Association,1,0.01
+Car Dealers,1,0.01
+Cannabis Tours,1,0.01
+Osteopathic Physicians,1,0.01
+Pain Management,1,0.01
+Internet Service Providers,1,0.01
+Ice Delivery,1,0.01
+IV Hydration,1,0.01
+Martial Arts,1,0.01
+Mattresses,1,0.01
+Medical Cannabis Referrals,1,0.01
+Mobile Phone Repair,1,0.01
+Irrigation,1,0.01
+Motorcycle Parts & Supplies,1,0.01
+Motorcycle Dealers,1,0.01
+Jewelry Repair,1,0.01
+Music Production Services,1,0.01
+Nail Technicians,1,0.01
+Musicians,1,0.01
+Musical Instruments & Teachers,1,0.01
+Colleges & Universities,1,0.01
+Maternity Wear,1,0.01
+Hospitals,1,0.01
+Meditation Centers,1,0.01
+Laser Tag,1,0.01
+Amateur Sports Teams,1,0.01
+Airport Lounges,1,0.01
+Architects,1,0.01
+Apartments,1,0.01
+Urologists,1,0.01
+Watches,1,0.01
+Vacation Rentals,1,0.01
+Knitting Supplies,1,0.01
+Airlines,1,0.01
+Vocational & Technical School,1,0.01
+Video Game Stores,1,0.01
+Utilities,1,0.01
+Laundromat,1,0.01
+Laundry Services,1,0.01
+Laboratory Testing,1,0.01
+Cardio Classes,1,0.01
+Life Coach,1,0.01
+Lighting Fixtures & Equipment,1,0.01
+Bowling,1,0.01
+Professional Sports Teams,1,0.01
+RV Parks,1,0.01
+Public Art,1,0.01
+Psychologists,1,0.01
+Garage Door Services,1,0.01
+Gemstones & Minerals,1,0.01
+Firewood,1,0.01
+Pet Sitting,1,0.01
+Photo Booth Rentals,1,0.01
+Skate Shops,1,0.01
+DJs,1,0.01
+Concierge Medicine,1,0.01
+Costumes,1,0.01
+Fabric Stores,1,0.01
+Face Painting,1,0.01
+Family Practice,1,0.01
+Farming Equipment,1,0.01
+Shredding Services,1,0.01
+Signmaking,1,0.01
+Real Estate Agents,1,0.01
+Rafting/Kayaking,1,0.01
+Self Storage,1,0.01
+Screen Printing/T-Shirt Printing,1,0.01
+Roadside Assistance,1,0.01
+Shoe Repair,1,0.01
+Religious Items,1,0.01
+Reiki,1,0.01
+Funeral Services & Cemeteries,1,0.01
+Framing,1,0.01
+Formal Wear,1,0.01
+Bookkeepers,1,0.01
+Body Contouring,1,0.01
+Boat Charters,1,0.01
+Bounce House Rentals,1,0.01
+Boot Camps,1,0.01
+Preschools,1,0.01
+Bespoke Clothing,1,0.01
+Stadiums & Arenas,1,0.01
+Sports Medicine,1,0.01
+Snow Removal,1,0.01
+Bar Crawl,1,0.01
+Estheticians,1,0.01
+Disc Golf,1,0.01
+Dietitians,1,0.01
+Dermatologists,1,0.01
+Day Camps,1,0.01
+Departments of Motor Vehicles,1,0.01
+Tableware,1,0.01
+Dance Studios,1,0.01
+Swimming Lessons/Schools,1,0.01
+Surf Shop,1,0.01
+Swimwear,1,0.01
+Tabletop Games,1,0.01
+Towing,1,0.01
+Tax Services,1,0.01
+Taxidermy,1,0.01
+Tattoo,1,0.01
+Dog Parks,1,0.01
+Well Drilling,1,0.01
+Wedding Chapels,1,0.01
+Transmission Repair,1,0.01
+Traditional Clothing,1,0.01
+Trampoline Parks,1,0.01
+Tiki Bars,1,0.01
+EV Charging Stations,1,0.01
+Tree Services,1,0.01
+Embroidery & Crochet,1,0.01
+Electronics Repair,1,0.01
+Electricians,1,0.01
+Axe Throwing,1,0.01
+Auto Glass Services,1,0.01
+Auto Customization,1,0.01
+Truck Rental,1,0.01

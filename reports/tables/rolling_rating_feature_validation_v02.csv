@@ -1,0 +1,13 @@
+﻿feature,missing_count,infinite_count
+baseline_mean_rating,0,0
+baseline_rating_std,0,0
+baseline_low_rating_rate,0,0
+baseline_high_rating_rate,0,0
+recent_mean_rating,0,0
+recent_rating_std,0,0
+recent_low_rating_rate,0,0
+recent_high_rating_rate,0,0
+mean_rating_change,0,0
+rating_std_change,0,0
+low_rating_rate_increase,0,0
+high_rating_rate_decline,0,0

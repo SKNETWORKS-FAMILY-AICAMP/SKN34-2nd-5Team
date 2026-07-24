@@ -1,0 +1,7 @@
+﻿experiment,split,samples,unique_users,churn_users,minimum_selection_year,maximum_selection_year,churn_rate_pct
+전체 학습 후보 연도,test,4157,4157,670,2017,2017,16.12
+전체 학습 후보 연도,train,13720,8483,2189,2009,2015,15.95
+전체 학습 후보 연도,validation,3724,3724,527,2016,2016,14.15
+2013~2015 안정 구간,test,4157,4157,670,2017,2017,16.12
+2013~2015 안정 구간,train,8754,6211,1381,2013,2015,15.78
+2013~2015 안정 구간,validation,3724,3724,527,2016,2016,14.15

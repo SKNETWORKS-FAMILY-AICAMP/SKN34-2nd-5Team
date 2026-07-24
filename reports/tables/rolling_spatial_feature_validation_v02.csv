@@ -1,0 +1,13 @@
+﻿feature,missing_count,infinite_count
+baseline_spatial_business_count,0,0
+baseline_median_radius_km,0,0
+baseline_p90_radius_km,0,0
+recent_spatial_business_count,0,0
+recent_median_radius_km,0,0
+recent_p90_radius_km,0,0
+median_radius_decline_km,0,0
+p90_radius_decline_km,0,0
+log_p90_radius_decline,0,0
+center_shift_km,0,0
+log_center_shift,0,0
+recent_spatial_available,0,0

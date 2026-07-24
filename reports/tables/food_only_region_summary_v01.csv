@@ -1,0 +1,625 @@
+﻿state,city,business_count
+PA,Philadelphia,1221
+FL,Tampa,705
+AZ,Tucson,642
+IN,Indianapolis,618
+TN,Nashville,542
+LA,New Orleans,538
+AB,Edmonton,499
+NV,Reno,435
+MO,Saint Louis,316
+CA,Santa Barbara,312
+ID,Boise,231
+FL,Clearwater,154
+LA,Metairie,132
+FL,Saint Petersburg,125
+NV,Sparks,115
+DE,Wilmington,113
+TN,Franklin,107
+MO,St. Louis,98
+IN,Carmel,86
+FL,St. Petersburg,83
+FL,Largo,82
+ID,Meridian,82
+NJ,Cherry Hill,71
+FL,Brandon,68
+CA,Goleta,66
+IN,Fishers,63
+IN,Greenwood,60
+FL,Riverview,58
+PA,West Chester,57
+FL,Palm Harbor,57
+FL,New Port Richey,55
+LA,Kenner,54
+FL,Lutz,51
+TN,Brentwood,48
+FL,Dunedin,48
+FL,Wesley Chapel,46
+FL,Tarpon Springs,43
+PA,King of Prussia,43
+PA,Doylestown,40
+TN,Hendersonville,40
+PA,Newtown,38
+PA,Phoenixville,37
+PA,Bensalem,37
+IN,Zionsville,37
+FL,Pinellas Park,36
+LA,Gretna,35
+PA,New Hope,35
+PA,Norristown,35
+NJ,Marlton,34
+FL,Spring Hill,34
+TN,Smyrna,32
+IL,Edwardsville,32
+PA,Exton,32
+ID,Eagle,31
+PA,Media,31
+PA,Lansdale,31
+DE,Newark,31
+CA,Carpinteria,31
+ID,Garden City,31
+MO,Saint Charles,30
+FL,Valrico,30
+AB,Sherwood Park,30
+FL,Plant City,27
+PA,Ardmore,27
+AZ,Oro Valley,27
+PA,Wayne,27
+IL,Belleville,26
+PA,Springfield,26
+FL,Seminole,26
+FL,St Petersburg,26
+PA,North Wales,26
+PA,Langhorne,26
+PA,Malvern,26
+NJ,Mount Laurel,25
+MO,Kirkwood,25
+MO,Florissant,25
+NJ,Haddonfield,25
+PA,Havertown,24
+PA,Bryn Mawr,24
+IN,Avon,24
+NJ,Collingswood,24
+IN,Plainfield,23
+PA,Pottstown,23
+PA,Royersford,23
+FL,Madeira Beach,23
+MO,Des Peres,22
+LA,Marrero,22
+TN,Mount Juliet,22
+PA,Kennett Square,21
+IN,Brownsburg,21
+IL,Fairview Heights,21
+FL,Oldsmar,21
+NJ,Medford,21
+PA,Warrington,21
+MO,Ballwin,21
+MO,Fenton,20
+PA,Conshohocken,20
+NJ,Voorhees,20
+LA,Harvey,20
+TN,Hermitage,20
+NJ,Woodbury,20
+MO,St Louis,20
+PA,Levittown,20
+PA,Collegeville,19
+PA,Bristol,19
+PA,Willow Grove,19
+MO,Maplewood,19
+NJ,Trenton,18
+PA,Warminster,18
+FL,Hudson,18
+PA,Glenside,18
+PA,Blue Bell,18
+MO,Creve Coeur,18
+NJ,Sewell,18
+MO,Chesterfield,17
+NJ,Burlington,17
+NJ,Pennsauken,17
+PA,Drexel Hill,17
+FL,Odessa,16
+MO,Arnold,16
+NJ,Swedesboro,16
+MO,Clayton,16
+NJ,Glassboro,15
+NJ,Williamstown,15
+LA,Harahan,15
+NJ,Lambertville,15
+PA,Broomall,15
+PA,Fairless Hills,15
+PA,Glen Mills,15
+FL,Temple Terrace,15
+TN,Gallatin,15
+DE,New Castle,15
+FL,Tampa Bay,15
+TN,Goodlettsville,14
+PA,Jenkintown,14
+PA,Newtown Square,14
+PA,Wynnewood,14
+IL,Collinsville,14
+NJ,Berlin,14
+NJ,Mount Holly,13
+TN,Madison,13
+NJ,Bordentown,13
+FL,Zephyrhills,13
+PA,Aston,13
+PA,Ambler,13
+PA,Abington,13
+TN,Antioch,13
+PA,Narberth,13
+FL,Trinity,13
+PA,Horsham,13
+PA,Yardley,13
+FL,Land O Lakes,12
+FL,Apollo Beach,12
+FL,St. Pete Beach,12
+MO,Webster Groves,12
+PA,Elkins Park,12
+NJ,Mullica Hill,12
+PA,Plymouth Meeting,12
+MO,Maryland Heights,12
+NJ,Clementon,12
+LA,Chalmette,12
+NJ,Cinnaminson,12
+AZ,Sahuarita,12
+MO,St Charles,12
+NJ,Moorestown,12
+NJ,Sicklerville,11
+TN,Nolensville,11
+MO,Manchester,11
+AB,St Albert,11
+MO,University City,11
+NJ,Deptford,11
+IL,O'Fallon,11
+PA,Chalfont,11
+IN,Mooresville,11
+FL,Gulfport,11
+PA,Souderton,11
+FL,Safety Harbor,11
+CA,Isla Vista,11
+PA,Upper Darby,11
+FL,Belleair Bluffs,11
+PA,Huntingdon Valley,11
+NJ,Maple Shade,11
+PA,Feasterville Trevose,10
+PA,Perkasie,10
+FL,Port Richey,10
+FL,Holiday,10
+PA,Hatfield,10
+PA,Hatboro,10
+FL,Land O' Lakes,10
+PA,Lahaska,10
+MO,Brentwood,10
+NJ,Blackwood,10
+PA,Dresher,10
+PA,Downingtown,10
+MO,Town and Country,10
+IN,Speedway,9
+FL,South Pasadena,9
+PA,Paoli,9
+DE,Hockessin,9
+NJ,Camden,9
+NJ,Ewing,9
+LA,Terrytown,9
+PA,Brookhaven,9
+PA,Lansdowne,9
+PA,Chadds Ford,9
+PA,Chester Springs,9
+MO,Bridgeton,9
+PA,Bala Cynwyd,9
+NJ,Voorhees Township,9
+NJ,Turnersville,9
+PA,Southampton,8
+FL,Seffner,8
+FL,Indian Rocks Beach,8
+PA,Quakertown,8
+FL,Treasure Island,8
+PA,Glenolden,8
+IL,Alton,8
+PA,Harleysville,8
+NJ,Pitman,8
+NJ,Delran,8
+MO,Richmond Heights,8
+AZ,Marana,8
+PA,Wyncote,7
+FL,Gibsonton,7
+FL,Clearwater Beach,7
+MO,Olivette,7
+MO,St. Charles,7
+PA,Richboro,7
+NJ,Haddon Township,7
+PA,Clifton Heights,7
+AB,St. Albert,7
+PA,Feasterville,7
+FL,Ruskin,7
+FL,Lithia,7
+DE,Claymont,7
+TN,Old Hickory,7
+PA,Morrisville,6
+PA,King Of Prussia,6
+NJ,Glendora,6
+IL,Millstadt,6
+NJ,Hammonton,6
+PA,Flourtown,6
+MO,Ladue,6
+PA,Trevose,6
+PA,Buckingham,6
+IN,Beech Grove,6
+IL,Shiloh,6
+NJ,Willingboro,6
+NJ,West Deptford,6
+TN,Pleasant View,6
+PA,Folsom,5
+PA,Feasterville-Trevose,5
+NJ,Columbus,5
+PA,Limerick,5
+NJ,Evesham Township,5
+TN,Ashland City,5
+MO,Overland,5
+TN,La Vergne,5
+FL,Dover,5
+MO,Rock Hill,5
+CA,Summerland,5
+IL,Glen Carbon,5
+PA,Avondale,5
+PA,Collingdale,5
+IL,O Fallon,5
+PA,East Norriton,5
+NJ,Clayton,5
+FL,Saint Pete Beach,5
+PA,Devon,5
+IN,Noblesville,5
+PA,Jamison,5
+LA,River Ridge,5
+LA,Westwego,5
+FL,Kenneth City,5
+PA,Pipersville,5
+MO,Ferguson,5
+PA,Montgomeryville,5
+NJ,Lindenwold,5
+LA,Jefferson,5
+TN,Mt. Juliet,5
+NV,Sun Valley,5
+AZ,Vail,5
+TN,Bellevue,5
+NJ,Stratford,4
+PA,Spring House,4
+TN,White House,4
+MO,Imperial,4
+PA,Spring City,4
+NJ,Westmont,4
+NJ,Westville,4
+NJ,Somerdale,4
+IL,Swansea,4
+IL,Troy,4
+AZ,Green Valley,4
+CA,Montecito,4
+FL,Westchase,4
+MO,Valley Park,4
+MO,Affton,4
+FL,Thonotosassa,4
+FL,Palmetto,4
+NJ,Bellmawr,4
+MO,Sunset Hills,4
+FL,St Pete Beach,4
+PA,Gilbertsville,4
+FL,Wimauma,4
+FL,Sun City Center,4
+NJ,Atco,4
+NJ,Audubon,4
+NJ,Monroeville,4
+NJ,Mount Ephraim,4
+PA,Coatesville,4
+PA,PHILADELPHIA,4
+FL,Redington Shores,4
+PA,Audubon,4
+NJ,Palmyra,4
+IL,Maryville,4
+NJ,Penns Grove,4
+PA,Cheltenham,4
+NJ,Woodstown,4
+PA,Colmar,4
+NJ,Lumberton,4
+IL,Columbia,4
+LA,Belle Chasse,4
+NJ,Haddon Heights,4
+PA,Ridley Park,3
+PA,Schwenksville,3
+PA,Sellersville,3
+PA,Stowe,3
+PA,Thorndale,3
+PA,Swarthmore,3
+PA,Villanova,3
+FL,Dade City,3
+PA,Oreland,3
+MO,Crestwood,3
+FL,Masaryktown,3
+PA,Penndel,3
+NJ,Barrington,3
+PA,Marcus Hook,3
+NJ,Ewing Township,3
+NJ,Evesham,3
+PA,Eddystone,3
+PA,Eagleville,3
+PA,Fort Washington,3
+NJ,Deptford Township,3
+PA,Glenmoore,3
+LA,Arabi,3
+IN,Whitestown,3
+NJ,Gloucester Township,3
+PA,Lafayette Hill,3
+PA,Oaks,3
+PA,Pennsburg,3
+NJ,Merchantville,3
+IL,East Saint Louis,3
+IL,Granite City,3
+IL,Caseyville,3
+PA,Boothwyn,3
+IL,Waterloo,3
+NJ,Pennsville,3
+PA,Berwyn,3
+NJ,Mansfield,3
+NJ,Magnolia,3
+NJ,Malaga,3
+PA,Boyertown,3
+NJ,Woolwich Township,3
+NJ,Runnemede,3
+NJ,West Berlin,3
+IL,Pontoon Beach,3
+TN,Joelton,3
+NJ,Riverside,3
+NJ,Riverton,3
+TN,NASHVILLE,3
+TN,Lebanon,3
+AB,Saint Albert,2
+TN,Belle Meade,2
+PA,Yeadon,2
+DE,Newport,2
+IN,Mccordsville,2
+IN,New Palestine,2
+IN,Camby,2
+NJ,Pennsauken Township,2
+NJ,Westampton,2
+NJ,Vincentown,2
+NJ,Tabernacle,2
+NJ,Southampton,2
+NJ,Oaklyn,2
+IN,Danville,2
+PA,Darby,2
+PA,Furlong,2
+NJ,Gibbsboro,2
+ID,Kuna,2
+NJ,Hainesport,2
+LA,Elmwood,2
+IL,Cahokia,2
+NJ,Hamilton,2
+NJ,Mt. Laurel,2
+NJ,Mickleton,2
+NJ,Logan Township,2
+NJ,Mantua Township,2
+PA,Chester,2
+IL,Wood River,2
+NJ,Lawrence Township,2
+PA,Croydon,2
+NJ,Franklin,2
+NJ,Florence,2
+IN,Oaklandon,2
+NJ,Gloucester City,2
+PA,Rockledge,2
+MO,Shrewsbury,2
+PA,Secane,2
+PA,Sharon Hill,2
+PA,Skippack,2
+PA,Telford,2
+PA,Woodlyn,2
+MO,High Ridge,2
+TN,Springfield,2
+PA,Trooper,2
+AB,Beaumont,2
+PA,Phila,2
+PA,Primos,2
+PA,Plumsteadville,2
+MO,Saint John,2
+FL,Pasadena,2
+LA,Meraux,2
+PA,Morton,2
+FL,San Antonio,2
+NJ,Edgewater Park,2
+NJ,Eastampton,2
+NJ,Clarksboro,2
+PA,Holland,2
+PA,Haverford,2
+IL,Bethalto,2
+ID,boise,2
+FL,Indian Shores,2
+PA,Rosemont,2
+IN,Cumberland,1
+IN,Clermont,1
+IN,INDIANAPOLIS,1
+IN,Fairland,1
+NJ,Paulsboro,1
+NJ,Pedricktown,1
+IL,Roxana,1
+IL,Scott AFB,1
+IL,O'fallon,1
+IL,Scott Air Force Base,1
+NV,VC Highlands,1
+NV,Verdi,1
+NV,Virginia City,1
+NV,Washoe Valley,1
+NV,Fernley,1
+NV,Cold Springs,1
+NJ,Woodbury Heights,1
+NJ,Washington Township,1
+IL,Godfrey,1
+NJ,North Maple Shade,1
+NJ,Mantua,1
+NJ,Medford Lakes,1
+NJ,Mount Royal,1
+NJ,Monroe Township,1
+PA,Andalusia,1
+IN,"Beech Grove,",1
+PA,Bristol Twp,1
+PA,Bridgeport,1
+IN,AVON,1
+IN,Indianapolis city (balance),1
+NJ,Laurel Springs,1
+NJ,Jobstown,1
+NJ,Harrison Township,1
+NJ,Hamilton Township,1
+NJ,Pennington,1
+NJ,Oldmans,1
+NJ,Roebling,1
+NJ,Richwood,1
+NV,Reno ,1
+NV,Reno Nevada,1
+NV,Spanish Springs,1
+NV,Sparks ,1
+NJ,Pine Hill,1
+NJ,Pilesgrove,1
+NJ,Pennsville Township,1
+IN,McCordsville,1
+NJ,South Harrison Township,1
+NJ,Shamong,1
+CA,Santa Clara,1
+CA,Port Hueneme,1
+TN,Pegram,1
+PA,Zieglerville,1
+TN,Kingston Springs,1
+TN,Greenbrier,1
+DE,Bellefonte,1
+CA,Santa Maria,1
+TN,Mt Juliet,1
+TN,Lavergne,1
+AZ,TUCSON,1
+AB,West Edmonton,1
+AZ,Casa Adobes,1
+AZ,Corona de Tucson,1
+IN,Whiteland,1
+IN,New Whiteland,1
+NJ,Haddon,1
+NJ,Had Twp,1
+NJ,Franklinville,1
+FL,clearwater,1
+FL,Ybor City,1
+NJ,Ewing Twp,1
+PA,Garnet Valley,1
+ID,East Boise,1
+PA,Erdenheim,1
+PA,Elverson,1
+PA,FOLSOM,1
+PA,Fallsington,1
+PA,Fountainville,1
+PA,Franconia,1
+NJ,Lawrenceville,1
+PA,Dublin,1
+PA,Douglassville,1
+IL,Mascoutah,1
+PA,Edgmont,1
+PA,East Lansdowne,1
+PA,Chesterbrook,1
+IL,East Alton,1
+LA,Belle Chase,1
+IL,Maryville ,1
+IL,Lebanon,1
+NJ,Haddon township,1
+PA,Glenmore,1
+PA,Hilltown,1
+PA,Holmes,1
+PA,Green Lane,1
+NJ,Eastampton Township,1
+NJ,Deptford Twp,1
+NJ,Cherry Hil,1
+NJ,Elmer,1
+PA,Linwood,1
+PA,Lionville,1
+PA,Lenni,1
+FL,Springhill,1
+PA,Lower Southampton Township,1
+PA,Manayunk,1
+PA,Melrose Park,1
+PA,Maple Glen,1
+PA,Mont Clare,1
+FL,North Redington Bch,1
+PA,Lower Merion,1
+FL,St.Pete Beach,1
+FL,Wesley Chapel ,1
+FL,Tierra Verde,1
+FL,Terra Ceia,1
+FL,"Tampa,",1
+PA,Landsdale,1
+PA,Ivyland,1
+PA,LANSDALE,1
+PA,Jeffersonville,1
+FL,South Tampa,1
+FL,Saint Petersburg Beach,1
+FL,S Pasadena,1
+MO,Afton,1
+NJ,Cherry Hill Mall,1
+PA,Glenn Mills,1
+PA,Gradyville,1
+ID,Nampa,1
+LA,Waggaman,1
+LA,Saint Rose,1
+LA,Metairie ,1
+LA,Luling,1
+NJ,Carneys Point,1
+NJ,Cedar Brook,1
+NJ,Burlington Township,1
+NJ,Brooklawn,1
+PA,New Britain,1
+NJ,Beverly,1
+NJ,Berlin Township,1
+PA,Parkside,1
+FL,Redingtn Shor,1
+FL,Redingtn Shores,1
+FL,Petersburg,1
+FL,RIVERVIEW,1
+PA,Lima,1
+MO,Edmundson,1
+MO,Charlack,1
+MO,Earth City,1
+PA,Prospect Park,1
+PA,Philadelphia PA,1
+PA,Philadephia,1
+MO,"Saint Louis,",1
+PA,Roxborough,1
+MO,Twin Oaks,1
+MO,St Ann,1
+PA,Radnor,1
+PA,Pineville,1
+FL,New Orleans,1
+FL,Hernando Beach,1
+FL,Greater Northdale,1
+PA,St. Davids,1
+PA,Southwest Philadelphia,1
+PA,Skippack Village,1
+PA,Silverdale,1
+MO,St. Ann,1
+PA,Upper Southampton Township,1
+PA,Upper Chichester,1
+PA,Toughkenamon,1
+FL,Boulevard,1
+DE,Yorklyn,1
+FL,Bradenton Beach,1
+FL,Bradenton,1
+TN,Whites Creek,1
+MO,Frontenac,1
+PA,Unionville,1
+PA,Upland,1
+MO,Kimmswick,1
+MO,Hazelwood,1
+MO,Mehlville,1
+MO,Saint Ann,1
+FL,CLEARWATER BEACH,1
+FL,Citrus Park,1
+MO,Barnhart,1
+MO,Breckenridge Hills,1
+PA,Virtual,1
+FL,Greater Carrollwood,1
+PA,Washington Crossing,1
+PA,West Norriton ,1
+PA,West Point,1
+PA,West Philadelphia,1
+PA,Wyndmoor,1
+PA,Yardley Boro,1

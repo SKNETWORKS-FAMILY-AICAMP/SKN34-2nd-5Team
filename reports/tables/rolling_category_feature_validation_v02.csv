@@ -1,0 +1,15 @@
+﻿feature,missing_count,infinite_count
+baseline_unique_category_count,0,0
+baseline_normalized_category_entropy,0,0
+baseline_simpson_category_diversity,0,0
+baseline_top_category_share,0,0
+recent_unique_category_count,0,0
+recent_normalized_category_entropy,0,0
+recent_simpson_category_diversity,0,0
+recent_top_category_share,0,0
+unique_category_count_diff,0,0
+unique_category_ratio,0,0
+unique_category_decline_rate,0,0
+category_entropy_decline,0,0
+simpson_diversity_decline,0,0
+top_category_share_increase,0,0

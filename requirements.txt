@@ -1,8 +1,8 @@
 # 데이터 처리
 pandas
-numpy
 pyarrow
 duckdb
+numpy==1.26.4
 
 # 시각화
 matplotlib
@@ -10,7 +10,7 @@ seaborn
 plotly
 
 # 머신러닝
-scikit-learn
+scikit-learn==1.4.2
 imbalanced-learn
 joblib
 
@@ -33,3 +33,6 @@ pytest
 
 # 대시보드
 streamlit
+
+
+scipy==1.12.0
