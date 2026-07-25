@@ -22,3 +22,11 @@ target:
   prediction_start: "2019-01-01"
   prediction_end: "2020-01-01"
   churn_max_review_count: 0
+
+retention_state:
+  retained_min_review_count: 10
+  retained_min_active_months: 3
+  stopped_review_count: 0
+  retained_class: 0
+  weakened_class: 1
+  stopped_class: 2

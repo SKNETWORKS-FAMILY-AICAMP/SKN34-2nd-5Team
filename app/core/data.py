@@ -27,29 +27,32 @@ class AppData:
     paths: ProjectPaths
     data_mode: str
     reviewer_profiles: pd.DataFrame = field(default_factory=pd.DataFrame)
-    risk_tiers: pd.DataFrame = field(default_factory=pd.DataFrame)
     top_k: pd.DataFrame = field(default_factory=pd.DataFrame)
     primary_policy: pd.DataFrame = field(default_factory=pd.DataFrame)
     validation_test: pd.DataFrame = field(default_factory=pd.DataFrame)
     feature_importance: pd.DataFrame = field(default_factory=pd.DataFrame)
     group_importance: pd.DataFrame = field(default_factory=pd.DataFrame)
+    feature_importance_v02: pd.DataFrame = field(default_factory=pd.DataFrame)
+    group_importance_v02: pd.DataFrame = field(default_factory=pd.DataFrame)
     feature_sets: pd.DataFrame = field(default_factory=pd.DataFrame)
     split_summary: pd.DataFrame = field(default_factory=pd.DataFrame)
     reviewer_monthly_activity: pd.DataFrame = field(default_factory=pd.DataFrame)
     regional_risk: pd.DataFrame = field(default_factory=pd.DataFrame)
     model_metadata: dict[str, Any] = field(default_factory=dict)
     risk_policy: dict[str, Any] = field(default_factory=dict)
+    retention_distribution: pd.DataFrame = field(default_factory=pd.DataFrame)
+    multiclass_validation: pd.DataFrame = field(default_factory=pd.DataFrame)
+    multiclass_top_k: pd.DataFrame = field(default_factory=pd.DataFrame)
+    multiclass_confusion: pd.DataFrame = field(default_factory=pd.DataFrame)
     warnings: list[str] = field(default_factory=list)
     sources: dict[str, str] = field(default_factory=dict)
 
 
 FILE_CANDIDATES = {
     "reviewer_profiles": [
+        "data/processed/predictions/final_test_retention_profiles_v03.parquet",
         "data/processed/predictions/final_reviewer_risk_profiles_v02.parquet",
         "data/processed/final_reviewer_risk_profiles_v02.parquet",
-    ],
-    "risk_tiers": [
-        "reports/tables/final_risk_tier_summary_v02.csv",
     ],
     "top_k": [
         "reports/tables/final_test_top_k_performance_v02.csv",
@@ -62,9 +65,17 @@ FILE_CANDIDATES = {
         "reports/tables/final_validation_test_comparison_v02.csv",
     ],
     "feature_importance": [
+        "reports/tables/final_feature_importance_v03.csv",
         "reports/tables/final_feature_importance_v02.csv",
     ],
     "group_importance": [
+        "reports/tables/final_feature_group_importance_v03.csv",
+        "reports/tables/final_feature_group_importance_v02.csv",
+    ],
+    "feature_importance_v02": [
+        "reports/tables/final_feature_importance_v02.csv",
+    ],
+    "group_importance_v02": [
         "reports/tables/final_feature_group_importance_v02.csv",
     ],
     "feature_sets": [
@@ -83,12 +94,25 @@ FILE_CANDIDATES = {
         "data/processed/regional_risk_summary_v01.parquet",
     ],
     "model_metadata": [
+        "models/final_core_logistic_multiclass_metadata_v03.json",
         "models/final_core_hgb_metadata_v02.json",
         "models/metadata/final_core_hgb_metadata_v02.json",
     ],
     "risk_policy": [
         "data/processed/predictions/risk_policy_v02.json",
         "configs/risk_policy_v02.json",
+    ],
+    "retention_distribution": [
+        "reports/tables/retention_state_distribution_v03.csv",
+    ],
+    "multiclass_validation": [
+        "reports/tables/multiclass_validation_results_v03.csv",
+    ],
+    "multiclass_top_k": [
+        "reports/tables/multiclass_top_k_performance_v03.csv",
+    ],
+    "multiclass_confusion": [
+        "reports/tables/multiclass_confusion_matrix_v03.csv",
     ],
 }
 
@@ -157,6 +181,15 @@ def _numeric(frame: pd.DataFrame, columns: list[str]) -> None:
 
 def _normalize_profiles(frame: pd.DataFrame) -> pd.DataFrame:
     profile = frame.copy()
+    if "priority_score" in profile.columns:
+        profile["risk_score"] = profile["priority_score"]
+    if "priority_rank" in profile.columns:
+        profile["risk_rank"] = profile["priority_rank"]
+    if "priority_top_percent" in profile.columns:
+        profile["risk_top_percent"] = profile["priority_top_percent"]
+    if "selected_for_crm" in profile.columns:
+        profile["crm_target"] = profile["selected_for_crm"]
+
     required = {"user_id", "risk_score"}
     missing = required - set(profile.columns)
     if missing:
@@ -190,6 +223,15 @@ def _normalize_profiles(frame: pd.DataFrame) -> pd.DataFrame:
             "baseline_mean_interval_days",
             "recent_mean_interval_days",
             "mean_interval_increase_days",
+            "retention_state",
+            "predicted_state",
+            "retained_score",
+            "weakened_score",
+            "stopped_score",
+            "priority_score",
+            "priority_rank",
+            "priority_top_percent",
+            "selected_for_crm",
         ],
     )
     profile = profile.sort_values("risk_score", ascending=False).reset_index(drop=True)
@@ -226,13 +268,53 @@ def _normalize_profiles(frame: pd.DataFrame) -> pd.DataFrame:
         profile["crm_target"] = profile["crm_target"].fillna(0).astype("int8")
     profile["crm_target_label"] = np.where(
         profile["crm_target"].eq(1),
-        "Top 20% 관리 대상",
+        "통합 상위 20% 검토 대상",
         "일반 모니터링",
     )
 
+    state_labels = {
+        0: "파워 지위 유지",
+        1: "파워 지위 약화",
+        2: "리뷰 활동 중단",
+    }
+    judgment_labels = {
+        0: "유지 우세",
+        1: "약화 우세",
+        2: "중단 우세",
+    }
+    if "predicted_state" in profile.columns:
+        profile["predicted_state"] = profile["predicted_state"].fillna(0).astype("int8")
+        profile["model_judgment"] = profile["predicted_state"].map(judgment_labels)
+        if "predicted_state_label" not in profile.columns:
+            profile["predicted_state_label"] = profile["predicted_state"].map(
+                state_labels
+            )
+    else:
+        profile["predicted_state"] = 0
+        profile["predicted_state_label"] = state_labels[0]
+        profile["model_judgment"] = judgment_labels[0]
+
+    if "retention_state" in profile.columns:
+        profile["retention_state"] = (
+            profile["retention_state"].fillna(0).astype("int8")
+        )
+        profile["status_loss"] = profile["retention_state"].ne(0).astype("int8")
+        if "retention_state_label" not in profile.columns:
+            profile["retention_state_label"] = profile["retention_state"].map(
+                state_labels
+            )
+    else:
+        profile["retention_state"] = np.nan
+        profile["retention_state_label"] = "검증값 없음"
+        profile["status_loss"] = np.nan
+
     if "churn" in profile.columns:
         profile["churn"] = profile["churn"].fillna(0).astype("int8")
-        profile["actual_result"] = np.where(profile["churn"].eq(1), "이탈", "유지")
+        profile["actual_result"] = np.where(
+            profile["retention_state"].notna(),
+            profile["retention_state_label"],
+            np.where(profile["churn"].eq(1), "리뷰 활동 중단", "파워 지위 유지"),
+        )
     else:
         profile["churn"] = np.nan
         profile["actual_result"] = "검증값 없음"
@@ -252,40 +334,47 @@ def _normalize_profiles(frame: pd.DataFrame) -> pd.DataFrame:
     return enrich_profiles(profile)
 
 
-def _derive_risk_tiers(profile: pd.DataFrame) -> pd.DataFrame:
-    total = len(profile)
-    total_churn = float(profile["churn"].sum()) if profile["churn"].notna().any() else 0
-    overall_rate = total_churn / total if total else 0
-    rows: list[dict[str, Any]] = []
-    for tier in ["긴급 관리", "집중 관리", "관찰 대상", "일반"]:
-        subset = profile[profile["risk_tier"].eq(tier)]
-        if subset.empty:
-            continue
-        churn_users = (
-            int(subset["churn"].sum()) if subset["churn"].notna().any() else 0
-        )
-        observed = churn_users / len(subset) if len(subset) else 0
-        rows.append(
-            {
-                "risk_tier": tier,
-                "users": len(subset),
-                "churn_users": churn_users,
-                "observed_churn_rate": observed,
-                "mean_risk_score": subset["risk_score"].mean(),
-                "minimum_risk_score": subset["risk_score"].min(),
-                "maximum_risk_score": subset["risk_score"].max(),
-                "user_rate": len(subset) / total,
-                "captured_churn_rate": (
-                    churn_users / total_churn if total_churn else np.nan
-                ),
-                "lift": observed / overall_rate if overall_rate else np.nan,
-            }
-        )
-    return pd.DataFrame(rows)
-
-
 def _derive_policy(profile: pd.DataFrame) -> pd.DataFrame:
-    if profile.empty or not profile["churn"].notna().any():
+    if profile.empty:
+        return pd.DataFrame()
+    if "retention_state" in profile and profile["retention_state"].notna().any():
+        target = profile[profile["crm_target"].eq(1)]
+        status_loss = profile["retention_state"].ne(0)
+        selected_status_loss = target["retention_state"].ne(0)
+        captured_status_loss = int(selected_status_loss.sum())
+        total_status_loss = int(status_loss.sum())
+        stopped_total = int(profile["retention_state"].eq(2).sum())
+        weakened_total = int(profile["retention_state"].eq(1).sum())
+        stopped_captured = int(target["retention_state"].eq(2).sum())
+        weakened_captured = int(target["retention_state"].eq(1).sum())
+        precision = captured_status_loss / len(target) if len(target) else 0
+        base_rate = total_status_loss / len(profile) if len(profile) else 0
+        return pd.DataFrame(
+            [
+                {
+                    "policy": "Unified Top 20% review queue",
+                    "target_rate": len(target) / len(profile),
+                    "target_users": len(target),
+                    "status_loss_captured": captured_status_loss,
+                    "status_loss_precision": precision,
+                    "status_loss_recall": (
+                        captured_status_loss / total_status_loss
+                        if total_status_loss
+                        else 0
+                    ),
+                    "status_loss_lift": precision / base_rate if base_rate else np.nan,
+                    "stopped_captured": stopped_captured,
+                    "stopped_recall": (
+                        stopped_captured / stopped_total if stopped_total else 0
+                    ),
+                    "weakened_captured": weakened_captured,
+                    "weakened_recall": (
+                        weakened_captured / weakened_total if weakened_total else 0
+                    ),
+                }
+            ]
+        )
+    if not profile["churn"].notna().any():
         return pd.DataFrame()
     target = profile[profile["crm_target"].eq(1)]
     non_target = profile[profile["crm_target"].eq(0)]
@@ -371,17 +460,17 @@ def load_app_data() -> AppData:
     profile_path = _first_path(root, FILE_CANDIDATES["reviewer_profiles"])
     if profile_path is None:
         demo = build_demo_data()
+        demo_profiles = _normalize_profiles(demo.reviewer_profiles)
         warnings.append(
-            "프로젝트 위험 프로필 파일을 찾지 못해 검증 결과와 동일한 "
-            "내장 데모 데이터를 사용하고 있습니다."
+            "프로젝트 v03 리뷰어 프로필 파일을 찾지 못해 집계 결과와 동일한 "
+            "익명 합성 데모 데이터를 사용하고 있습니다."
         )
         return AppData(
             paths=paths,
             data_mode="demo",
-            reviewer_profiles=enrich_profiles(demo.reviewer_profiles),
-            risk_tiers=demo.risk_tiers,
+            reviewer_profiles=demo_profiles,
             top_k=demo.top_k,
-            primary_policy=demo.primary_policy,
+            primary_policy=_derive_policy(demo_profiles),
             validation_test=demo.validation_test,
             feature_importance=demo.feature_importance,
             group_importance=demo.group_importance,
@@ -389,6 +478,10 @@ def load_app_data() -> AppData:
             split_summary=demo.split_summary,
             model_metadata=demo.model_metadata,
             risk_policy=demo.risk_policy,
+            retention_distribution=demo.retention_distribution,
+            multiclass_validation=demo.multiclass_validation,
+            multiclass_top_k=demo.multiclass_top_k,
+            multiclass_confusion=demo.multiclass_confusion,
             warnings=warnings,
             sources={"reviewer_profiles": "built-in demo"},
         )
@@ -401,27 +494,31 @@ def load_app_data() -> AppData:
 
     values: dict[str, Any] = {}
     for key in [
-        "risk_tiers",
         "top_k",
         "primary_policy",
         "validation_test",
         "feature_importance",
         "group_importance",
+        "feature_importance_v02",
+        "group_importance_v02",
         "feature_sets",
         "split_summary",
         "reviewer_monthly_activity",
         "regional_risk",
         "model_metadata",
         "risk_policy",
+        "retention_distribution",
+        "multiclass_validation",
+        "multiclass_top_k",
+        "multiclass_confusion",
     ]:
         values[key] = _load_optional(root, key, warnings, sources)
 
-    if values["risk_tiers"] is None:
-        values["risk_tiers"] = _derive_risk_tiers(profiles)
-        warnings.append("위험 등급 요약은 리뷰어 프로필에서 재계산했습니다.")
-    if values["primary_policy"] is None:
+    is_v03 = "priority_score" in profiles.columns
+    if is_v03 or values["primary_policy"] is None:
         values["primary_policy"] = _derive_policy(profiles)
-        warnings.append("Top 20% 정책 성과는 리뷰어 프로필에서 재계산했습니다.")
+        if not is_v03:
+            warnings.append("Top 20% 정책 성과는 리뷰어 프로필에서 재계산했습니다.")
     if values["top_k"] is None:
         values["top_k"] = _derive_top_k(profiles)
         warnings.append("Top-K 성과는 리뷰어 프로필에서 재계산했습니다.")
@@ -429,23 +526,20 @@ def load_app_data() -> AppData:
     loaded_core = sum(
         key in sources
         for key in [
-            "risk_tiers",
-            "top_k",
-            "primary_policy",
-            "validation_test",
-            "feature_importance",
-            "group_importance",
-            "feature_sets",
-            "split_summary",
+            "reviewer_profiles",
+            "retention_distribution",
+            "multiclass_validation",
+            "multiclass_top_k",
+            "multiclass_confusion",
+            "model_metadata",
         ]
     )
-    data_mode = "project" if loaded_core >= 6 else "hybrid"
+    data_mode = "project" if loaded_core >= 5 else "hybrid"
 
     return AppData(
         paths=paths,
         data_mode=data_mode,
         reviewer_profiles=profiles,
-        risk_tiers=values["risk_tiers"],
         top_k=values["top_k"],
         primary_policy=values["primary_policy"],
         validation_test=values["validation_test"]
@@ -456,6 +550,12 @@ def load_app_data() -> AppData:
         else pd.DataFrame(),
         group_importance=values["group_importance"]
         if values["group_importance"] is not None
+        else pd.DataFrame(),
+        feature_importance_v02=values["feature_importance_v02"]
+        if values["feature_importance_v02"] is not None
+        else pd.DataFrame(),
+        group_importance_v02=values["group_importance_v02"]
+        if values["group_importance_v02"] is not None
         else pd.DataFrame(),
         feature_sets=values["feature_sets"]
         if values["feature_sets"] is not None
@@ -475,7 +575,18 @@ def load_app_data() -> AppData:
         risk_policy=values["risk_policy"]
         if isinstance(values["risk_policy"], dict)
         else {},
+        retention_distribution=values["retention_distribution"]
+        if values["retention_distribution"] is not None
+        else pd.DataFrame(),
+        multiclass_validation=values["multiclass_validation"]
+        if values["multiclass_validation"] is not None
+        else pd.DataFrame(),
+        multiclass_top_k=values["multiclass_top_k"]
+        if values["multiclass_top_k"] is not None
+        else pd.DataFrame(),
+        multiclass_confusion=values["multiclass_confusion"]
+        if values["multiclass_confusion"] is not None
+        else pd.DataFrame(),
         warnings=warnings,
         sources=sources,
     )
-

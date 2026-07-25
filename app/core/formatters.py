@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -69,4 +69,25 @@ def safe_float(value: Any, default: float = 0.0) -> float:
     except (TypeError, ValueError):
         return default
     return default if not math.isfinite(numeric) else numeric
+
+
+def signed_phrase(
+    value: Any,
+    formatter: Callable[[float], str],
+    *,
+    when_positive: str,
+    when_negative: str,
+) -> str:
+    """Format `value` by magnitude and pick the word matching its actual sign.
+
+    Metrics like decline rates can go negative (an actual increase), and a
+    hardcoded "감소"/"증가" word would then contradict the sign.
+    """
+    numeric = safe_float(value)
+    magnitude = formatter(abs(numeric))
+    return f"{magnitude} {when_positive}" if numeric >= 0 else f"{magnitude} {when_negative}"
+
+
+def signed_tone(value: Any, *, positive: str = "warning", negative: str = "positive") -> str:
+    return positive if safe_float(value) >= 0 else negative
 

@@ -5,7 +5,12 @@ from pathlib import Path
 
 import streamlit as st
 
-from core.components import footer, page_intro, render_warnings, section_header
+from core.components import (
+    footer,
+    page_intro,
+    render_warnings,
+    section_header,
+)
 from core.data import load_app_data
 
 
@@ -26,12 +31,11 @@ data = load_app_data()
 profiles = data.reviewer_profiles.copy()
 
 page_intro(
-    "Reviewer worklist",
-    "검토 대상을 찾고 비교합니다",
-    "검색과 필터 결과를 내려받거나, 행을 선택해 Reviewer 360에서 변화 근거와 권장 행동을 확인합니다.",
+    "Reviewer worklist · v03",
+    "통합 리뷰어 검토 워크리스트",
+    "약화·중단 점수를 하나의 순위로 검토하고 Reviewer 360에서 활동 근거를 확인합니다.",
     ["현재 데모에서 사용 가능" if data.data_mode == "demo" else "현재 사용 가능"],
 )
-render_warnings(data.warnings)
 
 with st.container(horizontal=True, vertical_alignment="bottom"):
     search_text = st.text_input(
@@ -42,36 +46,39 @@ with st.container(horizontal=True, vertical_alignment="bottom"):
         persist_state="session",
         width="stretch",
     )
-    selected_tiers = st.multiselect(
-        "위험 등급",
-        options=["긴급 관리", "집중 관리", "관찰 대상", "일반"],
-        default=["긴급 관리", "집중 관리"],
-        key="queue_tiers",
-        persist_state="session",
-        width=220,
-    )
-    selected_types = st.multiselect(
-        "위험 유형",
-        options=sorted(profiles["risk_type"].dropna().unique().tolist()),
-        placeholder="전체",
-        key="queue_types",
-        persist_state="session",
-        width=230,
-    )
-    crm_filter = st.selectbox(
-        "CRM 대상",
-        ["Top 20% 대상", "전체", "대상 제외"],
-        key="queue_crm",
-        persist_state="session",
-        width=150,
-    )
-    sort_rule = st.selectbox(
-        "정렬",
-        ["위험 순위순", "점수 높은 순", "활동 감소순", "리뷰 공백순"],
-        key="queue_sort",
-        persist_state="session",
-        width=160,
-    )
+    with st.popover("필터와 정렬", icon=":material/tune:", width="stretch"):
+        selected_states = st.multiselect(
+            "모델 판단",
+            options=["유지 우세", "약화 우세", "중단 우세"],
+            default=["약화 우세", "중단 우세"],
+            key="queue_states",
+            persist_state="session",
+        )
+        selected_signals = st.multiselect(
+            "핵심 행동 신호",
+            options=sorted(profiles["core_signal"].dropna().unique().tolist()),
+            placeholder="전체",
+            key="queue_signals",
+            persist_state="session",
+        )
+        crm_filter = st.selectbox(
+            "통합 검토 범위",
+            ["통합 상위 20%", "전체", "상위 20% 제외"],
+            key="queue_crm",
+            persist_state="session",
+        )
+        sort_rule = st.selectbox(
+            "정렬",
+            [
+                "통합 우선순위",
+                "중단 점수 높은 순",
+                "약화 점수 높은 순",
+                "활동 감소순",
+                "리뷰 공백순",
+            ],
+            key="queue_sort",
+            persist_state="session",
+        )
 
 filtered = profiles.copy()
 if search_text:
@@ -82,34 +89,30 @@ if search_text:
             regex=False,
         )
     ]
-if selected_tiers:
-    filtered = filtered[filtered["risk_tier"].isin(selected_tiers)]
-if selected_types:
-    filtered = filtered[filtered["risk_type"].isin(selected_types)]
-if crm_filter == "Top 20% 대상":
+if selected_states:
+    filtered = filtered[filtered["model_judgment"].isin(selected_states)]
+if selected_signals:
+    filtered = filtered[filtered["core_signal"].isin(selected_signals)]
+if crm_filter == "통합 상위 20%":
     filtered = filtered[filtered["crm_target"].eq(1)]
-elif crm_filter == "대상 제외":
+elif crm_filter == "상위 20% 제외":
     filtered = filtered[filtered["crm_target"].eq(0)]
 
 sort_map = {
-    "위험 순위순": ("risk_rank", True),
-    "점수 높은 순": ("risk_score", False),
+    "통합 우선순위": ("priority_rank", True),
+    "중단 점수 높은 순": ("stopped_score", False),
+    "약화 점수 높은 순": ("weakened_score", False),
     "활동 감소순": ("active_month_decline_rate", False),
     "리뷰 공백순": ("recent_recency_days", False),
 }
 sort_column, ascending = sort_map[sort_rule]
 filtered = filtered.sort_values(sort_column, ascending=ascending)
 
-summary = st.columns(4, gap="large")
-with summary[0]:
-    st.metric("검색 결과", f"{len(filtered):,}명")
-with summary[1]:
-    st.metric("긴급 검토", f"{int(filtered['risk_tier'].eq('긴급 관리').sum()):,}명")
-with summary[2]:
-    st.metric("CRM 대상", f"{int(filtered['crm_target'].eq(1).sum()):,}명")
-with summary[3]:
-    mean_score = float(filtered["risk_score"].mean()) if not filtered.empty else 0.0
-    st.metric("평균 위험 점수", f"{mean_score:.3f}")
+st.caption(
+    f"검색 결과 {len(filtered):,}명 · "
+    f"통합 상위 20% {int(filtered['crm_target'].eq(1).sum()):,}명 · "
+    "클래스 점수는 확률이 아닌 상대 모델 점수입니다."
+)
 
 section_header(
     "리뷰어 워크리스트",
@@ -123,40 +126,44 @@ if filtered.empty:
 
 table = filtered.head(500).copy()
 table["리뷰어"] = table["user_id"]
-table["등급"] = table["risk_tier"]
-table["모델 점수"] = table["risk_score"]
-table["위험 유형"] = table["risk_type"]
-table["리뷰 수"] = (
-    table["baseline_review_count"].round().astype(int).astype(str)
-    + " → "
-    + table["recent_review_count"].round().astype(int).astype(str)
+table["모델 판단"] = table["model_judgment"]
+table["유지 점수"] = table["retained_score"]
+table["약화 점수"] = table["weakened_score"]
+table["중단 점수"] = table["stopped_score"]
+table["핵심 신호"] = table["core_signal"]
+table["리뷰 수 변화"] = table.apply(
+    lambda row: [row["baseline_review_count"], row["recent_review_count"]],
+    axis=1,
 )
-table["활동 월"] = (
-    table["baseline_active_months"].round().astype(int).astype(str)
-    + " → "
-    + table["recent_active_months"].round().astype(int).astype(str)
+table["활동 월 변화"] = table.apply(
+    lambda row: [row["baseline_active_months"], row["recent_active_months"]],
+    axis=1,
 )
-table["고유 음식점"] = (
-    table["baseline_unique_business_count"].round().astype(int).astype(str)
-    + " → "
-    + table["recent_unique_business_count"].round().astype(int).astype(str)
+table["탐색 변화"] = table.apply(
+    lambda row: [
+        row["baseline_unique_business_count"],
+        row["recent_unique_business_count"],
+    ],
+    axis=1,
 )
 table["리뷰 공백"] = table["recent_recency_days"].round().astype(int).astype(str) + "일"
-table["권장 행동"] = table["recommended_action"]
+table["권장 검토"] = table["recommended_review"]
 display = table[
     [
-        "risk_rank",
+        "priority_rank",
         "리뷰어",
-        "등급",
-        "모델 점수",
-        "위험 유형",
-        "리뷰 수",
-        "활동 월",
-        "고유 음식점",
+        "모델 판단",
+        "유지 점수",
+        "약화 점수",
+        "중단 점수",
+        "핵심 신호",
+        "리뷰 수 변화",
+        "활동 월 변화",
+        "탐색 변화",
         "리뷰 공백",
-        "권장 행동",
+        "권장 검토",
     ]
-].rename(columns={"risk_rank": "순위"})
+].rename(columns={"priority_rank": "통합 순위"})
 
 selection = st.dataframe(
     display,
@@ -167,15 +174,38 @@ selection = st.dataframe(
     on_select="rerun",
     selection_mode="multi-row",
     column_config={
-        "순위": st.column_config.NumberColumn(format="%d위", width="small"),
-        "리뷰어": st.column_config.TextColumn(width="medium"),
-        "모델 점수": st.column_config.ProgressColumn(
+        "통합 순위": st.column_config.NumberColumn(
+            format="%d위", width="small", pinned=True
+        ),
+        "리뷰어": st.column_config.TextColumn(width="medium", pinned=True),
+        "유지 점수": st.column_config.ProgressColumn(
             min_value=0.0,
             max_value=1.0,
-            format="%.4f",
-            width="medium",
+            format="%.3f",
+            width="small",
         ),
-        "권장 행동": st.column_config.TextColumn(width="large"),
+        "약화 점수": st.column_config.ProgressColumn(
+            min_value=0.0,
+            max_value=1.0,
+            format="%.3f",
+            width="small",
+        ),
+        "중단 점수": st.column_config.ProgressColumn(
+            min_value=0.0,
+            max_value=1.0,
+            format="%.3f",
+            width="small",
+        ),
+        "리뷰 수 변화": st.column_config.LineChartColumn(
+            "리뷰 수 · 과거→최근", width="medium"
+        ),
+        "활동 월 변화": st.column_config.LineChartColumn(
+            "활동 월 · 과거→최근", width="medium"
+        ),
+        "탐색 변화": st.column_config.LineChartColumn(
+            "음식점 · 과거→최근", width="medium"
+        ),
+        "권장 검토": st.column_config.TextColumn(width="large"),
     },
 )
 
@@ -214,7 +244,10 @@ if len(selected_profiles) >= 2:
     comparison_view = comparison[
         [
             "user_id",
-            "risk_score",
+            "model_judgment",
+            "retained_score",
+            "weakened_score",
+            "stopped_score",
             "review_count_decline_rate",
             "active_month_decline_rate",
             "unique_business_decline_rate",
@@ -223,7 +256,10 @@ if len(selected_profiles) >= 2:
     ].rename(
         columns={
             "user_id": "리뷰어",
-            "risk_score": "모델 점수",
+            "model_judgment": "모델 판단",
+            "retained_score": "유지 점수",
+            "weakened_score": "약화 점수",
+            "stopped_score": "중단 점수",
             "review_count_decline_rate": "리뷰 감소율",
             "active_month_decline_rate": "활동 월 감소율",
             "unique_business_decline_rate": "탐색 감소율",
@@ -235,13 +271,16 @@ if len(selected_profiles) >= 2:
         hide_index=True,
         width="stretch",
         column_config={
-            "모델 점수": st.column_config.NumberColumn(format="%.4f"),
-            "리뷰 감소율": st.column_config.NumberColumn(format="%.1%%"),
-            "활동 월 감소율": st.column_config.NumberColumn(format="%.1%%"),
-            "탐색 감소율": st.column_config.NumberColumn(format="%.1%%"),
+            "유지 점수": st.column_config.NumberColumn(format="%.3f"),
+            "약화 점수": st.column_config.NumberColumn(format="%.3f"),
+            "중단 점수": st.column_config.NumberColumn(format="%.3f"),
+            "리뷰 감소율": st.column_config.NumberColumn(format="percent"),
+            "활동 월 감소율": st.column_config.NumberColumn(format="percent"),
+            "탐색 감소율": st.column_config.NumberColumn(format="percent"),
             "공백 증가일": st.column_config.NumberColumn(format="%.0f일"),
         },
     )
 
 st.caption("표에는 성능과 가독성을 위해 현재 필터 결과 중 상위 500명까지 표시합니다.")
+render_warnings(data.warnings)
 footer(data.data_mode)

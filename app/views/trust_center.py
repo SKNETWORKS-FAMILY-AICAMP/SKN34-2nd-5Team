@@ -6,18 +6,24 @@ import pandas as pd
 import streamlit as st
 
 from core.charts import (
+    confusion_heatmap,
     feature_importance,
     group_importance,
     model_comparison,
+    multiclass_class_performance,
+    multiclass_top_k_curve,
     top_k_curve,
 )
 from core.components import (
+    capability_grid,
     empty_state,
     footer,
+    metric_strip,
     page_intro,
     render_warnings,
     section_header,
     status_badge,
+    timeline_band,
 )
 from core.data import load_app_data
 
@@ -26,11 +32,10 @@ data = load_app_data()
 
 page_intro(
     "Model trust & product readiness",
-    "성능뿐 아니라 해석 범위와 제품 준비도를 공개합니다",
-    "시간 분할, Top-K 성능, 피처 근거, 제한 사항과 확장 조건을 한곳에서 확인합니다.",
+    "모델을 어디까지 믿고 사용할지 보여줍니다",
+    "성능, 시간 분할, 피처 근거와 제품 준비도를 운영 관점에서 공개합니다.",
     ["현재 데모에서 사용 가능" if data.data_mode == "demo" else "현재 사용 가능"],
 )
-render_warnings(data.warnings)
 
 view = st.segmented_control(
     "신뢰 센터 보기",
@@ -41,84 +46,165 @@ view = st.segmented_control(
 )
 
 if view == "성능과 Top-K":
-    validation_test = data.validation_test
-    if validation_test.empty:
+    multiclass_validation = data.multiclass_validation
+    if multiclass_validation.empty:
         empty_state(
-            "Validation/Test 성능",
-            "검증과 테스트 성능 파일이 연결되면 일반화 성능을 비교합니다.",
+            "Test 성능",
+            "v03 검증 결과 파일이 연결되면 3클래스 성능을 표시합니다.",
             "데이터 연결 필요",
         )
     else:
+        final_row = multiclass_validation.loc[
+            multiclass_validation["record_type"].eq("final_test")
+        ].iloc[0]
         section_header(
-            "Validation과 Test",
-            "검증 시점과 최종 Test 시점의 성능을 분리해서 확인합니다.",
+            "v03 3클래스 모델 성능",
+            "선정 2017 · 관찰 2018 · 검증 2019 Test 결과입니다.",
             "현재 사용 가능",
         )
-        validation = validation_test.loc[
-            validation_test["dataset"].astype(str).str.lower().eq("validation")
-        ]
-        test = validation_test.loc[
-            validation_test["dataset"].astype(str).str.lower().eq("test")
-        ]
-        metric_source = test.iloc[0] if not test.empty else validation_test.iloc[-1]
-        metrics = st.columns(4, gap="large")
-        metric_specs = [
-            ("PR-AUC", "pr_auc", "불균형 데이터 핵심 지표"),
-            ("ROC-AUC", "roc_auc", "전체 순위 구분 성능"),
-            ("Recall", "recall", "전체 이탈자 포착률"),
-            ("Precision", "precision", "선별 대상 내 실제 이탈"),
-        ]
-        for column, (label, field, note) in zip(metrics, metric_specs):
-            with column:
-                value = float(metric_source.get(field, 0.0))
-                st.metric(label, f"{value:.3f}" if "AUC" in label else f"{value:.1%}")
-                st.caption(f"Test · {note}")
-        st.plotly_chart(
-            model_comparison(validation_test),
-            width="stretch",
-            key="trust_model_comparison",
+        metric_strip(
+            [
+                ("Macro F1", f"{float(final_row['macro_f1']):.3f}", "3클래스 평균 F1"),
+                ("Macro PR-AUC", f"{float(final_row['macro_pr_auc']):.3f}", "불균형 데이터 핵심 지표"),
+                ("Macro ROC-AUC", f"{float(final_row['macro_ovr_roc_auc']):.3f}", "전체 순위 구분 성능"),
+                (
+                    "Balanced Accuracy",
+                    f"{float(final_row['balanced_accuracy']):.1%}",
+                    "클래스 불균형 보정 정확도",
+                ),
+            ]
         )
+        st.plotly_chart(
+            multiclass_class_performance(multiclass_validation),
+            width="stretch",
+            key="trust_class_performance",
+        )
+        if not data.multiclass_confusion.empty:
+            st.plotly_chart(
+                confusion_heatmap(data.multiclass_confusion),
+                width="stretch",
+                key="trust_confusion_heatmap",
+            )
 
     section_header(
-        "Top-K 운영 효율",
-        "검토 가능한 인원 비율에 따라 포착 성능과 Lift가 어떻게 달라지는지 보여줍니다.",
+        "통합 상위 20% 운영 성과",
+        "약화·중단 점수를 합산한 통합 우선순위의 사후 Test 검증 결과입니다.",
         "현재 사용 가능",
     )
-    if data.top_k.empty:
+    if data.multiclass_top_k.empty:
         empty_state(
-            "Top-K 성능",
-            "Top-K 결과 파일이 연결되면 정책별 Recall과 Lift를 표시합니다.",
+            "통합 Top-K 성능",
+            "v03 Top-K 결과 파일이 연결되면 정책별 Recall과 Lift를 표시합니다.",
             "데이터 연결 필요",
         )
     else:
         st.plotly_chart(
-            top_k_curve(data.top_k),
+            multiclass_top_k_curve(data.multiclass_top_k),
             width="stretch",
             key="trust_top_k_curve",
         )
-        top_k_table = data.top_k.copy().rename(
+        unified = data.multiclass_top_k.loc[
+            data.multiclass_top_k["split"].eq("final_test")
+            & data.multiclass_top_k["ranking"].eq("unified")
+        ].sort_values("target_rate")
+        top_k_table = unified.rename(
             columns={
-                "target_rate_pct": "검토 비율",
+                "target_rate": "검토 비율",
                 "target_users": "검토 인원",
-                "captured_churn_users": "포착 이탈자",
-                "precision_at_k": "Precision@K",
-                "recall_at_k": "Recall@K",
-                "lift_at_k": "Lift@K",
-                "minimum_risk_score": "최소 점수",
+                "status_loss_captured": "포착 지위상실",
+                "status_loss_precision": "Precision",
+                "status_loss_recall": "Recall",
+                "status_loss_lift": "Lift",
+                "stopped_captured": "중단 포착",
+                "stopped_recall": "중단 Recall",
+                "weakened_captured": "약화 포착",
+                "weakened_recall": "약화 Recall",
             }
-        )
+        )[
+            [
+                "검토 비율", "검토 인원", "포착 지위상실", "Precision", "Recall", "Lift",
+                "중단 포착", "중단 Recall", "약화 포착", "약화 Recall",
+            ]
+        ]
         st.dataframe(
             top_k_table,
             hide_index=True,
             width="stretch",
             column_config={
-                "검토 비율": st.column_config.NumberColumn(format="%d%%"),
-                "Precision@K": st.column_config.NumberColumn(format="%.1%%"),
-                "Recall@K": st.column_config.NumberColumn(format="%.1%%"),
-                "Lift@K": st.column_config.NumberColumn(format="%.2f×"),
-                "최소 점수": st.column_config.NumberColumn(format="%.4f"),
+                "검토 비율": st.column_config.NumberColumn(format="percent"),
+                "Precision": st.column_config.NumberColumn(format="percent"),
+                "Recall": st.column_config.NumberColumn(format="percent"),
+                "Lift": st.column_config.NumberColumn(format="%.2f×"),
+                "중단 Recall": st.column_config.NumberColumn(format="percent"),
+                "약화 Recall": st.column_config.NumberColumn(format="percent"),
             },
         )
+
+    with st.expander("v02 비교 기준 (이진 이탈 모델, 참고용)", icon=":material/history:"):
+        st.caption(
+            "v02는 완전 이탈(churn)만을 이진 분류한 이전 세대 모델입니다. "
+            "v03 운영 화면의 기본 수치로 혼합하지 않습니다."
+        )
+        validation_test = data.validation_test
+        if not validation_test.empty:
+            test = validation_test.loc[
+                validation_test["dataset"].astype(str).str.lower().eq("test")
+            ]
+            metric_source = test.iloc[0] if not test.empty else validation_test.iloc[-1]
+            metric_specs = [
+                ("PR-AUC", "pr_auc", "불균형 데이터 핵심 지표"),
+                ("ROC-AUC", "roc_auc", "전체 순위 구분 성능"),
+                ("Recall", "recall", "전체 이탈자 포착률"),
+                ("Precision", "precision", "선별 대상 내 실제 이탈"),
+            ]
+            metric_strip(
+                [
+                    (
+                        label,
+                        (
+                            f"{float(metric_source.get(field, 0.0)):.3f}"
+                            if "AUC" in label
+                            else f"{float(metric_source.get(field, 0.0)):.1%}"
+                        ),
+                        f"v02 Test · {note}",
+                    )
+                    for label, field, note in metric_specs
+                ]
+            )
+            st.plotly_chart(
+                model_comparison(validation_test),
+                width="stretch",
+                key="trust_model_comparison_v02",
+            )
+        if not data.top_k.empty:
+            st.plotly_chart(
+                top_k_curve(data.top_k),
+                width="stretch",
+                key="trust_top_k_curve_v02",
+            )
+            top_k_table_v02 = data.top_k.copy().rename(
+                columns={
+                    "target_rate_pct": "검토 비율",
+                    "target_users": "검토 인원",
+                    "captured_churn_users": "포착 이탈자",
+                    "precision_at_k": "Precision@K",
+                    "recall_at_k": "Recall@K",
+                    "lift_at_k": "Lift@K",
+                    "minimum_risk_score": "최소 점수",
+                }
+            )
+            st.dataframe(
+                top_k_table_v02,
+                hide_index=True,
+                width="stretch",
+                column_config={
+                    "검토 비율": st.column_config.NumberColumn(format="%d%%"),
+                    "Precision@K": st.column_config.NumberColumn(format="percent"),
+                    "Recall@K": st.column_config.NumberColumn(format="percent"),
+                    "Lift@K": st.column_config.NumberColumn(format="%.2f×"),
+                    "최소 점수": st.column_config.NumberColumn(format="%.4f"),
+                },
+            )
 
 elif view == "시간 분할·누수 방지":
     section_header(
@@ -126,37 +212,33 @@ elif view == "시간 분할·누수 방지":
         "운영 시점에 알 수 없는 미래 정보를 피처에 포함하지 않습니다.",
         "현재 사용 가능",
     )
-    timeline = st.columns(3, gap="large")
     timeline_specs = [
-        ("선정 기준", "2017", "분석 대상 정의"),
-        ("관찰 기간", "2018", "행동 피처 생성"),
-        ("검증 기간", "2019", "실제 결과 확인"),
+        ("2017", "선정 기준", "분석 대상 정의"),
+        ("2018", "관찰 기간", "행동 피처 생성"),
+        ("2019", "검증 기간", "실제 결과 확인"),
     ]
-    for column, (label, value, copy) in zip(timeline, timeline_specs):
-        with column:
-            st.metric(label, value)
-            st.caption(copy)
+    timeline_band(timeline_specs)
 
     if not data.split_summary.empty:
         st.dataframe(data.split_summary, hide_index=True, width="stretch")
 
     section_header("누수 방지와 해석 원칙")
-    st.markdown(
-        """
-        - 미래 연도의 리뷰 활동은 예측 피처에서 제외합니다.
-        - 실제 이탈 결과는 Reviewer 360의 기본 화면에서 숨깁니다.
-        - 위험 점수는 보정된 이탈 확률이 아니라 상대적 위험 순위용 모델 점수입니다.
-        - 거주지나 직장, 실제 생활 변화를 리뷰 데이터로 추론하지 않습니다.
-        - `Useful`, `Cool`, `Funny`는 시간 누수 위험 때문에 현재 모델에서 제외합니다.
-        """
+    capability_grid(
+        [
+            ("미래 정보 제외", "검증 연도의 리뷰 활동은 피처에 포함하지 않습니다.", "현재 사용 가능"),
+            ("정답 분리", "실제 결과는 운영 기본 화면에서 숨깁니다.", "현재 사용 가능"),
+            ("순위 점수", "위험 점수를 이탈 확률로 해석하지 않습니다.", "현재 사용 가능"),
+            ("추론 제한", "거주지·직장·실제 생활 변화를 추론하지 않습니다.", "현재 사용 가능"),
+        ]
     )
 
 elif view == "피처 근거":
+    is_v03_importance = "v03" in data.sources.get("feature_importance", "")
     feature_column, group_column = st.columns([1.2, 0.8], gap="large")
     with feature_column:
         section_header(
-            "피처 중요도",
-            "최종 모델 전체의 주요 판단 근거입니다.",
+            "피처 중요도" + (" · v03" if is_v03_importance else ""),
+            "최종 모델 전체의 주요 판단 근거입니다. Permutation Importance · macro PR-AUC 감소량입니다.",
             "현재 사용 가능" if not data.feature_importance.empty else "데이터 연결 필요",
         )
         if data.feature_importance.empty:
@@ -173,8 +255,8 @@ elif view == "피처 근거":
             )
     with group_column:
         section_header(
-            "피처 그룹",
-            "활동량·작성 간격·탐색 다양성의 기여를 비교합니다.",
+            "피처 그룹" + (" · v03" if is_v03_importance else ""),
+            "활동량·작성 간격·탐색의 기여를 비교합니다.",
             "현재 사용 가능" if not data.group_importance.empty else "데이터 연결 필요",
         )
         if data.group_importance.empty:
@@ -189,6 +271,27 @@ elif view == "피처 근거":
                 width="stretch",
                 key="trust_group_importance",
             )
+
+    if is_v03_importance and not data.group_importance_v02.empty:
+        with st.expander("v02 비교 기준 (이진 이탈 모델, 참고용)", icon=":material/history:"):
+            st.caption(
+                "v02는 완전 이탈만 예측하는 이전 세대 모델의 중요도입니다. "
+                "그룹 순서가 v03와 다를 수 있습니다(v03는 작성 간격이 1위, v02는 활동량이 1위)."
+            )
+            v02_feature_column, v02_group_column = st.columns([1.2, 0.8], gap="large")
+            with v02_feature_column:
+                if not data.feature_importance_v02.empty:
+                    st.plotly_chart(
+                        feature_importance(data.feature_importance_v02),
+                        width="stretch",
+                        key="trust_feature_importance_v02",
+                    )
+            with v02_group_column:
+                st.plotly_chart(
+                    group_importance(data.group_importance_v02),
+                    width="stretch",
+                    key="trust_group_importance_v02",
+                )
 
     section_header(
         "개인별 설명 범위",
@@ -275,4 +378,5 @@ else:
     else:
         st.caption("연결된 프로젝트 산출물이 없습니다.")
 
+render_warnings(data.warnings)
 footer(data.data_mode)

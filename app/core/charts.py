@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -7,17 +9,16 @@ import plotly.graph_objects as go
 from core.theme import COLORS
 
 
-TIER_ORDER = ["긴급 관리", "집중 관리", "관찰 대상", "일반"]
-TIER_COLORS = {
-    "긴급 관리": COLORS["critical"],
-    "집중 관리": COLORS["focus"],
-    "관찰 대상": COLORS["watch"],
-    "일반": COLORS["normal"],
-}
 GROUP_COLORS = {
     "activity": COLORS["primary"],
     "interval": COLORS["watch"],
     "business": COLORS["focus"],
+}
+STATE_ORDER = ["파워 지위 유지", "파워 지위 약화", "리뷰 활동 중단"]
+STATE_COLORS = {
+    "파워 지위 유지": COLORS["primary"],
+    "파워 지위 약화": "#D48A43",
+    "리뷰 활동 중단": COLORS["critical"],
 }
 
 
@@ -32,7 +33,6 @@ def polish(figure: go.Figure, height: int = 390) -> go.Figure:
             color=COLORS["ink"],
             size=11,
         ),
-        title_font=dict(size=14),
         legend_title_text="",
         hoverlabel=dict(bgcolor=COLORS["surface"]),
     )
@@ -49,76 +49,29 @@ def polish(figure: go.Figure, height: int = 390) -> go.Figure:
     return figure
 
 
-def tier_distribution(frame: pd.DataFrame) -> go.Figure:
+def retention_state_distribution(frame: pd.DataFrame) -> go.Figure:
     data = frame.copy()
     figure = px.bar(
         data,
-        x="risk_tier",
+        x="predicted_state_label",
         y="users",
-        color="risk_tier",
+        color="predicted_state_label",
         text="users",
-        color_discrete_map=TIER_COLORS,
-        category_orders={"risk_tier": TIER_ORDER},
-        custom_data=["observed_churn_rate", "lift"],
+        color_discrete_map=STATE_COLORS,
+        category_orders={"predicted_state_label": STATE_ORDER},
     )
     figure.update_traces(
         texttemplate="%{text:,.0f}명",
         textposition="outside",
-        hovertemplate=(
-            "<b>%{x}</b><br>사용자 %{y:,.0f}명"
-            "<br>실제 이탈률 %{customdata[0]:.1%}"
-            "<br>Lift %{customdata[1]:.2f}배<extra></extra>"
-        ),
+        hovertemplate="<b>%{x}</b><br>%{y:,.0f}명<extra></extra>",
     )
     figure.update_layout(
-        title="위험 등급별 운영 대상",
+        title="모델 판단 분포",
         xaxis_title="",
         yaxis_title="리뷰어 수",
         showlegend=False,
     )
-    return polish(figure)
-
-
-def tier_churn_rate(frame: pd.DataFrame) -> go.Figure:
-    data = frame.copy()
-    figure = px.bar(
-        data,
-        x="risk_tier",
-        y="observed_churn_rate",
-        color="risk_tier",
-        text=data["observed_churn_rate"].map(lambda value: f"{value:.1%}"),
-        color_discrete_map=TIER_COLORS,
-        category_orders={"risk_tier": TIER_ORDER},
-    )
-    figure.update_traces(textposition="outside")
-    figure.update_layout(
-        title="등급별 실제 이탈률",
-        xaxis_title="",
-        yaxis_title="실제 이탈률",
-        yaxis_tickformat=".0%",
-        yaxis_range=[0, max(0.62, float(data["observed_churn_rate"].max()) * 1.18)],
-        showlegend=False,
-    )
-    return polish(figure)
-
-
-def score_histogram(frame: pd.DataFrame) -> go.Figure:
-    figure = px.histogram(
-        frame,
-        x="risk_score",
-        color="risk_tier",
-        color_discrete_map=TIER_COLORS,
-        category_orders={"risk_tier": TIER_ORDER},
-        nbins=34,
-        opacity=0.88,
-    )
-    figure.update_layout(
-        title="위험 점수 분포",
-        xaxis_title="위험 점수 · 확률 아님",
-        yaxis_title="리뷰어 수",
-        bargap=0.04,
-    )
-    return polish(figure)
+    return polish(figure, 320)
 
 
 def top_k_curve(frame: pd.DataFrame) -> go.Figure:
@@ -193,27 +146,55 @@ def profile_activity(row: pd.Series) -> go.Figure:
         ]
     )
     figure.update_layout(
-        title="선정 기간 대비 최근 활동",
         barmode="group",
-        yaxis_title="건수 / 활동 월",
+        yaxis_title="",
+        legend_orientation="h",
+        legend_y=1.08,
     )
-    return polish(figure, 420)
+    return polish(figure, 285)
 
 
 def interval_comparison(row: pd.Series) -> go.Figure:
-    data = pd.DataFrame(
-        {
-            "지표": ["평균 작성 간격", "마지막 리뷰 공백"],
-            "선정 기간": [
-                row.get("baseline_mean_interval_days", 0),
-                row.get("baseline_recency_days", 0),
-            ],
-            "최근 관찰 기간": [
-                row.get("recent_mean_interval_days", 0),
-                row.get("recent_recency_days", 0),
-            ],
-        }
-    ).melt(id_vars="지표", var_name="기간", value_name="일수")
+    def finite(value: object) -> float | None:
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            return None
+        return numeric if math.isfinite(numeric) else None
+
+    rows: list[dict[str, object]] = []
+    metrics = [
+        (
+            "평균 작성 간격",
+            finite(row.get("baseline_mean_interval_days")),
+            finite(row.get("recent_mean_interval_days")),
+        ),
+        (
+            "마지막 리뷰 공백",
+            finite(row.get("baseline_recency_days")),
+            finite(row.get("recent_recency_days")),
+        ),
+    ]
+    unavailable_interval = False
+    for label, baseline, recent in metrics:
+        if baseline is None or recent is None:
+            unavailable_interval = unavailable_interval or label == "평균 작성 간격"
+            continue
+        rows.extend(
+            [
+                {"지표": label, "기간": "선정 기간", "일수": baseline},
+                {"지표": label, "기간": "최근 관찰 기간", "일수": recent},
+            ]
+        )
+    data = pd.DataFrame(rows)
+    if data.empty:
+        figure = go.Figure()
+        figure.add_annotation(
+            text="작성 간격을 계산할 수 있는 리뷰가 없습니다.",
+            showarrow=False,
+            font=dict(color=COLORS["muted"], size=12),
+        )
+        return polish(figure, 285)
     figure = px.bar(
         data,
         x="지표",
@@ -228,11 +209,23 @@ def interval_comparison(row: pd.Series) -> go.Figure:
     )
     figure.update_traces(texttemplate="%{text:.0f}일", textposition="outside")
     figure.update_layout(
-        title="작성 주기 변화",
         xaxis_title="",
-        yaxis_title="일수",
+        yaxis_title="",
+        legend_orientation="h",
+        legend_y=1.08,
     )
-    return polish(figure, 420)
+    if unavailable_interval:
+        figure.add_annotation(
+            text="최근 기간 리뷰가 1건이라 평균 작성 간격은 표시하지 않습니다.",
+            xref="paper",
+            yref="paper",
+            x=0,
+            y=1.14,
+            xanchor="left",
+            showarrow=False,
+            font=dict(color=COLORS["muted"], size=10),
+        )
+    return polish(figure, 285)
 
 
 def monthly_activity(frame: pd.DataFrame) -> go.Figure:
@@ -337,3 +330,120 @@ def group_importance(frame: pd.DataFrame) -> go.Figure:
         showlegend=False,
     )
     return polish(figure, 350)
+
+
+CLASS_STATE_ORDER = ["유지", "약화", "중단"]
+CLASS_STATE_MAP = {"retained": "유지", "weakened": "약화", "stopped": "중단"}
+METRIC_COLORS = {
+    "Precision": COLORS["primary"],
+    "Recall": COLORS["focus"],
+    "F1": COLORS["watch"],
+    "PR-AUC": COLORS["critical"],
+}
+
+
+def multiclass_class_performance(frame: pd.DataFrame) -> go.Figure:
+    row = frame.loc[frame["record_type"].eq("final_test")].iloc[0]
+    metric_specs = [
+        ("precision", "Precision"),
+        ("recall", "Recall"),
+        ("f1", "F1"),
+        ("pr_auc", "PR-AUC"),
+    ]
+    rows = [
+        {"클래스": label_ko, "지표": metric_label, "값": float(row[f"{code}_{metric}"])}
+        for code, label_ko in CLASS_STATE_MAP.items()
+        for metric, metric_label in metric_specs
+    ]
+    data = pd.DataFrame(rows)
+    figure = px.bar(
+        data,
+        x="클래스",
+        y="값",
+        color="지표",
+        barmode="group",
+        text=data["값"].map(lambda value: f"{value:.3f}"),
+        category_orders={"클래스": CLASS_STATE_ORDER},
+        color_discrete_map=METRIC_COLORS,
+    )
+    figure.update_traces(textposition="outside")
+    figure.update_layout(
+        title="클래스별 Test 성능",
+        xaxis_title="",
+        yaxis_title="Score",
+        yaxis_range=[0, 1],
+    )
+    return polish(figure, 400)
+
+
+def multiclass_top_k_curve(frame: pd.DataFrame) -> go.Figure:
+    data = frame.loc[
+        frame["split"].eq("final_test") & frame["ranking"].eq("unified")
+    ].sort_values("target_rate")
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=data["target_rate"] * 100,
+            y=data["status_loss_precision"] * 100,
+            name="Precision",
+            mode="lines+markers",
+            line=dict(color=COLORS["focus"], width=3),
+            marker=dict(size=8),
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=data["target_rate"] * 100,
+            y=data["status_loss_recall"] * 100,
+            name="Recall",
+            mode="lines+markers",
+            line=dict(color=COLORS["primary"], width=3),
+            marker=dict(size=8),
+        )
+    )
+    figure.add_vline(
+        x=20,
+        line_dash="dash",
+        line_color=COLORS["ink"],
+        annotation_text="대표 정책 20%",
+        annotation_position="top right",
+    )
+    figure.update_layout(
+        title="통합 우선순위 Top-K 성과 · 지위 상실 기준",
+        xaxis_title="검토 대상 비율",
+        yaxis_title="성능",
+        yaxis_ticksuffix="%",
+        yaxis_range=[0, 100],
+    )
+    return polish(figure)
+
+
+def confusion_heatmap(frame: pd.DataFrame) -> go.Figure:
+    subset = frame.loc[
+        frame["split"].eq("final_test") & frame["decision_policy"].eq("threshold")
+    ]
+    order = ["retained", "weakened", "stopped"]
+    pivot = (
+        subset.pivot(index="actual_state", columns="predicted_state", values="users")
+        .reindex(index=order, columns=order)
+    )
+    labels = [CLASS_STATE_MAP[code] for code in order]
+    figure = go.Figure(
+        data=go.Heatmap(
+            z=pivot.values,
+            x=labels,
+            y=labels,
+            text=pivot.values,
+            texttemplate="%{text:,}명",
+            colorscale=[[0, "#F1F4F1"], [1, COLORS["primary"]]],
+            showscale=False,
+            hovertemplate="실제 %{y} · 판단 %{x}<br>%{z:,}명<extra></extra>",
+        )
+    )
+    figure.update_layout(
+        title="실제 상태 × 모델 판단 · Test",
+        xaxis_title="모델 판단",
+        yaxis_title="실제 상태",
+        yaxis_autorange="reversed",
+    )
+    return polish(figure, 380)

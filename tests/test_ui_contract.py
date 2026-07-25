@@ -10,6 +10,9 @@ from streamlit.testing.v1 import AppTest
 APP_DIR = Path(__file__).resolve().parents[1] / "app"
 sys.path.insert(0, str(APP_DIR))
 
+from core.data import load_app_data  # noqa: E402
+from core.charts import interval_comparison, profile_activity  # noqa: E402
+
 
 class UiContractTest(unittest.TestCase):
     def _render(self, relative_path: str) -> AppTest:
@@ -29,10 +32,12 @@ class UiContractTest(unittest.TestCase):
         html = self._html(app)
         self.assertIn("4,157명", html)
         self.assertIn("832명", html)
-        self.assertIn("346명", html)
-        self.assertIn("2.58×", html)
-        self.assertIn("우선 검토 큐", html)
+        self.assertIn("773명", html)
+        self.assertIn("92.9%", html)
+        self.assertIn("1.48×", html)
+        self.assertIn("통합 우선 검토 큐", html)
         self.assertIn("rr-queue-row", html)
+        self.assertIn("rr-score-lanes", html)
         self.assertIn("rr-policy-panel", html)
         self.assertIn("rr-flow", html)
 
@@ -43,13 +48,16 @@ class UiContractTest(unittest.TestCase):
         self.assertEqual(len(app.selectbox), 2)
         self.assertEqual(len(app.download_button), 1)
         self.assertEqual(len(app.dataframe), 1)
+        self.assertIn("통합 상위 20%", list(app.selectbox[0].options))
 
     def test_priority_link_opens_detail_and_returns_to_queue(self) -> None:
         app = AppTest.from_file(
             str(APP_DIR / "views/risk_queue.py"),
             default_timeout=45,
         )
-        app.query_params["reviewer"] = "demo_reviewer_00001"
+        app.query_params["reviewer"] = str(
+            load_app_data().reviewer_profiles.iloc[0]["user_id"]
+        )
         app.run()
         self.assertEqual(list(app.exception), [])
         self.assertIn("rr-profile-head", self._html(app))
@@ -63,11 +71,29 @@ class UiContractTest(unittest.TestCase):
         html = self._html(app)
         self.assertIn("rr-profile-head", html)
         self.assertIn("rr-change-story", html)
+        self.assertIn("rr-svg-icon", html)
+        self.assertNotIn("material-symbols-rounded", html)
         self.assertIn("왜 우선 검토 대상인가", html)
         self.assertIn("Recommended playbook", html)
         self.assertIn("rr-future-module", html)
         self.assertEqual(app.toggle[0].label, "검증 정답 표시")
         self.assertEqual(len(app.segmented_control), 1)
+        self.assertEqual(len(app.radio), 1)
+        self.assertTrue(
+            any(button.label == "세션 판단 적용" for button in app.button)
+        )
+
+        app.toggle(key="validation_mode").set_value(True).run()
+        self.assertEqual(list(app.exception), [])
+        self.assertEqual(app.segmented_control[0].value, "사후 검증")
+        self.assertTrue(
+            any(metric.label == "실제 상태" for metric in app.metric)
+        )
+
+    def test_profile_charts_do_not_create_empty_plotly_titles(self) -> None:
+        row = load_app_data().reviewer_profiles.iloc[0]
+        for figure in (profile_activity(row), interval_comparison(row)):
+            self.assertNotIn("title", figure.to_plotly_json()["layout"])
 
     def test_playbook_exposes_future_campaign_structure(self) -> None:
         app = self._render("views/playbook.py")

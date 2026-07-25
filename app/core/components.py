@@ -15,9 +15,28 @@ STATUS_CLASS = {
     "정의·데이터 필요": "definition",
     "분석 검증 필요": "analysis",
     "외부 연동 필요": "external",
+    "고도화 예정": "external",
     "현재 제외": "excluded",
     "긴급 검토": "critical",
 }
+
+ICON_PATHS = {
+    "rate_review": '<path d="M4 5.5h16v11H9l-5 3v-14Z"/><path d="m12 8 1 2 2.2.3-1.6 1.6.4 2.1-2-1-2 1 .4-2.1-1.6-1.6 2.2-.3 1-2Z"/>',
+    "calendar_month": '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4m8-4v4M4 10h16M8 14h2m3 0h3m-8 3h3"/>',
+    "location_on": '<path d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z"/><circle cx="12" cy="10" r="2.2"/>',
+    "hourglass_empty": '<path d="M7 3h10M7 21h10M8 3c0 4 1.4 6.2 4 9-2.6 2.8-4 5-4 9m8-18c0 4-1.4 6.2-4 9 2.6 2.8 4 5 4 9"/>',
+    "groups": '<circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.3"/><path d="M3.5 20c.4-4 2.2-6 5.5-6s5.1 2 5.5 6m.5-5.2c3.2-.5 5 1.1 5.5 4.2"/>',
+    "lock": '<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
+}
+
+
+def svg_icon(name: str) -> str:
+    paths = ICON_PATHS.get(name, ICON_PATHS["rate_review"])
+    return (
+        '<svg class="rr-svg-icon" viewBox="0 0 24 24" aria-hidden="true" '
+        'fill="none" stroke="currentColor" stroke-width="1.7" '
+        f'stroke-linecap="round" stroke-linejoin="round">{paths}</svg>'
+    )
 
 
 def status_badge(status: str) -> str:
@@ -107,6 +126,48 @@ def policy_brief(
     )
 
 
+def validated_policy_brief(
+    *,
+    target_users: int,
+    captured_users: int,
+    precision: float,
+    recall: float,
+    lift: float,
+    stopped_captured: int,
+    stopped_recall: float,
+    weakened_captured: int,
+    weakened_recall: float,
+) -> None:
+    progress = max(0.0, min(100.0, precision * 100))
+    st.html(
+        f"""
+        <section class="rr-policy-panel">
+          <div class="rr-policy-top">
+            <div>
+              <div class="rr-eyebrow">Validated queue policy</div>
+              <h2>통합 상위 20%부터 검토합니다</h2>
+              <p>약화·중단 점수를 합산한 운영 우선순위입니다.</p>
+            </div>
+            <div class="rr-radial" style="--progress:{progress:.2f}%">
+              <div><strong>{progress:.1f}%</strong><span>정밀도</span></div>
+            </div>
+          </div>
+          <div class="rr-policy-lines">
+            <div><i></i><span>통합 검토 대상</span><strong>{target_users:,}명</strong></div>
+            <div><i class="is-critical"></i><span>실제 지위 상실 포착</span><strong>{captured_users:,}명</strong></div>
+            <div><i></i><span>지위 상실 Recall</span><strong>{recall:.1%}</strong></div>
+            <div><i></i><span>무작위 대비 Lift</span><strong>{lift:.2f}×</strong></div>
+          </div>
+          <div class="rr-policy-split">
+            <span>중단 {stopped_captured:,}명 · Recall {stopped_recall:.1%}</span>
+            <span>약화 {weakened_captured:,}명 · Recall {weakened_recall:.1%}</span>
+          </div>
+          <small>사후 Test 검증 결과이며 모델 점수는 상태 확률이 아닙니다.</small>
+        </section>
+        """
+    )
+
+
 def metric_strip(items: Iterable[tuple[str, str, str]]) -> None:
     markup = '<div class="rr-metric-strip">'
     for label, value, note in items:
@@ -124,27 +185,36 @@ def priority_queue(rows: Iterable[dict[str, str]]) -> None:
     markup = (
         '<div class="rr-queue">'
         '<div class="rr-queue-row rr-queue-head">'
-        "<span>순위</span><span>리뷰어</span><span>위험 유형</span>"
-        "<span>활동 변화</span><span>권장 행동</span><span></span></div>"
+        "<span>순위</span><span>리뷰어</span><span>모델 판단</span>"
+        "<span>상대 모델 점수</span><span>핵심 신호</span>"
+        "<span>권장 검토</span><span></span></div>"
     )
     for row in rows:
         user_id = html.escape(row["user_id"])
         href = f"/reviewers?reviewer={quote(row['user_id'], safe='')}"
-        before_value = float(row.get("before_value", 0))
-        after_value = float(row.get("after_value", 0))
-        maximum = max(before_value, after_value, 1.0)
-        before_width = max(5.0, before_value / maximum * 100)
-        after_width = max(5.0, after_value / maximum * 100)
+        retained = max(0.0, min(1.0, float(row.get("retained_score", 0))))
+        weakened = max(0.0, min(1.0, float(row.get("weakened_score", 0))))
+        stopped = max(0.0, min(1.0, float(row.get("stopped_score", 0))))
+        judgment = str(row.get("model_judgment", "—"))
+        judgment_class = (
+            "stopped"
+            if "중단" in judgment
+            else "weakened"
+            if "약화" in judgment
+            else "retained"
+        )
         markup += (
             f'<a class="rr-queue-row" href="{href}" target="_self">'
             f'<span class="rr-rank">{html.escape(row["rank"])}</span>'
             f"<strong>{user_id}</strong>"
-            f'<span class="rr-risk">{html.escape(row["risk_type"])}</span>'
-            '<span class="rr-queue-change">'
-            '<i class="rr-queue-track">'
-            f'<b style="width:{before_width:.1f}%"></b>'
-            f'<em style="width:{after_width:.1f}%"></em></i>'
-            f"<small>{html.escape(row['change'])}</small></span>"
+            f'<span class="rr-state rr-state--{judgment_class}">'
+            f"{html.escape(judgment)}</span>"
+            '<span class="rr-score-lanes">'
+            f'<i><small>유</small><b class="is-retained" style="width:{retained * 100:.1f}%"></b></i>'
+            f'<i><small>약</small><b class="is-weakened" style="width:{weakened * 100:.1f}%"></b></i>'
+            f'<i><small>중</small><b class="is-stopped" style="width:{stopped * 100:.1f}%"></b></i>'
+            "</span>"
+            f"<span>{html.escape(row['core_signal'])}</span>"
             f"<span>{html.escape(row['action'])}</span>"
             '<span class="rr-arrow">→</span></a>'
         )
@@ -174,6 +244,7 @@ def change_story(items: Iterable[dict[str, object]]) -> None:
         before = str(item["before"])
         after = str(item["after"])
         delta = str(item["delta"])
+        delta_tone = str(item.get("delta_tone", "warning"))
         before_value = float(item.get("before_value", 0))
         after_value = float(item.get("after_value", 0))
         maximum = max(before_value, after_value, 1.0)
@@ -183,7 +254,7 @@ def change_story(items: Iterable[dict[str, object]]) -> None:
         markup += (
             '<div class="rr-change-row">'
             '<div class="rr-change-label">'
-            f'<span class="material-symbols-rounded">{html.escape(icon)}</span>'
+            f"<span>{svg_icon(icon)}</span>"
             f"<strong>{html.escape(label)}</strong></div>"
             '<div class="rr-change-value rr-change-value--before">'
             f"<small>과거</small><strong>{html.escape(before)}</strong></div>"
@@ -193,7 +264,7 @@ def change_story(items: Iterable[dict[str, object]]) -> None:
             f'<i class="after" style="height:{after_height:.1f}%"></i></div>'
             '<div class="rr-change-value rr-change-value--after">'
             f"<small>최근</small><strong>{html.escape(after)}</strong></div>"
-            f'<div class="rr-change-delta">{html.escape(delta)}</div></div>'
+            f'<div class="rr-change-delta is-{html.escape(delta_tone)}">{html.escape(delta)}</div></div>'
         )
     markup += "</div>"
     st.html(markup)
@@ -203,14 +274,59 @@ def operations_flow() -> None:
     st.html(
         """
         <section class="rr-flow">
-          <div class="rr-flow-step is-done"><b>1</b><strong>검토</strong><span>신호 확인 및 우선순위 결정</span></div>
+          <div class="rr-flow-step is-done"><b>1</b><strong>검토</strong><span>통합 큐 확인</span></div>
           <i></i>
-          <div class="rr-flow-step is-done"><b>2</b><strong>플레이북</strong><span>리텐션 전략 선택</span></div>
+          <div class="rr-flow-step is-done"><b>2</b><strong>관리자 판단</strong><span>활동 근거 확인</span></div>
+          <i></i>
+          <div class="rr-flow-step is-done"><b>3</b><strong>플레이북</strong><span>전략 후보 선택</span></div>
           <i class="is-future"></i>
-          <div class="rr-flow-step is-future"><b>3</b><strong>CRM 연동</strong><span>고도화 예정</span></div>
+          <div class="rr-flow-step is-future"><b>4</b><strong>CRM 실행</strong><span>고도화 예정</span></div>
+          <i class="is-future"></i>
+          <div class="rr-flow-step is-future"><b>5</b><strong>성과 학습</strong><span>고도화 예정</span></div>
         </section>
         """
     )
+
+
+def decision_band(items: Iterable[tuple[str, str, str]]) -> None:
+    markup = '<div class="rr-decision-band">'
+    for index, (label, value, note) in enumerate(items, start=1):
+        markup += (
+            '<div class="rr-decision-cell">'
+            f"<b>{index}</b><small>{html.escape(label)}</small>"
+            f"<strong>{html.escape(value)}</strong>"
+            f"<span>{html.escape(note)}</span></div>"
+        )
+    markup += "</div>"
+    st.html(markup)
+
+
+def capability_grid(
+    items: Iterable[tuple[str, str, str]],
+) -> None:
+    markup = '<div class="rr-capability-grid">'
+    for title, copy, status in items:
+        markup += (
+            '<div class="rr-capability">'
+            f"{status_badge(status)}"
+            f"<strong>{html.escape(title)}</strong>"
+            f"<p>{html.escape(copy)}</p></div>"
+        )
+    markup += "</div>"
+    st.html(markup)
+
+
+def timeline_band(items: Iterable[tuple[str, str, str]]) -> None:
+    markup = '<div class="rr-timeline-band">'
+    for index, (year, label, copy) in enumerate(items, start=1):
+        markup += (
+            '<div class="rr-time-point">'
+            f"<b>{html.escape(year)}</b><i>{index}</i>"
+            f"<strong>{html.escape(label)}</strong>"
+            f"<span>{html.escape(copy)}</span></div>"
+        )
+    markup += "</div>"
+    st.html(markup)
 
 
 def section_header(
@@ -277,25 +393,34 @@ def profile_header(
     *,
     user_id: str,
     rank: int,
-    score: float,
-    tier: str,
+    model_judgment: str,
+    retained_score: float,
+    weakened_score: float,
+    stopped_score: float,
+    selected_for_review: bool,
     selection_year: int,
     target_year: int,
 ) -> None:
+    target_label = "통합 상위 20% 검토 대상" if selected_for_review else "일반 모니터링"
     st.html(
         f"""
         <section class="rr-profile-head">
           <div class="rr-profile-identity">
             <div class="rr-profile-id">{html.escape(user_id)}</div>
-            <div class="rr-profile-fact"><span>위험 순위</span><strong>{rank:,}위</strong></div>
-            <div class="rr-profile-fact"><span>모델 점수</span><strong>{score:.4f}</strong></div>
-            <div class="rr-profile-tier">{html.escape(tier)}</div>
+            <div class="rr-profile-fact"><span>통합 우선순위</span><strong>{rank:,}위</strong></div>
+            <div class="rr-profile-fact"><span>모델 판단</span><strong>{html.escape(model_judgment)}</strong></div>
+            <div class="rr-profile-tier">{html.escape(target_label)}</div>
           </div>
           <div class="rr-profile-meta">
             <span>선정 {selection_year} · 관찰 {selection_year + 1} · 검증 {target_year}</span>
-            <small>점수는 확률이 아닌 위험 순위용입니다.</small>
+            <small>클래스 점수는 확률이 아닌 상대 모델 점수입니다.</small>
           </div>
         </section>
+        <div class="rr-profile-scores">
+          <div><span>유지 점수</span><i><b class="is-retained" style="width:{retained_score * 100:.1f}%"></b></i><strong>{retained_score:.3f}</strong></div>
+          <div><span>약화 점수</span><i><b class="is-weakened" style="width:{weakened_score * 100:.1f}%"></b></i><strong>{weakened_score:.3f}</strong></div>
+          <div><span>중단 점수</span><i><b class="is-stopped" style="width:{stopped_score * 100:.1f}%"></b></i><strong>{stopped_score:.3f}</strong></div>
+        </div>
         """
     )
 
@@ -345,11 +470,11 @@ def future_integration(
         f"""
         <section class="rr-future-module">
           <div>
-            <span class="material-symbols-rounded">groups</span>
+            <span>{svg_icon("groups")}</span>
             <div><strong>{html.escape(title)}</strong><p>자동 배정 및 성과 추적 영역</p></div>
           </div>
-          {status_badge("외부 연동 필요")}
-          <small><span class="material-symbols-rounded">lock</span>
+          {status_badge("고도화 예정")}
+          <small>{svg_icon("lock")}
           필요 데이터 · {html.escape(requirement)}</small>
         </section>
         """
@@ -376,5 +501,5 @@ def footer(data_mode: str) -> None:
     }.get(data_mode, data_mode)
     st.caption(
         "Reviewer Retention · "
-        f"{mode_label} · 위험 점수는 보정 확률이 아닌 운영 우선순위 점수입니다."
+        f"{mode_label} · 클래스 점수는 보정 확률이 아니며 통합 점수는 운영 우선순위에 사용합니다."
     )

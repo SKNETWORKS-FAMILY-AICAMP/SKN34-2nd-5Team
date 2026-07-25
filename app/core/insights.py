@@ -5,7 +5,7 @@ from typing import Any
 
 import pandas as pd
 
-from core.formatters import days, percent, safe_float
+from core.formatters import days, percent, safe_float, signed_phrase
 
 
 @dataclass(frozen=True)
@@ -49,13 +49,36 @@ STRATEGIES = {
     },
 }
 
+SIGNAL_LABELS = {
+    "복합 위험형": "복합 약화 신호",
+    "활동량 붕괴형": "리뷰·활동 월 감소",
+    "작성 주기 이완형": "리뷰 공백 증가",
+    "탐색 활동 축소형": "음식점 탐색 감소",
+    "일반 모니터링형": "급격한 변화 없음",
+}
+
+STATE_RECOMMENDATIONS = {
+    0: {
+        "primary": "관찰 유지",
+        "summary": "유지 점수가 우세합니다. 급격한 행동 변화가 있는지만 확인합니다.",
+    },
+    1: {
+        "primary": "활동 회복 검토",
+        "summary": "파워 지위 약화 점수가 우세합니다. 활동 지속성을 회복할 개입을 검토합니다.",
+    },
+    2: {
+        "primary": "복귀·재활성화 검토",
+        "summary": "리뷰 활동 중단 점수가 우세합니다. 장기 공백과 최근 활동을 확인한 뒤 복귀 전략을 검토합니다.",
+    },
+}
+
 
 def _value(row: pd.Series, column: str, default: float = 0.0) -> float:
     return safe_float(row.get(column), default)
 
 
 def classify_risk_type(row: pd.Series) -> str:
-    tier = str(row.get("risk_tier", "일반"))
+    in_review_queue = bool(row.get("crm_target", 0))
     review_decline = _value(row, "review_count_decline_rate")
     month_decline = _value(row, "active_month_decline_rate")
     recency_increase = _value(row, "recency_increase_days")
@@ -84,7 +107,7 @@ def classify_risk_type(row: pd.Series) -> str:
         return "작성 주기 이완형"
     if exploration_score == maximum and exploration_score >= 0.30:
         return "탐색 활동 축소형"
-    if tier == "일반":
+    if not in_review_queue:
         return "일반 모니터링형"
     return "복합 위험형"
 
@@ -104,31 +127,36 @@ def risk_signals(row: pd.Series) -> list[Signal]:
         [
             Signal(
                 "최근 활동 지속성",
-                f"최근 활동 {recent_months:.0f}개월 · 이전 대비 {percent(month_decline)} 감소",
+                f"최근 활동 {recent_months:.0f}개월 · 이전 대비 "
+                f"{signed_phrase(month_decline, percent, when_positive='감소', when_negative='증가')}",
                 max(month_decline, (6 - recent_months) / 6),
                 "활동량",
             ),
             Signal(
                 "리뷰 생산량",
-                f"최근 {recent_reviews:.0f}건 · 이전 대비 {percent(review_decline)} 감소",
+                f"최근 {recent_reviews:.0f}건 · 이전 대비 "
+                f"{signed_phrase(review_decline, percent, when_positive='감소', when_negative='증가')}",
                 review_decline,
                 "활동량",
             ),
             Signal(
                 "마지막 리뷰 공백",
-                f"최근 공백 {days(recency)} · 이전 기간보다 {days(recency_increase)} 증가",
+                f"최근 공백 {days(recency)} · 이전 기간보다 "
+                f"{signed_phrase(recency_increase, days, when_positive='증가', when_negative='감소')}",
                 max(recency / 150, recency_increase / 90),
                 "작성 간격",
             ),
             Signal(
                 "평균 작성 간격",
-                f"평균 리뷰 간격이 {days(interval_increase)} 증가",
+                "평균 리뷰 간격이 "
+                f"{signed_phrase(interval_increase, days, when_positive='증가', when_negative='감소')}",
                 interval_increase / 60,
                 "작성 간격",
             ),
             Signal(
                 "음식점 탐색량",
-                f"고유 음식점 수가 {percent(business_decline)} 감소",
+                "고유 음식점 수가 "
+                f"{signed_phrase(business_decline, percent, when_positive='감소', when_negative='증가')}",
                 business_decline,
                 "음식점 탐색",
             ),
@@ -145,10 +173,24 @@ def enrich_profiles(frame: pd.DataFrame) -> pd.DataFrame:
     enriched["recommended_action"] = enriched["risk_type"].map(
         lambda risk_type: STRATEGIES[risk_type]["primary"]
     )
+    enriched["core_signal"] = enriched["risk_type"].map(SIGNAL_LABELS)
+    if "predicted_state" in enriched.columns:
+        enriched["recommended_review"] = enriched["predicted_state"].map(
+            lambda state: STATE_RECOMMENDATIONS.get(
+                int(state), STATE_RECOMMENDATIONS[0]
+            )["primary"]
+        )
+    else:
+        enriched["recommended_review"] = enriched["recommended_action"]
     return enriched
 
 
 def strategy_for(row: pd.Series) -> dict[str, Any]:
     risk_type = str(row.get("risk_type") or classify_risk_type(row))
-    return {"risk_type": risk_type, **STRATEGIES[risk_type]}
-
+    strategy = {"risk_type": risk_type, **STRATEGIES[risk_type]}
+    if "predicted_state" in row and not pd.isna(row.get("predicted_state")):
+        state = int(row.get("predicted_state", 0))
+        recommendation = STATE_RECOMMENDATIONS.get(state, STATE_RECOMMENDATIONS[0])
+        strategy["primary"] = recommendation["primary"]
+        strategy["summary"] = recommendation["summary"]
+    return strategy

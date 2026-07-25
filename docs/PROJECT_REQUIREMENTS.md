@@ -8,7 +8,7 @@
 | 문서 목적 | 데이터 분석·모델링·Streamlit 운영 서비스의 구현 범위와 완료 기준 정의 |
 | 작성자 | 이홍규 |
 | 최초 작성일 | 2026-07-22 |
-| 최종 수정일 | 2026-07-24 |
+| 최종 수정일 | 2026-07-26 |
 | 문서 버전 | v0.4 |
 | 문서 상태 | 데이터·코호트·모델·CRM 정책 반영, 서비스 UI 재설계 전 |
 | 원본 문서 | [Notion 요구사항 정의서](https://app.notion.com/p/3a5e94b44d0780988288ee04132b3b20) |
@@ -172,27 +172,32 @@ Yelp와 같은 지역 기반 리뷰 플랫폼에서 파워 리뷰어는 단순�
 
 ### 3.5 모델 출력 해석
 
-- 모델링 문제: 지도학습 기반 이진 분류
-- 최종 모델: HistGradientBoostingClassifier
-- `risk_score`: 리뷰어의 상대적인 위험 순위를 산정하기 위한 모델 점수
-- `risk_score`는 보정된 확률이 아니므로 `이탈 가능성 84%`처럼 표현하지 않는다.
-- 운영 화면에서는 위험 점수, 위험 순위, 위험 등급 및 주요 신호로 표현한다.
+- 모델링 문제: 지도학습 기반 3클래스 분류(파워 지위 유지·약화·리뷰 활동 중단, DEC-008)
+- 최종 모델: 다중 LogisticRegression(L1, C=0.1, class_weight=balanced)
+- `retained_score`·`weakened_score`·`stopped_score`: 클래스별 확률 보정 전 모델 점수
+- `priority_score`(`weakened_score + stopped_score`): 통합 우선순위 점수
+- 클래스 점수와 통합 점수는 보정된 확률이 아니므로 `이탈 가능성 84%`처럼 표현하지 않는다.
+- 운영 화면에서는 통합 우선순위, 통합 상위 20% 검토 대상 여부, 모델 판단(약화 우세·중단 우세·유지 우세) 및 주요 신호로 표현한다(DEC-009).
+
+> v02 이진 분류(HistGradientBoostingClassifier)는 비교 기준으로 보존하며, 현재 운영 기본 화면의 모델 정의가 아니다.
 
 ### 3.6 운영 정책
 
-Primary CRM 정책은 테스트 표본의 위험 점수 상위 20%를 관리 대상으로 선정하는 것이다.
+Primary CRM 정책은 테스트 표본의 통합 우선순위(약화 점수 + 중단 점수) 상위 20%를 관리 대상으로 선정하는 것이다(DEC-008, DEC-009).
 
 | 지표 | 결과 |
 | --- | ---: |
 | 테스트 표본 | 4,157명 |
-| 실제 이탈자 | 670명 |
-| CRM 대상 | 832명 |
-| 포착한 이탈자 | 346명 |
-| Precision@Top20% | 41.59% |
-| Recall@Top20% | 51.64% |
-| Lift@Top20% | 2.58배 |
+| 실제 지위 상실(약화+중단) | 2,618명 |
+| 통합 검토 대상 | 832명 |
+| 포착한 지위 상실 | 773명 |
+| Precision@Top20% | 92.91% |
+| Recall@Top20% | 29.53% |
+| Lift@Top20% | 1.48배 |
+| 중단 포착 Recall | 49.10% |
+| 약화 포착 Recall | 22.79% |
 
-이 정책은 모든 사용자를 이탈/유지로 단정하기보다 제한된 운영 자원을 고위험군에 우선 배분하기 위한 기준이다.
+이 정책은 모든 사용자를 이탈/유지로 단정하기보다 제한된 운영 자원을 고위험군에 우선 배분하기 위한 기준이다. v02 이진 정책(Precision 41.59%·Recall 51.64%·Lift 2.58배)은 비교 기준으로 보존한다.
 
 ---
 
@@ -379,21 +384,30 @@ Primary CRM 정책은 테스트 표본의 위험 점수 상위 20%를 관리 대
 
 ## 9. 현재 성과 기준
 
-### 9.1 모델 평가
+### 9.1 모델 평가 (v03, 3클래스)
 
-| 데이터 | Precision | Recall | F1 | ROC-AUC | PR-AUC |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Validation | 0.3107 | 0.7476 | 0.4390 | 0.8146 | 0.4032 |
-| Test | 0.3436 | 0.7134 | 0.4639 | 0.8125 | 0.4264 |
+| 데이터 | Macro F1 | Macro PR-AUC | Macro ROC-AUC | Balanced Accuracy |
+| --- | ---: | ---: | ---: | ---: |
+| 5-Fold 평균 | 0.5654 | 0.5659 | — | 0.5932 |
+| Test | 0.5754 | 0.5986 | 0.7798 | 0.5943 |
+
+| 클래스 (Test) | Precision | Recall | F1 | PR-AUC |
+| --- | ---: | ---: | ---: | ---: |
+| 유지 | 71.57% | 65.11% | 0.6819 | 0.7661 |
+| 약화 | 60.61% | 54.67% | 0.5749 | 0.6130 |
+| 중단 | 39.20% | 58.51% | 0.4695 | 0.4166 |
 
 ### 9.2 운영 평가
 
-모델 성공 여부는 단일 임계값 성능뿐 아니라 제한된 CRM 대상에서 이탈자를 얼마나 효과적으로 포착하는지 함께 평가한다.
+모델 성공 여부는 단일 임계값 성능뿐 아니라 제한된 CRM 대상에서 지위 상실을 얼마나 효과적으로 포착하는지 함께 평가한다.
 
-- Primary policy: 위험 점수 상위 20%
-- Precision@20%: 41.59%
-- Recall@20%: 51.64%
-- Lift@20%: 2.58배
+- Primary policy: 통합 우선순위(약화+중단 점수) 상위 20%
+- Precision@20%: 92.91%
+- Recall@20%: 29.53%
+- Lift@20%: 1.48배
+- 중단 포착 Recall: 49.10%, 약화 포착 Recall: 22.79%
+
+> v02 이진 모델 성과(Validation Precision 0.3107·Recall 0.7476·PR-AUC 0.4032, Test Precision 0.3436·Recall 0.7134·PR-AUC 0.4264, Precision@20% 41.59%·Recall@20% 51.64%·Lift@20% 2.58배)는 비교 기준으로 보존한다.
 
 ---
 
@@ -420,7 +434,10 @@ Primary CRM 정책은 테스트 표본의 위험 점수 상위 20%를 관리 대
 - `docs/decisions/DEC-003_observation_window.md`
 - `docs/decisions/DEC-004_churn_definition.md`
 - `docs/decisions/DEC-005_final_model_selection.md`
-- `docs/decisions/DEC-006_crm_targeting_policy.md`
+- `docs/decisions/DEC-006_crm_targeting_policy.md` (v02 비교 기준)
+- `docs/decisions/DEC-007_culinary_business_scope.md`
+- `docs/decisions/DEC-008_retention_state_definition.md`
+- `docs/decisions/DEC-009_v03_risk_tier_definition.md`
 - `docs/04_data_validation_report.md`
 - `docs/05_feature_validation_report.md`
 
@@ -434,4 +451,5 @@ Primary CRM 정책은 테스트 표본의 위험 점수 상위 20%를 관리 대
 | v0.2 | 2026-07-22 | 데이터 적합성 검증 결과 반영 | 이홍규 |
 | v0.3 | 2026-07-23 | 파워 리뷰어·관찰 기간·이탈 기준 확정 | 이홍규 |
 | v0.4 | 2026-07-24 | 롤링 코호트·최종 모델·CRM 정책·현재 서비스 범위 반영 | 이홍규 |
+| v0.4 (수정) | 2026-07-26 | §3.5·3.6·9의 모델·CRM 정책 수치를 v02 이진 모델에서 DEC-008·DEC-009 기준 v03 3클래스 통합 우선순위 수치로 교정. 문서 버전 번호는 유지하고 수치 정정만 반영 | Claude Code |
 

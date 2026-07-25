@@ -13,7 +13,7 @@ font = "'Noto Sans KR':https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wgh
 headingFont = "'Noto Sans KR':https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;600;700&display=swap"
 baseFontSize = 14
 baseFontWeight = 400
-headingFontWeights = [700, 650, 600, 600, 600, 600]
+headingFontWeights = [700, 600, 600, 600, 600, 600]
 chartCategoricalColors = ["#137A5A", "#4C987C", "#9BC3B1", "#D48A43", "#E15D47", "#66746D"]
 greenColor = "#247A5B"
 greenBackgroundColor = "#E3F1EA"

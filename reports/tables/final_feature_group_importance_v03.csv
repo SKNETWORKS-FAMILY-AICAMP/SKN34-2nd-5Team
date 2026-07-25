@@ -1,0 +1,4 @@
+﻿feature_group,feature_count,importance_mean,importance_std,baseline_pr_auc,rank,feature_group_label
+interval,13,0.015870320328569498,,0.5985820398626073,1,작성 간격
+activity,15,0.0067881238661331444,,0.5985820398626073,2,리뷰 활동량
+business,15,0.0018235193264993788,,0.5985820398626073,3,음식점 탐색

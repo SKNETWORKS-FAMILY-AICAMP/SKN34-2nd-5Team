@@ -21,21 +21,41 @@ class DemoContractTest(unittest.TestCase):
         self.assertEqual(len(self.profiles), 4_157)
         self.assertEqual(int(self.profiles["churn"].sum()), 670)
         self.assertEqual(int(self.profiles["crm_target"].sum()), 832)
-        captured = self.profiles.loc[
-            self.profiles["crm_target"].eq(1),
-            "churn",
-        ].sum()
-        self.assertEqual(int(captured), 346)
+        target = self.profiles.loc[self.profiles["crm_target"].eq(1)]
+        self.assertEqual(int(target["retention_state"].ne(0).sum()), 773)
+        self.assertEqual(int(target["retention_state"].eq(2).sum()), 329)
+        self.assertEqual(int(target["retention_state"].eq(1).sum()), 444)
 
-    def test_risk_tier_counts(self) -> None:
+    def test_retention_state_counts(self) -> None:
         expected = {
-            "긴급 관리": 208,
-            "집중 관리": 624,
-            "관찰 대상": 831,
-            "일반": 2_494,
+            "파워 지위 유지": 1_539,
+            "파워 지위 약화": 1_948,
+            "리뷰 활동 중단": 670,
         }
-        observed = self.profiles["risk_tier"].value_counts().to_dict()
+        observed = self.profiles["retention_state_label"].value_counts().to_dict()
         self.assertEqual(observed, expected)
+
+        predicted = self.profiles["predicted_state_label"].value_counts().to_dict()
+        self.assertEqual(
+            predicted,
+            {
+                "파워 지위 약화": 1_757,
+                "파워 지위 유지": 1_400,
+                "리뷰 활동 중단": 1_000,
+            },
+        )
+
+    def test_multiclass_scores_form_priority_score(self) -> None:
+        score_sum = (
+            self.profiles["retained_score"]
+            + self.profiles["weakened_score"]
+            + self.profiles["stopped_score"]
+        )
+        self.assertTrue((score_sum.round(10) == 1).all())
+        priority = self.profiles["weakened_score"] + self.profiles["stopped_score"]
+        self.assertTrue(
+            (priority.round(10) == self.profiles["priority_score"].round(10)).all()
+        )
 
     def test_reviewer_explanation_contract(self) -> None:
         row = self.profiles.iloc[0]
@@ -45,4 +65,3 @@ class DemoContractTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

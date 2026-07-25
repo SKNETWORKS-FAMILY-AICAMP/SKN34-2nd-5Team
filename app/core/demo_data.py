@@ -18,7 +18,6 @@ TIER_SPECS = [
 @dataclass
 class DemoData:
     reviewer_profiles: pd.DataFrame
-    risk_tiers: pd.DataFrame
     top_k: pd.DataFrame
     primary_policy: pd.DataFrame
     validation_test: pd.DataFrame
@@ -28,6 +27,10 @@ class DemoData:
     split_summary: pd.DataFrame
     model_metadata: dict[str, Any]
     risk_policy: dict[str, Any]
+    retention_distribution: pd.DataFrame
+    multiclass_validation: pd.DataFrame
+    multiclass_top_k: pd.DataFrame
+    multiclass_confusion: pd.DataFrame
 
 
 def _banded_churn(total: int) -> np.ndarray:
@@ -57,27 +60,72 @@ def _profile_frame() -> pd.DataFrame:
         tiers.extend([tier] * users)
         scores.extend(np.linspace(maximum, minimum, users).tolist())
 
+    def shuffled_states(size: int, counts: tuple[int, int, int]) -> np.ndarray:
+        values = np.concatenate(
+            [
+                np.full(counts[0], 0, dtype="int8"),
+                np.full(counts[1], 1, dtype="int8"),
+                np.full(counts[2], 2, dtype="int8"),
+            ]
+        )
+        assert len(values) == size
+        rng.shuffle(values)
+        return values
+
+    actual_states = np.concatenate(
+        [
+            shuffled_states(832, (59, 444, 329)),
+            shuffled_states(total - 832, (1_480, 1_504, 341)),
+        ]
+    )
+    predicted_states = np.concatenate(
+        [
+            shuffled_states(832, (0, 27, 805)),
+            shuffled_states(total - 832, (1_400, 1_730, 195)),
+        ]
+    )
+    priority_score = np.linspace(0.98, 0.15, total)
+    stopped_share = np.where(predicted_states == 2, 0.62, 0.32)
+    stopped_score = priority_score * stopped_share
+    weakened_score = priority_score - stopped_score
+
     frame = pd.DataFrame(
         {
             "risk_rank": np.arange(1, total + 1),
             "risk_tier": tiers,
             "risk_score": scores,
-            "churn": _banded_churn(total),
+            "churn": actual_states == 2,
+            "retention_state": actual_states,
+            "predicted_state": predicted_states,
+            "retained_score": 1 - priority_score,
+            "weakened_score": weakened_score,
+            "stopped_score": stopped_score,
+            "priority_score": priority_score,
+            "priority_rank": np.arange(1, total + 1),
         }
     )
+    state_labels = {
+        0: "파워 지위 유지",
+        1: "파워 지위 약화",
+        2: "리뷰 활동 중단",
+    }
+    frame["retention_state_label"] = frame["retention_state"].map(state_labels)
+    frame["predicted_state_label"] = frame["predicted_state"].map(state_labels)
     frame["sample_id"] = frame["risk_rank"].map(lambda value: f"2017_demo_{value:05d}")
     frame["user_id"] = frame["risk_rank"].map(lambda value: f"demo_reviewer_{value:05d}")
     frame["selection_year"] = 2017
     frame["target_year"] = 2019
     frame["risk_top_percent"] = frame["risk_rank"] / total * 100
+    frame["priority_top_percent"] = frame["priority_rank"] / total * 100
     frame["risk_percentile"] = 100 - (frame["risk_rank"] - 1) / total * 100
     frame["crm_target"] = (frame["risk_rank"] <= 832).astype("int8")
+    frame["selected_for_crm"] = frame["crm_target"]
     frame["crm_target_label"] = np.where(
         frame["crm_target"].eq(1),
         "Top 20% 관리 대상",
         "일반 모니터링",
     )
-    frame["actual_result"] = np.where(frame["churn"].eq(1), "이탈", "유지")
+    frame["actual_result"] = frame["retention_state_label"]
 
     normalized_risk = (frame["risk_score"] - frame["risk_score"].min()) / (
         frame["risk_score"].max() - frame["risk_score"].min()
@@ -167,23 +215,6 @@ def _profile_frame() -> pd.DataFrame:
     return frame
 
 
-def _risk_tier_summary() -> pd.DataFrame:
-    return pd.DataFrame(
-        {
-            "risk_tier": [spec[0] for spec in TIER_SPECS],
-            "users": [spec[1] for spec in TIER_SPECS],
-            "churn_users": [spec[2] for spec in TIER_SPECS],
-            "observed_churn_rate": [0.5385, 0.3750, 0.2226, 0.0557],
-            "mean_risk_score": [0.8047, 0.7215, 0.5418, 0.1703],
-            "minimum_risk_score": [0.7790, 0.6579, 0.4110, 0.0232],
-            "maximum_risk_score": [0.8465, 0.7786, 0.6574, 0.4109],
-            "user_rate": [0.0500, 0.1501, 0.1999, 0.6000],
-            "captured_churn_rate": [0.1672, 0.3493, 0.2761, 0.2075],
-            "lift": [3.3409, 2.3267, 1.3813, 0.3458],
-        }
-    )
-
-
 def _top_k() -> pd.DataFrame:
     target_rate = [5, 10, 15, 20, 25, 30, 35, 40]
     target_users = [208, 416, 624, 832, 1_040, 1_248, 1_455, 1_663]
@@ -239,7 +270,6 @@ def _feature_importance() -> pd.DataFrame:
 
 def build_demo_data() -> DemoData:
     profiles = _profile_frame()
-    risk_tiers = _risk_tier_summary()
     top_k = _top_k()
     policy = pd.DataFrame(
         [
@@ -329,32 +359,101 @@ def build_demo_data() -> DemoData:
         ],
     )
     metadata = {
-        "model_type": "HistGradientBoostingClassifier",
+        "version": "v03",
+        "model_type": "LogisticRegression",
         "feature_set": "activity + interval + business",
         "feature_count": 43,
-        "train_selection_years": "2009~2015",
-        "validation_selection_year": 2016,
+        "train_selection_years": "2009~2016",
         "test_selection_year": 2017,
         "test_target_year": 2019,
         "primary_target_policy": "Top 20%",
         "risk_score_warning": (
-            "class_weight가 적용된 확률 보정 전 점수이므로 "
-            "위험 순위와 등급으로 해석합니다."
+            "클래스별 점수는 확률 보정 전 점수이므로 "
+            "상태 확률이 아닌 상대 점수로 해석합니다."
         ),
     }
     policy_json = {
-        "version": "v02",
-        "primary_policy": "top_20_percent",
-        "tiers": {
-            "critical": [0, 5],
-            "focus": [5, 20],
-            "watch": [20, 40],
-            "normal": [40, 100],
-        },
+        "version": "v03",
+        "primary_policy": "unified_top_20_percent",
+        "priority_score": "weakened_score + stopped_score",
     }
+    retention_distribution = pd.DataFrame(
+        [
+            (2017, 2019, 0, "파워 지위 유지", 1_539, 4_157, 1_539 / 4_157),
+            (2017, 2019, 1, "파워 지위 약화", 1_948, 4_157, 1_948 / 4_157),
+            (2017, 2019, 2, "리뷰 활동 중단", 670, 4_157, 670 / 4_157),
+        ],
+        columns=[
+            "selection_year",
+            "target_year",
+            "retention_state",
+            "retention_state_label",
+            "users",
+            "year_total",
+            "share",
+        ],
+    )
+    multiclass_validation = pd.DataFrame(
+        [
+            {
+                "record_type": "final_test",
+                "split": "selection_2017_target_2019",
+                "accuracy": 0.5915,
+                "balanced_accuracy": 0.5943,
+                "macro_f1": 0.5754,
+                "macro_pr_auc": 0.5986,
+                "retained_precision": 0.7157,
+                "retained_recall": 0.6511,
+                "weakened_precision": 0.6061,
+                "weakened_recall": 0.5467,
+                "stopped_precision": 0.3920,
+                "stopped_recall": 0.5851,
+            }
+        ]
+    )
+    multiclass_top_k = pd.DataFrame(
+        [
+            {
+                "split": "final_test",
+                "ranking": "unified",
+                "target_rate": 0.20,
+                "target_users": 832,
+                "status_loss_captured": 773,
+                "status_loss_precision": 0.9291,
+                "status_loss_recall": 0.2953,
+                "status_loss_lift": 1.4753,
+                "stopped_captured": 329,
+                "stopped_recall": 0.4910,
+                "weakened_captured": 444,
+                "weakened_recall": 0.2279,
+            }
+        ]
+    )
+    confusion_values = [
+        ("retained", "retained", 1002),
+        ("retained", "weakened", 450),
+        ("retained", "stopped", 87),
+        ("weakened", "retained", 362),
+        ("weakened", "weakened", 1065),
+        ("weakened", "stopped", 521),
+        ("stopped", "retained", 36),
+        ("stopped", "weakened", 242),
+        ("stopped", "stopped", 392),
+    ]
+    multiclass_confusion = pd.DataFrame(
+        [
+            {
+                "split": "final_test",
+                "decision_policy": "threshold",
+                "actual_state": actual,
+                "predicted_state": predicted,
+                "users": users,
+            }
+            for actual, predicted, users in confusion_values
+        ]
+    )
     return DemoData(
         reviewer_profiles=profiles,
-        risk_tiers=risk_tiers,
         top_k=top_k,
         primary_policy=policy,
         validation_test=validation_test,
@@ -364,5 +463,8 @@ def build_demo_data() -> DemoData:
         split_summary=split_summary,
         model_metadata=metadata,
         risk_policy=policy_json,
+        retention_distribution=retention_distribution,
+        multiclass_validation=multiclass_validation,
+        multiclass_top_k=multiclass_top_k,
+        multiclass_confusion=multiclass_confusion,
     )
-

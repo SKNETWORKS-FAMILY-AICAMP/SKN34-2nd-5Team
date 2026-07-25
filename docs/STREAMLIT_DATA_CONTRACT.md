@@ -3,14 +3,14 @@
 Reviewer Retention Console이 읽는 데이터 산출물과 최소 컬럼을 정의한다.
 팀 회의 후 파일을 추가하더라도 이 계약을 유지하면 화면 코드를 다시 만들 필요가 없다.
 
-## 1. 현재 필수 산출물
+## 1. v03 필수 산출물
 
-### 리뷰어 위험 프로필
+### 3클래스 리뷰어 리텐션 프로필
 
 경로:
 
 ```text
-data/processed/predictions/final_reviewer_risk_profiles_v02.parquet
+data/processed/predictions/final_test_retention_profiles_v03.parquet
 ```
 
 최소 필수 컬럼:
@@ -18,7 +18,14 @@ data/processed/predictions/final_reviewer_risk_profiles_v02.parquet
 | 컬럼 | 의미 |
 |---|---|
 | `user_id` | 리뷰어 식별자 |
-| `risk_score` | 보정된 확률이 아닌 위험 순위 점수 |
+| `retained_score` | 확률 보정 전 유지 클래스 모델 점수 |
+| `weakened_score` | 확률 보정 전 약화 클래스 모델 점수 |
+| `stopped_score` | 확률 보정 전 중단 클래스 모델 점수 |
+| `priority_score` | `weakened_score + stopped_score` 통합 우선순위 점수 |
+| `predicted_state` | 임계값 정책에 따른 모델 판단 코드 0·1·2 |
+| `priority_rank` | 통합 우선순위 |
+| `priority_top_percent` | 통합 순위 상위 비율, 0~100 |
+| `selected_for_crm` | 통합 상위 20% 검토 대상 여부, 0/1 |
 
 권장 컬럼:
 
@@ -27,12 +34,10 @@ data/processed/predictions/final_reviewer_risk_profiles_v02.parquet
 | `sample_id` | 사용자-선정연도 표본 식별자 |
 | `selection_year` | 파워 리뷰어 선정연도 |
 | `target_year` | 이탈 정답 연도 |
-| `risk_rank` | 위험 순위 |
-| `risk_top_percent` | 위험 상위 비율, 0~100 |
-| `risk_percentile` | 위험 백분위, 0~100 |
-| `risk_tier` | 긴급 관리·집중 관리·관찰 대상·일반 |
-| `crm_target` | Top 20% 관리 대상 여부, 0/1 |
-| `churn` | 검증용 실제 이탈 정답, 0/1 |
+| `predicted_state_label` | 파워 지위 유지·약화·리뷰 활동 중단 |
+| `retention_state` | 검증용 실제 상태 코드 0·1·2 |
+| `retention_state_label` | 검증용 실제 상태 표현 |
+| `churn` | 기존 이진 검증 라벨, 중단 상태와 동일 |
 | `baseline_review_count` | 선정 기간 리뷰 수 |
 | `recent_review_count` | 최근 관찰 기간 리뷰 수 |
 | `review_count_decline_rate` | 리뷰 수 감소율 |
@@ -49,29 +54,37 @@ data/processed/predictions/final_reviewer_risk_profiles_v02.parquet
 | `recent_mean_interval_days` | 최근 평균 작성 간격 |
 | `mean_interval_increase_days` | 평균 작성 간격 증가일 |
 
-`risk_rank`, `risk_top_percent`, `risk_percentile`, `risk_tier`,
-`crm_target`이 없으면 앱에서 `risk_score`를 기준으로 재계산한다.
+`retention_state`, `retention_state_label`, `churn`,
+`target_review_count`, `target_active_months`는 운영 기본 화면에서 숨기고
+사용자가 검증 모드를 명시적으로 켠 경우에만 표시한다.
 
-## 2. 현재 보고서 산출물
+앱은 하위 페이지 호환을 위해 `priority_score`, `priority_rank`,
+`priority_top_percent`, `selected_for_crm`을 각각 기존
+`risk_score`, `risk_rank`, `risk_top_percent`, `crm_target` 별칭으로
+내부 정규화할 수 있다. 이 별칭은 v02 위험 등급 정책을 v03 정책으로
+확정하는 근거가 아니다.
+
+## 2. v03 보고서 산출물
 
 ```text
 reports/tables/
-├─ final_risk_tier_summary_v02.csv
-├─ final_test_top_k_performance_v02.csv
-├─ final_test_primary_policy_v02.csv
-├─ validation_test_comparison_v02.csv
-├─ final_feature_importance_v02.csv
-├─ final_feature_group_importance_v02.csv
-├─ feature_group_validation_results_v02.csv
-└─ rolling_temporal_split_summary_v02.csv
+├─ retention_state_distribution_v03.csv
+├─ multiclass_validation_results_v03.csv
+├─ multiclass_top_k_performance_v03.csv
+└─ multiclass_confusion_matrix_v03.csv
 
 models/
-└─ final_core_hgb_metadata_v02.json
+├─ final_core_logistic_multiclass_v03.joblib
+└─ final_core_logistic_multiclass_metadata_v03.json
 ```
 
-위험 등급 요약, Top 20% 정책, Top-K 파일이 없으면 앱이 리뷰어 위험
-프로필에서 재계산한다. 모델 성능·피처 중요도·시간 분할 파일이 없으면
-해당 신뢰 센터 영역만 안내 상태로 표시한다.
+통합 상위 20% 정책 집계는 프로필의 `selected_for_crm`과
+`retention_state`로 재계산할 수 있다. 클래스별 5-Fold 성능과 혼동행렬은
+보고서 파일이 없으면 임의로 만들지 않고 해당 신뢰 센터 영역을
+`데이터 연결 필요`로 표시한다.
+
+기존 v02 이진 모델과 Top 20% 파일은 비교 기준으로 보존한다. v03 운영
+화면의 기본 수치로 혼합하지 않는다.
 
 ## 3. 1차 고도화 산출물
 
@@ -117,17 +130,18 @@ reports/tables/regional_risk_summary_v01.csv
 
 | 모드 | 조건 | 화면 표시 |
 |---|---|---|
-| Project | 핵심 프로젝트 산출물 연결 | 프로젝트 데이터 연결됨 |
-| Hybrid | 위험 프로필만 연결되거나 일부 보고서 누락 | 일부 프로젝트 데이터 연결 |
-| Demo | 위험 프로필 파일 없음 | 내장 데모 데이터 |
+| Project | v03 프로필과 핵심 v03 보고서 연결 | `PROJECT · v03` |
+| Hybrid | v03 프로필만 연결되거나 일부 보고서 누락 | `HYBRID · v03` |
+| Demo | v03 프로필 파일 없음 | `DEMO · v03` |
 
-데모 데이터는 검증된 Test 집계 수치와 동일한 익명 합성 리뷰어로 구성된다.
-실제 사용자 ID를 포함하지 않는다.
+데모 데이터는 v03 Test 집계 수치와 동일한 익명 합성 리뷰어로 구성되며
+실제 사용자 ID를 포함하지 않는다. 프로젝트 프로필이 연결되면 실제
+프로젝트 데이터를 우선 사용한다.
 
 ## 5. 표현 제한
 
-- `risk_score`를 이탈 확률로 표시하지 않는다.
-- `churn`은 분석 검증 모드에서만 사용자에게 표시한다.
+- 클래스 점수와 `priority_score`를 실제 상태 확률로 표시하지 않는다.
+- `retention_state`와 `churn`은 분석 검증 모드에서만 표시한다.
+- 모델 판단은 상태 확정이나 자동 혜택·제재 결정으로 표현하지 않는다.
 - 지역별 수치가 없으면 가짜 지역 데이터를 만들지 않는다.
 - 캠페인 발송·참여·복귀 데이터가 없으면 실행 버튼을 활성화하지 않는다.
-

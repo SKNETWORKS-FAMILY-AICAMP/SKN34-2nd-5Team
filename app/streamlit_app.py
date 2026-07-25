@@ -20,6 +20,7 @@ data = load_app_data()
 st.session_state.setdefault("selected_reviewer_id", None)
 st.session_state.setdefault("reviewer_workspace_mode", "list")
 st.session_state.setdefault("validation_mode", False)
+st.session_state.setdefault("reviewer_decisions", {})
 
 pages = [
     st.Page(
@@ -72,18 +73,17 @@ with st.container(
     st.html(
         """
         <div class="product-brand">
-          <span class="product-mark" aria-hidden="true"></span>
           <span>Reviewer Retention</span>
         </div>
         """
     )
     for page in pages:
-        st.page_link(page, label=page.title, icon=page.icon)
+        st.page_link(page, label=page.title)
     st.html(
         f"""
         <div class="product-mode">
           <span>{mode_label}</span>
-          <span>Test · 2019</span>
+          <span>v03 · Test 2019</span>
         </div>
         """
     )
