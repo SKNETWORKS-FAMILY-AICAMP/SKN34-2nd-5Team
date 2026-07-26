@@ -126,44 +126,61 @@ def policy_brief(
     )
 
 
-def validated_policy_brief(
+def policy_panel(
     *,
     target_users: int,
     captured_users: int,
     precision: float,
     recall: float,
+    recall_ceiling: float,
     lift: float,
-    stopped_captured: int,
-    stopped_recall: float,
-    weakened_captured: int,
-    weakened_recall: float,
+    weakened_total: int,
+    stopped_total: int,
 ) -> None:
-    progress = max(0.0, min(100.0, precision * 100))
+    lift_fill_pct = max(4.0, min(100.0, lift / 2.0 * 100))
     st.html(
         f"""
-        <section class="rr-policy-panel">
-          <div class="rr-policy-top">
-            <div>
-              <div class="rr-eyebrow">Validated queue policy</div>
-              <h2>통합 상위 20%부터 검토합니다</h2>
-              <p>약화·중단 점수를 합산한 운영 우선순위입니다.</p>
+        <div class="rr-card rr-policy-card">
+          <h3>이 큐는 왜 우선인가</h3>
+          <p class="rr-policy-sub">사후 Test 검증 결과이며, 무작위 선택 대비 정밀도가 높습니다.</p>
+
+          <div class="rr-policy-row">
+            <span class="rr-p-label">검토 용량</span>
+            <span class="rr-p-value">{target_users:,}명</span>
+          </div>
+          <div class="rr-policy-row">
+            <span class="rr-p-label">상태 상실 포착</span>
+            <span class="rr-p-value">{captured_users:,}명</span>
+          </div>
+          <div class="rr-policy-row">
+            <span class="rr-p-label">정밀도</span>
+            <span class="rr-p-value is-good">{precision:.1%}</span>
+          </div>
+
+          <div class="rr-policy-row" style="display:block">
+            <div style="display:flex;align-items:baseline;justify-content:space-between">
+              <span class="rr-p-label">재현율</span>
+              <span class="rr-p-value">{recall:.1%}</span>
             </div>
-            <div class="rr-radial" style="--progress:{progress:.2f}%">
-              <div><strong>{progress:.1f}%</strong><span>정밀도</span></div>
+            <p class="rr-policy-caption">한 번에 20%만 볼 수 있어 최대로 잡아도 {recall_ceiling:.1%}까지가 한계입니다</p>
+          </div>
+
+          <div class="rr-lift-row">
+            <div class="rr-lift-top">
+              <span>무작위로 뽑을 때보다</span>
+              <span class="rr-p-value">{lift:.2f}배 정확</span>
+            </div>
+            <div class="rr-lift-track">
+              <div class="rr-lift-fill" style="width:{lift_fill_pct:.1f}%"></div>
+              <div class="rr-lift-marker"></div>
             </div>
           </div>
-          <div class="rr-policy-lines">
-            <div><i></i><span>통합 검토 대상</span><strong>{target_users:,}명</strong></div>
-            <div><i class="is-critical"></i><span>실제 지위 상실 포착</span><strong>{captured_users:,}명</strong></div>
-            <div><i></i><span>지위 상실 Recall</span><strong>{recall:.1%}</strong></div>
-            <div><i></i><span>무작위 대비 Lift</span><strong>{lift:.2f}×</strong></div>
-          </div>
+
           <div class="rr-policy-split">
-            <span>중단 {stopped_captured:,}명 · Recall {stopped_recall:.1%}</span>
-            <span>약화 {weakened_captured:,}명 · Recall {weakened_recall:.1%}</span>
+            <span>약화 우세 {weakened_total:,}명</span>
+            <span>중단 우세 {stopped_total:,}명</span>
           </div>
-          <small>사후 Test 검증 결과이며 모델 점수는 상태 확률이 아닙니다.</small>
-        </section>
+        </div>
         """
     )
 
@@ -181,20 +198,11 @@ def metric_strip(items: Iterable[tuple[str, str, str]]) -> None:
     st.html(markup)
 
 
-def priority_queue(rows: Iterable[dict[str, str]]) -> None:
-    markup = (
-        '<div class="rr-queue">'
-        '<div class="rr-queue-row rr-queue-head">'
-        "<span>순위</span><span>리뷰어</span><span>모델 판단</span>"
-        "<span>상대 모델 점수</span><span>핵심 신호</span>"
-        "<span>권장 검토</span><span></span></div>"
-    )
-    for row in rows:
-        user_id = html.escape(row["user_id"])
-        href = f"/reviewers?reviewer={quote(row['user_id'], safe='')}"
-        retained = max(0.0, min(1.0, float(row.get("retained_score", 0))))
-        weakened = max(0.0, min(1.0, float(row.get("weakened_score", 0))))
-        stopped = max(0.0, min(1.0, float(row.get("stopped_score", 0))))
+def priority_queue(rows: Iterable[dict[str, object]]) -> None:
+    markup = '<div class="rr-card">'
+    for index, row in enumerate(rows):
+        user_id = html.escape(str(row["user_id"]))
+        href = f"/reviewers?reviewer={quote(str(row['user_id']), safe='')}"
         judgment = str(row.get("model_judgment", "—"))
         judgment_class = (
             "stopped"
@@ -203,20 +211,85 @@ def priority_queue(rows: Iterable[dict[str, str]]) -> None:
             if "약화" in judgment
             else "retained"
         )
+        tier = "strong" if index < 2 else "soft"
         markup += (
-            f'<a class="rr-queue-row" href="{href}" target="_self">'
-            f'<span class="rr-rank">{html.escape(row["rank"])}</span>'
-            f"<strong>{user_id}</strong>"
+            f'<a class="rr-qrow" href="{href}" target="_self">'
+            f'<span class="rr-qrank rr-qrank--{judgment_class}-{tier}">{index + 1}</span>'
+            f'<span class="rr-qname">{user_id}</span>'
             f'<span class="rr-state rr-state--{judgment_class}">'
             f"{html.escape(judgment)}</span>"
-            '<span class="rr-score-lanes">'
-            f'<i><small>유</small><b class="is-retained" style="width:{retained * 100:.1f}%"></b></i>'
-            f'<i><small>약</small><b class="is-weakened" style="width:{weakened * 100:.1f}%"></b></i>'
-            f'<i><small>중</small><b class="is-stopped" style="width:{stopped * 100:.1f}%"></b></i>'
-            "</span>"
-            f"<span>{html.escape(row['core_signal'])}</span>"
-            f"<span>{html.escape(row['action'])}</span>"
-            '<span class="rr-arrow">→</span></a>'
+            f'<span class="rr-qchange">{html.escape(str(row.get("change_text", "")))}</span>'
+            f'<span class="rr-qaction">{html.escape(str(row.get("action", "")))}</span>'
+            '<i class="rr-qarrow">→</i></a>'
+        )
+    markup += "</div>"
+    st.html(markup)
+
+
+def reviewer_list(rows: Iterable[dict[str, object]]) -> None:
+    markup = (
+        '<div class="rr-card rr-worklist-card rr-worklist-scroll">'
+        '<div class="rr-wrow-head">'
+        "<span>순위</span><span>리뷰어</span><span>모델 판단</span>"
+        "<span>핵심 변화</span><span>핵심 신호</span><span>권장 검토</span><span></span>"
+        "</div>"
+    )
+    for row in rows:
+        user_id = html.escape(str(row["user_id"]))
+        href = f"/reviewers?reviewer={quote(str(row['user_id']), safe='')}"
+        judgment = str(row.get("model_judgment", "—"))
+        judgment_class = (
+            "stopped"
+            if "중단" in judgment
+            else "weakened"
+            if "약화" in judgment
+            else "retained"
+        )
+        completed_label = row.get("completed_label")
+        if completed_label:
+            action_html = (
+                '<span class="rr-qaction-badge rr-qaction-badge--done">'
+                f'✓ {html.escape(str(completed_label))}</span>'
+            )
+        else:
+            action_html = (
+                '<span class="rr-qaction-badge">'
+                f'{html.escape(str(row.get("action", "")))}</span>'
+            )
+        metrics = [str(m) for m in row.get("metrics", []) if m]
+        metrics_text = html.escape(" · ".join(metrics))
+        signal_label = row.get("signal_label")
+        signal_html = (
+            f'<span class="rr-qsignal-tag">{html.escape(str(signal_label))}</span>'
+            if signal_label
+            else "<span></span>"
+        )
+        row_class = "rr-wrow rr-wrow--done" if completed_label else "rr-wrow"
+        markup += (
+            f'<a class="{row_class}" href="{href}" target="_self">'
+            f'<span class="rr-qrank-plain">{html.escape(str(row.get("rank_label", "")))}</span>'
+            f'<span class="rr-wname">{user_id}</span>'
+            f'<span class="rr-state rr-state--{judgment_class}">'
+            f"{html.escape(judgment)}</span>"
+            f'<span class="rr-wmetric">{metrics_text}</span>'
+            f"{signal_html}"
+            f"{action_html}"
+            '<i class="rr-qarrow">→</i>'
+            "</a>"
+        )
+    markup += "</div>"
+    st.html(markup)
+
+
+def stat_card_row(items: Iterable[tuple[str, str, str | None]]) -> None:
+    markup = '<div class="rr-stat-row">'
+    for label, value, tone in items:
+        tone_class = f" rr-stat-value--{tone}" if tone else ""
+        markup += (
+            '<div class="rr-card rr-stat-card">'
+            f'<div class="rr-stat-label">{html.escape(label)}</div>'
+            f'<div class="rr-stat-value{tone_class}">{html.escape(value)}</div>'
+            "</div>"
         )
     markup += "</div>"
     st.html(markup)
@@ -238,54 +311,27 @@ def signal_bars(items: Iterable[tuple[str, int]]) -> None:
 
 
 def change_story(items: Iterable[dict[str, object]]) -> None:
-    markup = '<div class="rr-change-story">'
+    markup = '<div class="rr-change-grid">'
     for item in items:
         label = str(item["label"])
         before = str(item["before"])
         after = str(item["after"])
         delta = str(item["delta"])
         delta_tone = str(item.get("delta_tone", "warning"))
-        before_value = float(item.get("before_value", 0))
-        after_value = float(item.get("after_value", 0))
-        maximum = max(before_value, after_value, 1.0)
-        before_height = max(8.0, before_value / maximum * 100)
-        after_height = max(8.0, after_value / maximum * 100)
         icon = str(item.get("icon", "query_stats"))
         markup += (
-            '<div class="rr-change-row">'
-            '<div class="rr-change-label">'
-            f"<span>{svg_icon(icon)}</span>"
-            f"<strong>{html.escape(label)}</strong></div>"
-            '<div class="rr-change-value rr-change-value--before">'
-            f"<small>과거</small><strong>{html.escape(before)}</strong></div>"
-            '<div class="rr-change-viz">'
-            f'<i class="before" style="height:{before_height:.1f}%"></i>'
-            '<span></span>'
-            f'<i class="after" style="height:{after_height:.1f}%"></i></div>'
-            '<div class="rr-change-value rr-change-value--after">'
-            f"<small>최근</small><strong>{html.escape(after)}</strong></div>"
-            f'<div class="rr-change-delta is-{html.escape(delta_tone)}">{html.escape(delta)}</div></div>'
+            '<div class="rr-change-tile">'
+            '<div class="rr-change-tile-label">'
+            f"{svg_icon(icon)}<span>{html.escape(label)}</span></div>"
+            '<div class="rr-change-tile-values">'
+            f"<s>{html.escape(before)}</s>"
+            '<i class="rr-qarrow">→</i>'
+            f"<strong>{html.escape(after)}</strong></div>"
+            f'<div class="rr-change-tile-delta is-{html.escape(delta_tone)}">{html.escape(delta)}</div>'
+            "</div>"
         )
     markup += "</div>"
     st.html(markup)
-
-
-def operations_flow() -> None:
-    st.html(
-        """
-        <section class="rr-flow">
-          <div class="rr-flow-step is-done"><b>1</b><strong>검토</strong><span>통합 큐 확인</span></div>
-          <i></i>
-          <div class="rr-flow-step is-done"><b>2</b><strong>관리자 판단</strong><span>활동 근거 확인</span></div>
-          <i></i>
-          <div class="rr-flow-step is-done"><b>3</b><strong>플레이북</strong><span>전략 후보 선택</span></div>
-          <i class="is-future"></i>
-          <div class="rr-flow-step is-future"><b>4</b><strong>CRM 실행</strong><span>고도화 예정</span></div>
-          <i class="is-future"></i>
-          <div class="rr-flow-step is-future"><b>5</b><strong>성과 학습</strong><span>고도화 예정</span></div>
-        </section>
-        """
-    )
 
 
 def decision_band(items: Iterable[tuple[str, str, str]]) -> None:
@@ -393,6 +439,7 @@ def profile_header(
     *,
     user_id: str,
     rank: int,
+    total_reviewers: int,
     model_judgment: str,
     retained_score: float,
     weakened_score: float,
@@ -402,40 +449,55 @@ def profile_header(
     target_year: int,
 ) -> None:
     target_label = "통합 상위 20% 검토 대상" if selected_for_review else "일반 모니터링"
+    judgment_class = (
+        "stopped"
+        if "중단" in model_judgment
+        else "weakened"
+        if "약화" in model_judgment
+        else "retained"
+    )
+    top_percent = (rank / total_reviewers * 100) if total_reviewers else 0.0
+    percent_label = "상위 0.1% 이내" if top_percent < 0.1 else f"상위 {top_percent:.1f}%"
     st.html(
         f"""
-        <section class="rr-profile-head">
-          <div class="rr-profile-identity">
-            <div class="rr-profile-id">{html.escape(user_id)}</div>
-            <div class="rr-profile-fact"><span>통합 우선순위</span><strong>{rank:,}위</strong></div>
-            <div class="rr-profile-fact"><span>모델 판단</span><strong>{html.escape(model_judgment)}</strong></div>
-            <div class="rr-profile-tier">{html.escape(target_label)}</div>
+        <div class="rr-profile-card">
+          <div class="rr-profile-head">
+            <div>
+              <div class="rr-profile-id">{html.escape(user_id)}</div>
+              <div class="rr-profile-badges">
+                <span class="rr-pill">전체 {total_reviewers:,}명 중 {rank:,}위 · {percent_label}</span>
+                <span class="rr-state rr-state--{judgment_class}">{html.escape(model_judgment)}</span>
+                <span class="rr-pill">{html.escape(target_label)}</span>
+              </div>
+            </div>
+            <div class="rr-profile-meta">
+              <span>선정 {selection_year} · 관찰 {selection_year + 1} · 검증 {target_year}</span>
+              <small>클래스 점수는 확률이 아닌 상대 모델 점수입니다.</small>
+            </div>
           </div>
-          <div class="rr-profile-meta">
-            <span>선정 {selection_year} · 관찰 {selection_year + 1} · 검증 {target_year}</span>
-            <small>클래스 점수는 확률이 아닌 상대 모델 점수입니다.</small>
+          <div class="rr-score-rows">
+            <div class="rr-score-row"><span>유지</span><i><b class="is-retained" style="width:{max(retained_score * 100, 2.0):.1f}%"></b></i><strong>{retained_score:.3f}</strong></div>
+            <div class="rr-score-row"><span>약화</span><i><b class="is-weakened" style="width:{max(weakened_score * 100, 2.0):.1f}%"></b></i><strong>{weakened_score:.3f}</strong></div>
+            <div class="rr-score-row"><span>중단</span><i><b class="is-stopped" style="width:{max(stopped_score * 100, 2.0):.1f}%"></b></i><strong>{stopped_score:.3f}</strong></div>
           </div>
-        </section>
-        <div class="rr-profile-scores">
-          <div><span>유지 점수</span><i><b class="is-retained" style="width:{retained_score * 100:.1f}%"></b></i><strong>{retained_score:.3f}</strong></div>
-          <div><span>약화 점수</span><i><b class="is-weakened" style="width:{weakened_score * 100:.1f}%"></b></i><strong>{weakened_score:.3f}</strong></div>
-          <div><span>중단 점수</span><i><b class="is-stopped" style="width:{stopped_score * 100:.1f}%"></b></i><strong>{stopped_score:.3f}</strong></div>
         </div>
         """
     )
 
 
 def evidence_list(items: Iterable[tuple[str, str, str]]) -> None:
-    markup = ""
+    markup = '<div class="rr-evidence-card">'
     for index, (title, evidence, group) in enumerate(items, start=1):
         markup += (
             '<div class="rr-evidence">'
             f"<strong>{index}</strong>"
-            f"<div><strong>{html.escape(title)}</strong>"
-            f"<p>{html.escape(evidence)}</p></div>"
-            f"<small>{html.escape(group)}</small>"
-            '<i></i></div>'
+            "<div>"
+            f'<span class="rr-evidence-title">{html.escape(title)}</span>'
+            f"<p>{html.escape(evidence)}</p>"
+            f'<span class="rr-qsignal-tag">{html.escape(group)}</span>'
+            "</div></div>"
         )
+    markup += "</div>"
     st.html(markup)
 
 
@@ -446,7 +508,7 @@ def action_rail(
     steps: Iterable[tuple[str, str]],
 ) -> None:
     markup = (
-        '<div class="rr-action-rail">'
+        '<div class="rr-action-card">'
         '<div class="rr-eyebrow">Recommended playbook</div>'
         f"<h2>{html.escape(title)}</h2>"
         f'<p class="rr-copy">{html.escape(description)}</p>'
@@ -454,9 +516,9 @@ def action_rail(
     for label, value in steps:
         markup += (
             '<div class="rr-action-step">'
-            f"<b>{len(markup.split('rr-action-step'))}</b>"
-            f"<div><small>{html.escape(label)}</small>"
-            f"<strong>{html.escape(value)}</strong></div></div>"
+            f"<small>{html.escape(label)}</small>"
+            f"<strong>{html.escape(value)}</strong>"
+            "</div>"
         )
     markup += "</div>"
     st.html(markup)

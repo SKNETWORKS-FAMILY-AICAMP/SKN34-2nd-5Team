@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import html
+
 import pandas as pd
 import streamlit as st
 
@@ -16,6 +18,7 @@ from core.components import (
     section_header,
 )
 from core.data import load_app_data
+from core.decisions import apply_decision, cancel_decision, get_decisions
 from core.formatters import percent, signed_phrase, signed_tone
 from core.insights import risk_signals, strategy_for
 
@@ -31,6 +34,20 @@ if selected_user not in set(profiles["user_id"].astype(str)):
 row = profiles.loc[profiles["user_id"].astype(str).eq(selected_user)].iloc[0]
 strategy = strategy_for(row)
 signals = risk_signals(row)
+
+ordered_ids = st.session_state.get("worklist_ordered_ids") or (
+    profiles.sort_values("priority_rank")["user_id"].astype(str).tolist()
+)
+try:
+    current_index = ordered_ids.index(selected_user)
+except ValueError:
+    current_index = None
+
+
+def _go_to_reviewer(user_id: str) -> None:
+    st.session_state["selected_reviewer_id"] = user_id
+    st.query_params["reviewer"] = user_id
+    st.rerun()
 
 
 st.session_state.setdefault("reviewer_detail_view", "활동 변화")
@@ -59,9 +76,35 @@ with st.container(horizontal=True, horizontal_alignment="distribute"):
         on_change=_open_post_validation,
     )
 
+with st.container(
+    key="rr_nav_bar",
+    horizontal=True,
+    horizontal_alignment="distribute",
+    vertical_alignment="center",
+):
+    if st.button(
+        "이전 리뷰어",
+        icon=":material/chevron_left:",
+        key="prev_reviewer",
+        disabled=current_index is None or current_index == 0,
+    ):
+        _go_to_reviewer(ordered_ids[current_index - 1])
+    if current_index is not None:
+        st.caption(f"워크리스트 순서 기준 · {current_index + 1:,} / {len(ordered_ids):,}")
+    else:
+        st.caption("전체 순위 기준")
+    if st.button(
+        "다음 리뷰어",
+        icon=":material/chevron_right:",
+        key="next_reviewer",
+        disabled=current_index is None or current_index >= len(ordered_ids) - 1,
+    ):
+        _go_to_reviewer(ordered_ids[current_index + 1])
+
 profile_header(
     user_id=str(row["user_id"]),
     rank=int(row["priority_rank"]),
+    total_reviewers=len(profiles),
     model_judgment=str(row["model_judgment"]),
     retained_score=float(row["retained_score"]),
     weakened_score=float(row["weakened_score"]),
@@ -89,8 +132,6 @@ with main_column:
                     when_positive="감소", when_negative="증가",
                 ),
                 "delta_tone": signed_tone(row["review_count_decline_rate"]),
-                "before_value": float(row["baseline_review_count"]),
-                "after_value": float(row["recent_review_count"]),
                 "icon": "rate_review",
             },
             {
@@ -102,8 +143,6 @@ with main_column:
                     when_positive="감소", when_negative="증가",
                 ),
                 "delta_tone": signed_tone(row["active_month_decline_rate"]),
-                "before_value": float(row["baseline_active_months"]),
-                "after_value": float(row["recent_active_months"]),
                 "icon": "calendar_month",
             },
             {
@@ -115,8 +154,6 @@ with main_column:
                     when_positive="감소", when_negative="증가",
                 ),
                 "delta_tone": signed_tone(row["unique_business_decline_rate"]),
-                "before_value": float(row["baseline_unique_business_count"]),
-                "after_value": float(row["recent_unique_business_count"]),
                 "icon": "location_on",
             },
             {
@@ -129,8 +166,6 @@ with main_column:
                     if float(row["recency_increase_days"]) < 0
                     else "warning"
                 ),
-                "before_value": float(row["baseline_recency_days"]),
-                "after_value": float(row["recent_recency_days"]),
                 "icon": "hourglass_empty",
             },
         ]
@@ -150,21 +185,23 @@ with main_column:
             [(signal.name, signal.evidence, signal.group) for signal in signals[:3]]
         )
     with activity_column:
-        section_header("활동 변화 요약", "과거와 최근")
-        st.plotly_chart(
-            profile_activity(row),
-            width="stretch",
-            key="reviewer_activity_chart",
-            config={"displayModeBar": False, "responsive": True},
-        )
+        with st.container(key="rr_chart_activity"):
+            section_header("활동 변화 요약", "과거와 최근")
+            st.plotly_chart(
+                profile_activity(row),
+                width="stretch",
+                key="reviewer_activity_chart",
+                config={"displayModeBar": False, "responsive": True},
+            )
     with interval_column:
-        section_header("작성 주기 변화", "리뷰 간격과 공백")
-        st.plotly_chart(
-            interval_comparison(row),
-            width="stretch",
-            key="reviewer_interval_chart",
-            config={"displayModeBar": False, "responsive": True},
-        )
+        with st.container(key="rr_chart_interval"):
+            section_header("작성 주기 변화", "리뷰 간격과 공백")
+            st.plotly_chart(
+                interval_comparison(row),
+                width="stretch",
+                key="reviewer_interval_chart",
+                config={"displayModeBar": False, "responsive": True},
+            )
 
     detail_view = st.segmented_control(
         "상세 보기",
@@ -231,48 +268,85 @@ with action_column:
         ],
     )
 
-    section_header(
-        "관리자 판단",
-        "모델 판단과 활동 근거를 확인한 뒤 현재 세션에서만 분류합니다.",
-        "규칙 기반 프로토타입",
-    )
-    decisions = st.session_state.setdefault("reviewer_decisions", {})
-    decision_options = ["복귀 관리", "활동 회복", "관찰 유지", "대상 제외"]
+    decisions = get_decisions()
+    user_id_str = str(row["user_id"])
+    existing_decision = decisions.get(user_id_str)
+    decision_options = ["복귀 관리", "활동 회복 관리", "관찰 유지", "대상 제외"]
     recommendation_map = {
         0: "관찰 유지",
-        1: "활동 회복",
+        1: "활동 회복 관리",
         2: "복귀 관리",
     }
-    default_decision = decisions.get(
-        str(row["user_id"]),
-        recommendation_map.get(int(row["predicted_state"]), "관찰 유지"),
+    recommended_decision = recommendation_map.get(
+        int(row["predicted_state"]), "관찰 유지"
     )
-    with st.form("reviewer_decision_form", border=False):
-        manager_decision = st.radio(
-            "검토 결과",
-            decision_options,
-            index=decision_options.index(default_decision),
-            help="이 선택은 브라우저 세션에만 유지되며 CRM이나 데이터베이스에 저장되지 않습니다.",
+    with st.container(key="rr_decision_panel"):
+        section_header(
+            "관리자 판단",
+            "모델 판단과 활동 근거를 확인한 뒤 분류합니다.",
+            "규칙 기반 프로토타입",
         )
-        submitted = st.form_submit_button(
-            "세션 판단 적용",
-            icon=":material/check_circle:",
-            width="stretch",
+        if existing_decision:
+            with st.container(horizontal=True, vertical_alignment="center"):
+                st.html(
+                    f'<span class="rr-pill rr-pill--decided">판단 완료 · {html.escape(existing_decision)}</span>'
+                )
+                if st.button(
+                    "취소", key="cancel_decision", icon=":material/close:"
+                ):
+                    cancel_decision(user_id_str)
+                    st.toast("판단을 취소했습니다.", icon=":material/backspace:")
+                    st.rerun()
+        else:
+            st.html(
+                f'<span class="rr-pill">아직 판단 전 · 모델 추천 {html.escape(recommended_decision)}</span>'
+            )
+        with st.container(key="rr_decision_radio"):
+            with st.form("reviewer_decision_form", border=False):
+                manager_decision = st.radio(
+                    "검토 결과",
+                    decision_options,
+                    index=(
+                        decision_options.index(existing_decision)
+                        if existing_decision
+                        else None
+                    ),
+                    label_visibility="collapsed",
+                    help="이 선택은 이 앱의 로컬 저장소에 보관되며 CRM이나 외부 데이터베이스에는 연동되지 않습니다.",
+                )
+                submitted = st.form_submit_button(
+                    "세션 판단 적용",
+                    icon=":material/check_circle:",
+                    type="primary",
+                    width="stretch",
+                )
+        if submitted:
+            if manager_decision is None:
+                st.toast("검토 결과를 먼저 선택하세요.", icon=":material/error:")
+            else:
+                apply_decision(user_id_str, manager_decision)
+                st.toast(
+                    f"{manager_decision}으로 분류했습니다.",
+                    icon=":material/check_circle:",
+                )
+                st.rerun()
+        if current_index is not None and current_index < len(ordered_ids) - 1:
+            if st.button(
+                "다음 리뷰어로",
+                key="decision_next_reviewer",
+                icon=":material/arrow_forward:",
+                width="stretch",
+            ):
+                _go_to_reviewer(ordered_ids[current_index + 1])
+        st.html(
+            """
+            <div class="rr-decision-note">
+              이 판단은 이 서버의 로컬 파일에 저장되어 새로고침·재시작 후에도
+              유지되지만, 여러 세션이 같은 저장소를 공유합니다. 담당자 배정·
+              CRM 연동·감사 이력은 지원하지 않습니다.
+            </div>
+            """
         )
-    if submitted:
-        decisions[str(row["user_id"])] = manager_decision
-        st.toast(
-            f"{manager_decision}으로 임시 분류했습니다.",
-            icon=":material/check_circle:",
-        )
-    st.html(
-        """
-        <div class="rr-decision-note">
-          영구 저장·담당자 배정·캠페인 실행은 지원하지 않습니다.
-          현재 선택은 운영 흐름을 검증하기 위한 세션 임시 판단입니다.
-        </div>
-        """
-    )
     if st.button(
         "플레이북에서 전략 확인",
         type="primary",
@@ -280,6 +354,7 @@ with action_column:
         width="stretch",
         key="open_playbook",
     ):
+        st.session_state["playbook_risk_type"] = strategy["risk_type"]
         st.switch_page("views/playbook.py")
     future_integration(
         "CRM 캠페인 배정",

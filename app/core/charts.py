@@ -22,10 +22,15 @@ STATE_COLORS = {
 }
 
 
-def polish(figure: go.Figure, height: int = 390) -> go.Figure:
+def polish(
+    figure: go.Figure,
+    height: int = 390,
+    margin_top: int = 48,
+    margin_autoexpand: bool = True,
+) -> go.Figure:
     figure.update_layout(
         height=height,
-        margin=dict(l=12, r=12, t=48, b=18),
+        margin=dict(l=12, r=12, t=margin_top, b=18, autoexpand=margin_autoexpand),
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(
@@ -151,7 +156,7 @@ def profile_activity(row: pd.Series) -> go.Figure:
         legend_orientation="h",
         legend_y=1.08,
     )
-    return polish(figure, 285)
+    return polish(figure, 285, margin_top=58)
 
 
 def interval_comparison(row: pd.Series) -> go.Figure:
@@ -194,7 +199,7 @@ def interval_comparison(row: pd.Series) -> go.Figure:
             showarrow=False,
             font=dict(color=COLORS["muted"], size=12),
         )
-        return polish(figure, 285)
+        return polish(figure, 285, margin_top=58)
     figure = px.bar(
         data,
         x="지표",
@@ -225,7 +230,7 @@ def interval_comparison(row: pd.Series) -> go.Figure:
             showarrow=False,
             font=dict(color=COLORS["muted"], size=10),
         )
-    return polish(figure, 285)
+    return polish(figure, 285, margin_top=58)
 
 
 def monthly_activity(frame: pd.DataFrame) -> go.Figure:

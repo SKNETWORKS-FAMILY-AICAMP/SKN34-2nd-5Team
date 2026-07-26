@@ -141,8 +141,17 @@ def risk_signals(row: pd.Series) -> list[Signal]:
             ),
             Signal(
                 "마지막 리뷰 공백",
-                f"최근 공백 {days(recency)} · 이전 기간보다 "
-                f"{signed_phrase(recency_increase, days, when_positive='증가', when_negative='감소')}",
+                " · ".join(
+                    [f"최근 공백 {days(recency)}"]
+                    + (["150일 기준선 초과"] if recency >= 150 else [])
+                    + [
+                        "이전 기간보다 "
+                        + signed_phrase(
+                            recency_increase, days,
+                            when_positive='증가', when_negative='감소',
+                        )
+                    ]
+                ),
                 max(recency / 150, recency_increase / 90),
                 "작성 간격",
             ),

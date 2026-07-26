@@ -9,9 +9,12 @@ from core.components import (
     footer,
     page_intro,
     render_warnings,
-    section_header,
+    reviewer_list,
+    stat_card_row,
 )
 from core.data import load_app_data
+from core.decisions import get_decisions
+from core.insights import risk_signals
 
 
 query_reviewer = st.query_params.get("reviewer")
@@ -37,6 +40,35 @@ page_intro(
     ["현재 데모에서 사용 가능" if data.data_mode == "demo" else "현재 사용 가능"],
 )
 
+decisions = get_decisions()
+processed_ids = {str(uid) for uid in decisions.keys()}
+all_ids = set(profiles["user_id"].astype(str))
+done_count = len(processed_ids & all_ids)
+pending_count = len(all_ids) - done_count
+
+status_filter = st.segmented_control(
+    "검토 상태",
+    options=["전체", "미검토", "검토 완료"],
+    default="전체",
+    key="worklist_status_filter",
+    label_visibility="collapsed",
+)
+risk_type_options = ["전체"] + profiles["risk_type"].value_counts().index.tolist()
+risk_type_filter = st.segmented_control(
+    "위험 유형",
+    options=risk_type_options,
+    default="전체",
+    key="worklist_risk_type_filter",
+    label_visibility="collapsed",
+)
+stat_card_row(
+    [
+        ("전체", f"{len(all_ids):,}명", None),
+        ("미검토", f"{pending_count:,}명", None),
+        ("검토 완료", f"{done_count:,}명", "good" if done_count else None),
+    ]
+)
+
 with st.container(horizontal=True, vertical_alignment="bottom"):
     search_text = st.text_input(
         "리뷰어 ID 검색",
@@ -56,7 +88,7 @@ with st.container(horizontal=True, vertical_alignment="bottom"):
         )
         selected_signals = st.multiselect(
             "핵심 행동 신호",
-            options=sorted(profiles["core_signal"].dropna().unique().tolist()),
+            options=sorted(profiles["risk_type"].dropna().unique().tolist()),
             placeholder="전체",
             key="queue_signals",
             persist_state="session",
@@ -79,6 +111,13 @@ with st.container(horizontal=True, vertical_alignment="bottom"):
             key="queue_sort",
             persist_state="session",
         )
+    st.download_button(
+        "CSV 다운로드",
+        data=profiles.to_csv(index=False).encode("utf-8-sig"),
+        file_name="reviewer_risk_worklist.csv",
+        mime="text/csv",
+        icon=":material/download:",
+    )
 
 filtered = profiles.copy()
 if search_text:
@@ -92,11 +131,17 @@ if search_text:
 if selected_states:
     filtered = filtered[filtered["model_judgment"].isin(selected_states)]
 if selected_signals:
-    filtered = filtered[filtered["core_signal"].isin(selected_signals)]
+    filtered = filtered[filtered["risk_type"].isin(selected_signals)]
+if risk_type_filter and risk_type_filter != "전체":
+    filtered = filtered[filtered["risk_type"].eq(risk_type_filter)]
 if crm_filter == "통합 상위 20%":
     filtered = filtered[filtered["crm_target"].eq(1)]
 elif crm_filter == "상위 20% 제외":
     filtered = filtered[filtered["crm_target"].eq(0)]
+if status_filter == "미검토":
+    filtered = filtered[~filtered["user_id"].astype(str).isin(processed_ids)]
+elif status_filter == "검토 완료":
+    filtered = filtered[filtered["user_id"].astype(str).isin(processed_ids)]
 
 sort_map = {
     "통합 우선순위": ("priority_rank", True),
@@ -107,180 +152,52 @@ sort_map = {
 }
 sort_column, ascending = sort_map[sort_rule]
 filtered = filtered.sort_values(sort_column, ascending=ascending)
-
-st.caption(
-    f"검색 결과 {len(filtered):,}명 · "
-    f"통합 상위 20% {int(filtered['crm_target'].eq(1).sum()):,}명 · "
-    "클래스 점수는 확률이 아닌 상대 모델 점수입니다."
-)
-
-section_header(
-    "리뷰어 워크리스트",
-    "행을 선택하면 비교하거나 Reviewer 360으로 이동할 수 있습니다.",
-)
+st.session_state["worklist_ordered_ids"] = filtered["user_id"].astype(str).tolist()
 
 if filtered.empty:
     st.warning("현재 조건에 해당하는 리뷰어가 없습니다.", icon=":material/search_off:")
+    render_warnings(data.warnings)
     footer(data.data_mode)
     st.stop()
 
-table = filtered.head(500).copy()
-table["리뷰어"] = table["user_id"]
-table["모델 판단"] = table["model_judgment"]
-table["유지 점수"] = table["retained_score"]
-table["약화 점수"] = table["weakened_score"]
-table["중단 점수"] = table["stopped_score"]
-table["핵심 신호"] = table["core_signal"]
-table["리뷰 수 변화"] = table.apply(
-    lambda row: [row["baseline_review_count"], row["recent_review_count"]],
-    axis=1,
-)
-table["활동 월 변화"] = table.apply(
-    lambda row: [row["baseline_active_months"], row["recent_active_months"]],
-    axis=1,
-)
-table["탐색 변화"] = table.apply(
-    lambda row: [
-        row["baseline_unique_business_count"],
-        row["recent_unique_business_count"],
-    ],
-    axis=1,
-)
-table["리뷰 공백"] = table["recent_recency_days"].round().astype(int).astype(str) + "일"
-table["권장 검토"] = table["recommended_review"]
-display = table[
-    [
-        "priority_rank",
-        "리뷰어",
-        "모델 판단",
-        "유지 점수",
-        "약화 점수",
-        "중단 점수",
-        "핵심 신호",
-        "리뷰 수 변화",
-        "활동 월 변화",
-        "탐색 변화",
-        "리뷰 공백",
-        "권장 검토",
-    ]
-].rename(columns={"priority_rank": "통합 순위"})
+visible_count = st.session_state.setdefault("worklist_visible_count", 50)
+visible = filtered.head(visible_count)
 
-selection = st.dataframe(
-    display,
-    hide_index=True,
-    width="stretch",
-    height=540,
-    key="reviewer_worklist",
-    on_select="rerun",
-    selection_mode="multi-row",
-    column_config={
-        "통합 순위": st.column_config.NumberColumn(
-            format="%d위", width="small", pinned=True
-        ),
-        "리뷰어": st.column_config.TextColumn(width="medium", pinned=True),
-        "유지 점수": st.column_config.ProgressColumn(
-            min_value=0.0,
-            max_value=1.0,
-            format="%.3f",
-            width="small",
-        ),
-        "약화 점수": st.column_config.ProgressColumn(
-            min_value=0.0,
-            max_value=1.0,
-            format="%.3f",
-            width="small",
-        ),
-        "중단 점수": st.column_config.ProgressColumn(
-            min_value=0.0,
-            max_value=1.0,
-            format="%.3f",
-            width="small",
-        ),
-        "리뷰 수 변화": st.column_config.LineChartColumn(
-            "리뷰 수 · 과거→최근", width="medium"
-        ),
-        "활동 월 변화": st.column_config.LineChartColumn(
-            "활동 월 · 과거→최근", width="medium"
-        ),
-        "탐색 변화": st.column_config.LineChartColumn(
-            "음식점 · 과거→최근", width="medium"
-        ),
-        "권장 검토": st.column_config.TextColumn(width="large"),
-    },
-)
-
-selected_rows = list(selection.selection.rows)
-selected_profiles = table.iloc[selected_rows] if selected_rows else table.iloc[0:0]
-
-with st.container(horizontal=True, horizontal_alignment="right"):
-    csv_data = filtered.to_csv(index=False).encode("utf-8-sig")
-    st.download_button(
-        "현재 결과 CSV",
-        data=csv_data,
-        file_name="reviewer_risk_worklist.csv",
-        mime="text/csv",
-        icon=":material/download:",
-    )
-    open_disabled = len(selected_profiles) != 1
-    if st.button(
-        "Reviewer 360 열기",
-        type="primary",
-        icon=":material/person_search:",
-        disabled=open_disabled,
-        key="open_reviewer",
-    ):
-        st.session_state["selected_reviewer_id"] = str(
-            selected_profiles.iloc[0]["user_id"]
-        )
-        st.session_state["reviewer_workspace_mode"] = "detail"
-        st.rerun()
-
-if len(selected_profiles) >= 2:
-    section_header(
-        "선택 리뷰어 비교",
-        "최대 4명의 핵심 행동 변화를 같은 기준으로 비교합니다.",
-    )
-    comparison = selected_profiles.head(4).copy()
-    comparison_view = comparison[
-        [
-            "user_id",
-            "model_judgment",
-            "retained_score",
-            "weakened_score",
-            "stopped_score",
-            "review_count_decline_rate",
-            "active_month_decline_rate",
-            "unique_business_decline_rate",
-            "recency_increase_days",
-        ]
-    ].rename(
-        columns={
-            "user_id": "리뷰어",
-            "model_judgment": "모델 판단",
-            "retained_score": "유지 점수",
-            "weakened_score": "약화 점수",
-            "stopped_score": "중단 점수",
-            "review_count_decline_rate": "리뷰 감소율",
-            "active_month_decline_rate": "활동 월 감소율",
-            "unique_business_decline_rate": "탐색 감소율",
-            "recency_increase_days": "공백 증가일",
+rows = []
+for _, row in visible.iterrows():
+    top_metrics = [signal.evidence for signal in risk_signals(row)[:2]]
+    user_id = str(row["user_id"])
+    completed_label = None
+    if user_id in processed_ids:
+        completed_label = decisions[user_id]
+    rows.append(
+        {
+            "user_id": user_id,
+            "rank_label": f"{int(row['priority_rank'])}위",
+            "model_judgment": str(row["model_judgment"]),
+            "metrics": top_metrics,
+            "signal_label": str(row["core_signal"]),
+            "action": str(row["recommended_review"]),
+            "completed_label": completed_label,
         }
     )
-    st.dataframe(
-        comparison_view,
-        hide_index=True,
-        width="stretch",
-        column_config={
-            "유지 점수": st.column_config.NumberColumn(format="%.3f"),
-            "약화 점수": st.column_config.NumberColumn(format="%.3f"),
-            "중단 점수": st.column_config.NumberColumn(format="%.3f"),
-            "리뷰 감소율": st.column_config.NumberColumn(format="percent"),
-            "활동 월 감소율": st.column_config.NumberColumn(format="percent"),
-            "탐색 감소율": st.column_config.NumberColumn(format="percent"),
-            "공백 증가일": st.column_config.NumberColumn(format="%.0f일"),
-        },
-    )
+reviewer_list(rows)
 
-st.caption("표에는 성능과 가독성을 위해 현재 필터 결과 중 상위 500명까지 표시합니다.")
+remaining = len(filtered) - len(visible)
+footer_cols = st.columns([1, 1, 1])
+with footer_cols[1]:
+    st.html(
+        f"<p style='text-align:center;font-size:.78rem;color:var(--rr-muted)'>"
+        f"{len(filtered):,}명 중 {len(visible):,}명 표시</p>"
+    )
+    if remaining > 0:
+        if st.button(
+            f"더 보기 · {min(50, remaining)}명 추가",
+            key="worklist_load_more",
+            width="stretch",
+        ):
+            st.session_state["worklist_visible_count"] = visible_count + 50
+            st.rerun()
+
 render_warnings(data.warnings)
 footer(data.data_mode)

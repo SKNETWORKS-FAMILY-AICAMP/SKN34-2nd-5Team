@@ -30,16 +30,13 @@ class UiContractTest(unittest.TestCase):
     def test_operation_home_contains_validated_policy(self) -> None:
         app = self._render("views/operation_home.py")
         html = self._html(app)
-        self.assertIn("4,157명", html)
         self.assertIn("832명", html)
         self.assertIn("773명", html)
         self.assertIn("92.9%", html)
-        self.assertIn("1.48×", html)
-        self.assertIn("통합 우선 검토 큐", html)
-        self.assertIn("rr-queue-row", html)
-        self.assertIn("rr-score-lanes", html)
-        self.assertIn("rr-policy-panel", html)
-        self.assertIn("rr-flow", html)
+        self.assertIn("1.48배", html)
+        self.assertIn("이번 세션 우선 검토", html)
+        self.assertIn("rr-qrow", html)
+        self.assertIn("rr-policy-card", html)
 
     def test_risk_queue_has_operating_controls(self) -> None:
         app = self._render("views/risk_queue.py")
@@ -47,7 +44,8 @@ class UiContractTest(unittest.TestCase):
         self.assertEqual(len(app.multiselect), 2)
         self.assertEqual(len(app.selectbox), 2)
         self.assertEqual(len(app.download_button), 1)
-        self.assertEqual(len(app.dataframe), 1)
+        self.assertEqual(len(app.segmented_control), 2)
+        self.assertIn("rr-wrow", self._html(app))
         self.assertIn("통합 상위 20%", list(app.selectbox[0].options))
 
     def test_priority_link_opens_detail_and_returns_to_queue(self) -> None:
@@ -70,7 +68,7 @@ class UiContractTest(unittest.TestCase):
         app = self._render("views/reviewer_360.py")
         html = self._html(app)
         self.assertIn("rr-profile-head", html)
-        self.assertIn("rr-change-story", html)
+        self.assertIn("rr-change-grid", html)
         self.assertIn("rr-svg-icon", html)
         self.assertNotIn("material-symbols-rounded", html)
         self.assertIn("왜 우선 검토 대상인가", html)

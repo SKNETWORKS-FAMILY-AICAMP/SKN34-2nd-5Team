@@ -11,6 +11,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from core.data import load_app_data
+from core.decisions import get_decisions
 from core.theme import bootstrap
 
 
@@ -20,7 +21,7 @@ data = load_app_data()
 st.session_state.setdefault("selected_reviewer_id", None)
 st.session_state.setdefault("reviewer_workspace_mode", "list")
 st.session_state.setdefault("validation_mode", False)
-st.session_state.setdefault("reviewer_decisions", {})
+get_decisions()
 
 pages = [
     st.Page(
