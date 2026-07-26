@@ -20,7 +20,7 @@ from core.components import (
 from core.data import load_app_data
 from core.decisions import apply_decision, cancel_decision, get_decisions
 from core.formatters import percent, signed_phrase, signed_tone
-from core.insights import risk_signals, strategy_for
+from core.insights import DECISION_STATE_MAP, risk_signals, strategy_for
 
 
 data = load_app_data()
@@ -270,15 +270,12 @@ with action_column:
 
     decisions = get_decisions()
     user_id_str = str(row["user_id"])
+    decision_options = ["리뷰 다시 시작 유도", "리뷰 활동 늘리기", "변화 지켜보기", "이번엔 제외"]
     existing_decision = decisions.get(user_id_str)
-    decision_options = ["복귀 관리", "활동 회복 관리", "관찰 유지", "대상 제외"]
-    recommendation_map = {
-        0: "관찰 유지",
-        1: "활동 회복 관리",
-        2: "복귀 관리",
-    }
-    recommended_decision = recommendation_map.get(
-        int(row["predicted_state"]), "관찰 유지"
+    if existing_decision not in decision_options:
+        existing_decision = None
+    recommended_decision = DECISION_STATE_MAP.get(
+        int(row["predicted_state"]), "변화 지켜보기"
     )
     with st.container(key="rr_decision_panel"):
         section_header(

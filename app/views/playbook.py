@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import pandas as pd
+import html
+
 import streamlit as st
 
 from core.components import (
     capability_grid,
-    decision_band,
     empty_state,
     footer,
     page_intro,
@@ -14,101 +14,197 @@ from core.components import (
     signal_bars,
 )
 from core.data import load_app_data
-from core.insights import STRATEGIES
+from core.decisions import UNDECIDED_LABEL, with_manager_decisions
+from core.insights import DECISION_PLAYBOOKS, DECISION_STATE_MAP
 
+
+JUDGMENT_TO_DECISION = {
+    "유지 우세": DECISION_STATE_MAP[0],
+    "약화 우세": DECISION_STATE_MAP[1],
+    "중단 우세": DECISION_STATE_MAP[2],
+}
 
 data = load_app_data()
-profiles = data.reviewer_profiles
-type_counts = profiles["risk_type"].value_counts()
+profiles = with_manager_decisions(data.reviewer_profiles)
+decision_counts = profiles["manager_decision"].value_counts()
 
 page_intro(
     "Retention playbook",
-    "위험 신호를 개입 전략으로 연결합니다",
-    "유형을 선택하면 적용 조건, 1차 개입과 권장 채널이 하나의 실행 구조로 연결됩니다.",
+    "운영 판단에 맞는 다음 행동을 정합니다",
+    "관리자 판단을 고르면 위험 유형별 세부 전략과 실행 조건이 하나로 연결됩니다.",
     ["규칙 기반 프로토타입", "외부 연동 필요"],
 )
 
-selected_type = st.segmented_control(
+view_mode = st.segmented_control(
+    "화면 모드",
+    ["전략 라이브러리", "현재 리뷰어에게 추천"],
+    default="전략 라이브러리",
+    key="playbook_view_mode",
+    label_visibility="collapsed",
+)
+
+if view_mode == "현재 리뷰어에게 추천":
+    empty_state(
+        "현재 리뷰어 기준 추천",
+        "Reviewer 360에서 특정 리뷰어의 판단 결과와 함께 들어와야 활성화됩니다.",
+        "고도화 예정",
+        [
+            (
+                "활성화 조건",
+                "Reviewer 360 → 플레이북 이동 시 관리자 판단·위험 유형·모델 판단 전달 배선 필요",
+            ),
+        ],
+    )
+    render_warnings(data.warnings)
+    footer(data.data_mode)
+    st.stop()
+
+decision_options = list(DECISION_PLAYBOOKS.keys()) + [UNDECIDED_LABEL]
+selected_decision = st.segmented_control(
+    "관리자 판단",
+    decision_options,
+    default=decision_options[0],
+    key="playbook_decision_filter",
+    label_visibility="collapsed",
+)
+if selected_decision is None:
+    selected_decision = decision_options[0]
+
+selected_model_judgment = None
+if selected_decision == UNDECIDED_LABEL:
+    st.html(
+        """
+        <div class="rr-playbook-model-hint">
+          미검토는 아직 확정된 조치가 없어, 모델 판단으로 좁혀서 봅니다.
+        </div>
+        """
+    )
+    selected_model_judgment = st.segmented_control(
+        "모델 판단",
+        ["유지 우세", "약화 우세", "중단 우세"],
+        default="중단 우세",
+        key="playbook_model_judgment_filter",
+        label_visibility="collapsed",
+    )
+    if selected_model_judgment is None:
+        selected_model_judgment = "중단 우세"
+    effective_decision = JUDGMENT_TO_DECISION[selected_model_judgment]
+    is_confirmed = False
+else:
+    effective_decision = selected_decision
+    is_confirmed = True
+
+risk_type_options = ["전체"] + profiles["risk_type"].value_counts().index.tolist()
+selected_risk_type = st.segmented_control(
     "위험 유형",
-    options=type_counts.index.tolist(),
-    default=type_counts.index[0],
+    risk_type_options,
+    default="전체",
     key="playbook_risk_type",
-    width="stretch",
+    label_visibility="collapsed",
 )
-if selected_type is None:
-    selected_type = type_counts.index[0]
+if selected_risk_type is None:
+    selected_risk_type = "전체"
 
-selected_judgments = st.multiselect(
-    "개입 방향 · 모델 판단",
-    options=["약화 우세", "중단 우세", "유지 우세"],
-    default=[],
-    placeholder="전체",
-    key="playbook_judgment_filter",
-    help="약화 우세는 활동 회복, 중단 우세는 복귀·재활성화 플레이북을 우선 검토합니다.",
-)
+pool = profiles.loc[profiles["manager_decision"].eq(selected_decision)]
+if selected_model_judgment:
+    pool = pool.loc[pool["model_judgment"].eq(selected_model_judgment)]
+if selected_risk_type != "전체":
+    pool = pool.loc[pool["risk_type"].eq(selected_risk_type)]
 
-strategy = STRATEGIES[str(selected_type)]
-count = int(type_counts.get(selected_type, 0))
+playbook_entry = DECISION_PLAYBOOKS[effective_decision]
+sub_strategy_text = playbook_entry["sub_strategy"].get(selected_risk_type)
 
-condition_map = {
-    "복합 위험형": "활동량·작성 간격·탐색 중 두 개 이상의 강한 약화 신호",
-    "활동량 붕괴형": "리뷰 수 또는 활동 월 감소가 가장 강한 변화",
-    "작성 주기 이완형": "마지막 리뷰 공백 또는 평균 작성 간격 증가",
-    "탐색 활동 축소형": "고유 음식점 수 감소가 가장 강한 변화",
-    "일반 모니터링형": "급격한 활동 붕괴 신호가 확인되지 않은 상태",
-}
-
-section_header(
-    f"{selected_type} · {count:,}명",
-    strategy["summary"],
-    "규칙 기반 프로토타입",
-)
-decision_band(
-    [
-        ("적용 조건", condition_map[str(selected_type)], "관찰 신호"),
-        ("1차 개입", strategy["primary"], "운영자 검토"),
-        ("권장 채널", strategy["channel"], "실행 접점"),
-    ]
+status_label = "모델 추천 · 판단 전" if not is_confirmed else "규칙 기반 프로토타입"
+sub_title = (
+    f"{selected_decision} · {selected_model_judgment} 조합에 대한 추천 전략입니다."
+    if not is_confirmed
+    else f"실제로 이렇게 판단된 {len(pool):,}명에게 적용되는 전략입니다."
 )
 
-st.warning(
-    "현재 플레이북은 행동 신호와 운영 아이디어를 연결한 규칙 기반 추천입니다. "
-    "개입 효과가 검증된 처방이 아니며, 의학적 상태를 의미하지 않습니다.",
-    icon=":material/warning:",
+section_header(effective_decision, sub_title, status_label)
+
+tiles_html = (
+    '<div class="rr-playbook-grid">'
+    '<div class="rr-playbook-tile">'
+    '<div class="rr-playbook-tile-label">적용 검토 조건</div>'
+    f'<div class="rr-playbook-tile-value">{html.escape(playbook_entry["condition"])}</div>'
+    "</div>"
+    '<div class="rr-playbook-tile">'
+    '<div class="rr-playbook-tile-label">1차 운영 행동</div>'
+    f'<div class="rr-playbook-tile-value">{html.escape(playbook_entry["primary_action"])}</div>'
+    "</div>"
+    "</div>"
 )
 
-examples_pool = profiles.loc[profiles["risk_type"].eq(selected_type)]
-if selected_judgments:
-    examples_pool = examples_pool.loc[examples_pool["model_judgment"].isin(selected_judgments)]
-examples = examples_pool.nsmallest(10, "priority_rank").copy()
-example_view = examples[
+if selected_risk_type != "전체":
+    if sub_strategy_text:
+        sub_html = (
+            '<div class="rr-playbook-substrategy">'
+            f'<div class="rr-playbook-substrategy-label">'
+            f'세부 전략 · {html.escape(selected_risk_type)}</div>'
+            f'<div class="rr-playbook-substrategy-value">{html.escape(sub_strategy_text)}</div>'
+            "</div>"
+        )
+    else:
+        sub_html = (
+            '<div class="rr-playbook-substrategy rr-playbook-substrategy--empty">'
+            f'<div class="rr-playbook-substrategy-label">세부 전략 · {html.escape(selected_risk_type)}</div>'
+            '<div class="rr-playbook-substrategy-value">이 조합에 대한 세부 전략은 아직 정의되지 않았습니다.</div>'
+            "</div>"
+        )
+else:
+    sub_html = ""
+
+bottom_html = (
+    '<div class="rr-playbook-grid">'
+    '<div>'
+    '<div class="rr-playbook-tile-label">권장 채널</div>'
+    f'<div class="rr-playbook-tile-value">{html.escape(playbook_entry["channel"])}</div>'
+    "</div>"
+    '<div>'
+    '<div class="rr-playbook-tile-label">고도화 필요</div>'
+    f'<div class="rr-playbook-tile-value" style="color:var(--rr-muted)">{html.escape(playbook_entry["needs_upgrade"])}</div>'
+    "</div>"
+    "</div>"
+)
+
+st.html(
+    f'<div class="rr-playbook-card">{tiles_html}{sub_html}{bottom_html}</div>'
+)
+
+st.html(
+    """
+    <div class="rr-playbook-warn">
+      <span>현재 플레이북은 행동 신호와 운영 아이디어를 연결한 규칙 기반 추천입니다.
+      개입 효과가 검증된 처방이 아니며, 의학적 상태를 의미하지 않습니다.</span>
+    </div>
+    """
+)
+
+example_view = pool.nsmallest(10, "priority_rank")[
     [
         "priority_rank",
         "user_id",
+        "risk_type",
         "model_judgment",
-        "weakened_score",
-        "stopped_score",
         "recent_active_months",
         "recent_recency_days",
-        "recommended_action",
     ]
 ].rename(
     columns={
         "priority_rank": "순위",
         "user_id": "리뷰어",
+        "risk_type": "위험 유형",
         "model_judgment": "모델 판단",
-        "weakened_score": "약화 점수",
-        "stopped_score": "중단 점수",
         "recent_active_months": "최근 활동 월",
         "recent_recency_days": "최근 리뷰 공백",
-        "recommended_action": "권장 행동",
     }
 )
 target_column, mix_column = st.columns([1.45, 0.55], gap="large")
 with target_column:
     section_header(
-        "우선 적용 후보",
-        "선택한 유형에 해당하는 상위 리뷰어입니다.",
+        "이 판단에 해당하는 리뷰어",
+        "참고용 목록입니다 · 처리는 리뷰어 관리에서 진행합니다.",
         "현재 사용 가능",
     )
     st.dataframe(
@@ -117,15 +213,13 @@ with target_column:
         width="stretch",
         column_config={
             "순위": st.column_config.NumberColumn(format="%d위"),
-            "약화 점수": st.column_config.NumberColumn(format="%.4f"),
-            "중단 점수": st.column_config.NumberColumn(format="%.4f"),
             "최근 활동 월": st.column_config.NumberColumn(format="%.0f개월"),
             "최근 리뷰 공백": st.column_config.NumberColumn(format="%.0f일"),
         },
     )
 with mix_column:
-    section_header("유형별 규모", "현재 규칙 분류 결과")
-    signal_bars([(str(label), int(value)) for label, value in type_counts.items()])
+    section_header("판단별 규모", "현재 관리자 판단 분포")
+    signal_bars([(str(label), int(value)) for label, value in decision_counts.items()])
 
 section_header(
     "캠페인 실행과 성과 추적",

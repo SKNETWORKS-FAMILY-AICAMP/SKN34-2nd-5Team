@@ -217,6 +217,56 @@ CSS = """
 .rr-badge--excluded { color: #69716D; background: #ECEFEC; }
 .rr-badge--critical { color: var(--rr-critical); background: #F7E8E5; }
 
+.rr-playbook-card {
+  background: #FFFFFF;
+  border: 1px solid var(--rr-line);
+  border-radius: 12px;
+  padding: 1.2rem 1.4rem;
+  margin-bottom: .8rem;
+}
+.rr-playbook-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.rr-playbook-tile {
+  background: var(--rr-soft);
+  border-radius: 10px;
+  padding: .8rem .9rem;
+}
+.rr-playbook-tile-label { font-size: .68rem; color: var(--rr-muted); margin-bottom: 4px; }
+.rr-playbook-tile-value { font-size: .82rem; }
+.rr-playbook-substrategy {
+  background: #F7E8E5;
+  border-radius: 10px;
+  padding: .8rem .9rem;
+  margin-bottom: 10px;
+}
+.rr-playbook-substrategy-label { font-size: .68rem; color: var(--rr-critical); margin-bottom: 4px; }
+.rr-playbook-substrategy-value { font-size: .82rem; color: var(--rr-critical); }
+.rr-playbook-substrategy--empty { background: var(--rr-soft); }
+.rr-playbook-substrategy--empty .rr-playbook-substrategy-label,
+.rr-playbook-substrategy--empty .rr-playbook-substrategy-value { color: var(--rr-muted); }
+
+.rr-playbook-model-hint {
+  background: #FAEFD9;
+  color: var(--rr-focus);
+  border-radius: 10px;
+  padding: .7rem 1rem;
+  font-size: .74rem;
+  margin-bottom: .6rem;
+}
+.rr-playbook-warn {
+  background: #FAEFD9;
+  color: var(--rr-focus);
+  border-radius: 10px;
+  padding: .8rem 1rem;
+  font-size: .76rem;
+  line-height: 1.55;
+  margin-bottom: 1rem;
+}
+
 .rr-brief {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(260px, .6fr);

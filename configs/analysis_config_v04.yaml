@@ -1,0 +1,43 @@
+project:
+  name: yelp-reviewer-retention
+  cohort_version: v04
+  random_state: 42
+
+business_scope:
+  decision: DEC-007
+  scope: Restaurants + selected_culinary_visit
+  expected_business_count: 58156
+  expected_review_count: 4950264
+
+cohort:
+  minimum_selection_year: 2010
+  validation_selection_year: 2017
+  test_selection_year: 2018
+  minimum_review_count: 10
+  minimum_active_months: 3
+  require_second_half_review: false
+
+time_structure:
+  comparison_year_offset: -1
+  selection_year_offset: 0
+  target_year_offset: 1
+  feature_cutoff: selection_year_end
+
+retention_state:
+  retained_min_review_count: 10
+  retained_min_active_months: 3
+  stopped_review_count: 0
+  retained_class: 0
+  weakened_class: 1
+  stopped_class: 2
+
+features:
+  feature_set: activity+interval+business
+  input_feature_count: 43
+  zero_baseline_counts_are_valid: true
+  undefined_ratios_are_missing: true
+  infinite_values_allowed: false
+
+outputs:
+  cohort: data/interim/rolling/culinary_rolling_cohort_master_v04.parquet
+  modeling_dataset: data/processed/modeling_dataset_rolling_v04.parquet

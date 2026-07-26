@@ -99,3 +99,5 @@ desktop.ini
 *.7z
 *.tar
 *.tar.gz
+
+app_data_prototype/

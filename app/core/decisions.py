@@ -2,9 +2,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import streamlit as st
 
+if TYPE_CHECKING:
+    import pandas as pd
+
+
+UNDECIDED_LABEL = "미검토"
 
 _STORE_PATH = Path(__file__).resolve().parents[1] / ".runtime_state" / "reviewer_decisions.json"
 
@@ -50,3 +56,16 @@ def cancel_decision(user_id: str) -> None:
     if user_id in decisions:
         del decisions[user_id]
         _save_to_disk(decisions)
+
+
+def with_manager_decisions(profiles: "pd.DataFrame") -> "pd.DataFrame":
+    """`profiles`에 `manager_decision` 컬럼을 덧붙인 사본을 반환한다.
+
+    판단이 없는 리뷰어는 `UNDECIDED_LABEL`("미검토")로 채운다.
+    """
+    decisions = get_decisions()
+    enriched = profiles.copy()
+    enriched["manager_decision"] = (
+        enriched["user_id"].astype(str).map(decisions).fillna(UNDECIDED_LABEL)
+    )
+    return enriched
