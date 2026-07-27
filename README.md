@@ -332,7 +332,7 @@ SKN34-2nd-5Team/
 | v04 모델 검증 | ✅ 완료 | 5-Fold, Test, 혼동행렬, Top-K |
 | v04 데이터 계약·기본 연결 승인 | ✅ 완료 | DEC-010·DEC-011 팀 승인(2026-07-27), Streamlit 기본 연결 v04로 전환 |
 | Streamlit 화면 재설계 | 🔄 다음 단계 | 데이터는 v04, 레이아웃·인터랙션 재설계 진행 |
-| MySQL 운영 적재 | 🟣 고도화 예정 | ERD, 배치, 판단·감사 이력 |
+| MySQL 운영 적재 | 🟡 구현 완료·로컬 적재 대기 | v04 ERD, DDL, 실데이터 로더, 검증 SQL |
 | CRM 실행 연동 | 🟣 외부 연동 필요 | 채널, 동의, 캠페인 결과 |
 | 개입 효과 검증 | 🟣 데이터 필요 | 재참여·성과 데이터 축적 |
 
@@ -346,6 +346,7 @@ SKN34-2nd-5Team/
 | [PROJECT_REQUIREMENTS](docs/PROJECT_REQUIREMENTS.md) | 제품·분석 요구사항 |
 | [BUSINESS_SCENARIOS](docs/BUSINESS_SCENARIOS.md) | 운영 시나리오 |
 | [STREAMLIT_DATA_CONTRACT](docs/STREAMLIT_DATA_CONTRACT.md) | 화면 데이터 계약 |
+| [DATABASE](database/README.md) | v04 MySQL ERD·DDL·실데이터 적재·검증 |
 | [STREAMLIT_REDESIGN_BRIEF](docs/ui/STREAMLIT_REDESIGN_BRIEF.md) | UI 설계 원칙 |
 | [DEC-008](docs/decisions/DEC-008_retention_state_definition.md) | 유지·약화·중단 정의 |
 | [DEC-010](docs/decisions/DEC-010_v04_cohort_time_structure.md) | v04 코호트·시간 구조 |

@@ -1,0 +1,25 @@
+CREATE TABLE IF NOT EXISTS model_versions (
+    model_version VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    model_name VARCHAR(128) NOT NULL,
+    model_type VARCHAR(64) NOT NULL,
+    problem_type VARCHAR(64) NOT NULL,
+    feature_set VARCHAR(128) NOT NULL,
+    feature_count SMALLINT UNSIGNED NOT NULL,
+    test_selection_year SMALLINT UNSIGNED NOT NULL,
+    test_target_year SMALLINT UNSIGNED NOT NULL,
+    test_samples INT UNSIGNED NOT NULL,
+    priority_target_rate DECIMAL(6,5) NOT NULL,
+    model_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    python_version VARCHAR(32) NULL,
+    sklearn_version VARCHAR(32) NULL,
+    pandas_version VARCHAR(32) NULL,
+    model_parameters JSON NOT NULL,
+    decision_thresholds JSON NOT NULL,
+    metadata_json JSON NOT NULL,
+    loaded_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (model_version),
+    UNIQUE KEY uq_model_versions_sha256 (model_sha256),
+    CONSTRAINT chk_model_versions_feature_count CHECK (feature_count > 0),
+    CONSTRAINT chk_model_versions_target_rate
+        CHECK (priority_target_rate > 0 AND priority_target_rate <= 1)
+) ENGINE=InnoDB;
