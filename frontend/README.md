@@ -1,16 +1,787 @@
-# React + Vite
+# Yelp Reviewer Retention Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Yelp 파워 리뷰어의 활동 감소와 이탈 위험을 확인하기 위한 React 기반 프론트엔드입니다.
 
-Currently, two official plugins are available:
+현재 단계에서는 실제 서버 및 데이터베이스와 연결하지 않고, 데모 데이터를 사용하여 화면과 기능을 구현하고 있습니다.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+향후 FastAPI 및 MySQL과 연결하여 실제 데이터 기반 서비스로 확장할 예정입니다.
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 1. 프로젝트 개요
 
-## Expanding the ESLint configuration
+이 프로젝트는 Yelp의 리뷰 활동 데이터를 활용하여 활동이 감소하거나 중단될 가능성이 있는 파워 리뷰어를 탐색하고, 관리 우선순위를 제공하는 것을 목표로 합니다.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+주요 기능은 다음과 같습니다.
+
+- 리뷰어 활동 현황 확인
+- 관리 우선순위 리뷰어 목록 확인
+- 리뷰어별 상세 활동 분석
+- 리텐션 전략 추천
+- 지역별 활동 위험 분석
+- 모델 성능 및 신뢰도 확인
+
+> 화면에 표시되는 `risk_score`는 실제 이탈 확률이 아니라, 리뷰어 관리 우선순위를 나타내기 위한 운영 점수입니다.
+
+---
+
+## 2. 기술 스택
+
+### Frontend
+
+- React
+- Vite
+- JavaScript
+- Tailwind CSS
+- React Router
+- Recharts
+
+### 향후 연결 예정
+
+- FastAPI
+- MySQL
+- 머신러닝 모델 API
+
+---
+
+## 3. 프로젝트 폴더 위치
+
+React 프론트엔드는 프로젝트 최상위의 `frontend` 폴더에 있습니다.
+
+```text
+SKN34-2ND-5TEAM/
+├─ app/                     # 기존 Streamlit 애플리케이션
+├─ frontend/                # React 프론트엔드
+│  ├─ public/
+│  ├─ src/
+│  ├─ package.json
+│  ├─ package-lock.json
+│  ├─ vite.config.js
+│  └─ README.md
+├─ docs/
+├─ notebooks/
+├─ reports/
+├─ requirements.txt
+└─ README.md
+```
+
+React 코드는 `app` 폴더 안이 아니라, 프로젝트 최상위의 `frontend` 폴더에서 실행합니다.
+
+---
+
+## 4. 실행 전 준비
+
+React 프론트엔드를 실행하려면 Node.js가 설치되어 있어야 합니다.
+
+### 권장 실행 환경
+
+- Node.js 24 LTS
+- npm
+
+개발 시 사용한 Node.js 버전은 다음과 같습니다.
+
+```text
+v24.18.0
+```
+
+팀원이 반드시 완전히 같은 버전을 설치해야 하는 것은 아니지만, 가능한 한 Node.js LTS 버전 사용을 권장합니다.
+
+Node.js 설치 후 터미널에서 다음 명령으로 정상 설치 여부를 확인합니다.
+
+```bash
+node -v
+npm -v
+```
+
+정상적으로 설치되었다면 아래와 같이 버전이 출력됩니다.
+
+```text
+v24.18.0
+11.x.x
+```
+
+`node` 또는 `npm` 명령을 찾을 수 없다는 오류가 발생하면 Node.js 설치 후 터미널이나 VS Code를 다시 실행합니다.
+
+---
+
+## 5. 프로젝트 다운로드
+
+GitHub에서 프로젝트를 Clone합니다.
+
+```bash
+git clone 저장소주소
+```
+
+Clone한 프로젝트 폴더로 이동합니다.
+
+```bash
+cd SKN34-2ND-5TEAM
+```
+
+이미 프로젝트를 받은 팀원은 최신 코드를 가져옵니다.
+
+```bash
+git pull
+```
+
+---
+
+## 6. React 설치 및 실행
+
+프로젝트 최상위 폴더에서 React 폴더로 이동합니다.
+
+```bash
+cd frontend
+```
+
+처음 프로젝트를 실행하는 경우 필요한 패키지를 설치합니다.
+
+```bash
+npm install
+```
+
+개발 서버를 실행합니다.
+
+```bash
+npm run dev
+```
+
+정상적으로 실행되면 터미널에 아래와 비슷한 주소가 표시됩니다.
+
+```text
+http://localhost:5173
+```
+
+브라우저에서 다음 주소로 접속합니다.
+
+```text
+http://localhost:5173
+```
+
+---
+
+## 7. 팀원용 전체 실행 순서
+
+처음 실행하는 팀원은 아래 순서대로 진행합니다.
+
+```text
+1. Node.js LTS 설치
+2. GitHub 프로젝트 Clone 또는 Pull
+3. 프로젝트 최상위 폴더에서 frontend 폴더로 이동
+4. npm install 실행
+5. npm run dev 실행
+6. http://localhost:5173 접속
+```
+
+실제 명령어는 다음과 같습니다.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Node.js는 컴퓨터마다 최초 한 번만 설치하면 됩니다.
+
+`npm install`은 프로젝트를 처음 받았거나 `package.json`이 변경되었을 때 실행하면 됩니다.
+
+`npm run dev`는 React 화면을 실행할 때마다 사용합니다.
+
+---
+
+## 8. npm 명령어 설명
+
+### 개발 서버 실행
+
+```bash
+npm run dev
+```
+
+React 개발 서버를 실행합니다.
+
+---
+
+### 패키지 설치
+
+```bash
+npm install
+```
+
+`package.json`과 `package-lock.json`을 기준으로 React, Tailwind CSS, React Router, Recharts 등 프로젝트에서 사용하는 라이브러리를 설치합니다.
+
+설치된 패키지는 다음 폴더에 저장됩니다.
+
+```text
+frontend/node_modules/
+```
+
+`node_modules`는 용량이 크기 때문에 GitHub에 업로드하지 않습니다.
+
+팀원은 프로젝트를 받은 후 `npm install`을 실행하여 동일한 패키지를 설치할 수 있습니다.
+
+---
+
+### 배포용 파일 생성
+
+```bash
+npm run build
+```
+
+배포용 파일을 생성합니다.
+
+생성 결과는 다음 폴더에 저장됩니다.
+
+```text
+frontend/dist/
+```
+
+`dist` 폴더 역시 다시 생성할 수 있으므로 GitHub에 업로드하지 않습니다.
+
+---
+
+### 배포 결과 미리보기
+
+```bash
+npm run preview
+```
+
+`npm run build`로 생성된 배포용 화면을 로컬에서 확인합니다.
+
+---
+
+### 코드 검사
+
+```bash
+npm run lint
+```
+
+코드 작성 규칙 위반이나 오류 가능성을 검사합니다.
+
+---
+
+## 9. 주요 화면
+
+현재 구현된 주요 화면은 다음과 같습니다.
+
+| 경로 | 화면 | 설명 |
+|---|---|---|
+| `/` | 운영 대시보드 | 핵심 지표, 관리 큐, 운영 정책 확인 |
+| `/reviewers` | 리뷰어 관리 | 리뷰어 목록, 검색, 필터, 정렬 |
+| `/reviewers/:reviewerId` | 리뷰어 상세 | 리뷰어 활동 변화 및 관리 판단 |
+| `/playbook` | 리텐션 플레이북 | 리뷰어 유형별 추천 전략 |
+| `/regional` | 지역 분석 | 지역별 리뷰 활동 위험 분석 |
+| `/trust` | Trust Center | 모델 성능, 검증 항목, 로드맵 확인 |
+
+예시:
+
+```text
+http://localhost:5173/
+http://localhost:5173/reviewers
+http://localhost:5173/playbook
+http://localhost:5173/regional
+http://localhost:5173/trust
+```
+
+---
+
+## 10. 주요 기능
+
+### 운영 대시보드
+
+- 전체 리뷰어 현황 확인
+- 우선 관리 대상 확인
+- 위험도별 리뷰어 수 확인
+- 관리 큐 확인
+- 운영 정책 확인
+
+### 리뷰어 관리
+
+- 리뷰어 목록 확인
+- 이름 및 ID 검색
+- 위험도 필터
+- 지역 필터
+- 위험 점수 기준 정렬
+- 리뷰어 상세 페이지 이동
+
+### 리뷰어 상세
+
+- 리뷰어 기본 정보 확인
+- 활동 점수 비교
+- 과거 기간과 최근 기간 비교
+- 주요 위험 근거 확인
+- 관리자의 판단 저장
+- 리뷰 활동 차트 확인
+
+### 리텐션 플레이북
+
+- 위험 유형별 전략 카드 확인
+- 리뷰어 특성에 맞는 전략 확인
+- 조건에 맞는 리뷰어 필터링
+- 우선 적용 대상 확인
+
+### 지역 분석
+
+- 지역별 리뷰어 분포 확인
+- 지역별 위험도 비교
+- 위험 수준별 누적 막대그래프 확인
+- 지역 및 위험 수준 필터
+
+### Trust Center
+
+- Precision 확인
+- Recall 확인
+- Lift 확인
+- 평가 지표 설명
+- 모델 검증 체크리스트
+- 주요 특성 중요도
+- 모델 비교
+- 향후 개발 로드맵
+
+---
+
+## 11. 데이터 사용 방식
+
+현재 React 화면은 실제 API가 아닌 데모 데이터를 사용합니다.
+
+데모 데이터는 일반적으로 다음 위치에서 관리합니다.
+
+```text
+frontend/src/data/
+```
+
+또는 각 페이지 및 컴포넌트 내부에서 임시 데이터로 사용할 수 있습니다.
+
+현재 데이터는 화면 구현과 사용자 흐름 확인을 위한 예시 데이터입니다.
+
+실제 Yelp 데이터나 머신러닝 예측 결과와 연결된 상태가 아닐 수 있습니다.
+
+향후에는 다음 구조로 연결할 예정입니다.
+
+```text
+React
+  ↓ HTTP 요청
+FastAPI
+  ↓
+MySQL / 머신러닝 모델
+```
+
+---
+
+## 12. 관리자 판단 저장
+
+리뷰어 상세 화면에서 저장하는 관리자 판단은 현재 브라우저의 `localStorage`를 사용합니다.
+
+따라서 다음과 같은 특징이 있습니다.
+
+- 현재 사용 중인 브라우저에만 저장됩니다.
+- 다른 컴퓨터와 공유되지 않습니다.
+- 브라우저 데이터를 삭제하면 함께 삭제될 수 있습니다.
+- 실제 데이터베이스에 저장되는 기능은 아닙니다.
+
+향후 FastAPI 및 MySQL 연결 후 서버 저장 방식으로 변경할 예정입니다.
+
+---
+
+## 13. Streamlit과 React 실행
+
+현재 프로젝트에는 기존 Streamlit 애플리케이션과 React 프론트엔드가 함께 존재합니다.
+
+두 프로그램은 서로 다른 터미널에서 각각 실행할 수 있습니다.
+
+### React 실행
+
+프로젝트 최상위에서 다음 명령을 실행합니다.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+React 기본 접속 주소:
+
+```text
+http://localhost:5173
+```
+
+### Streamlit 실행
+
+새로운 터미널을 열고 프로젝트 최상위 폴더에서 실행합니다.
+
+```bash
+python -m streamlit run app/streamlit_app.py
+```
+
+Windows 환경에서 `python` 명령이 작동하지 않는 경우 다음 명령을 사용할 수 있습니다.
+
+```bash
+py -m streamlit run app/streamlit_app.py
+```
+
+Streamlit 기본 접속 주소:
+
+```text
+http://localhost:8501
+```
+
+---
+
+## 14. Python 가상환경 실행
+
+Streamlit을 실행하려면 프로젝트의 Python 가상환경을 활성화해야 할 수 있습니다.
+
+가상환경 폴더명은 다음과 같습니다.
+
+```text
+venv
+```
+
+### PowerShell
+
+```powershell
+.\venv\Scripts\Activate.ps1
+```
+
+### Windows CMD
+
+```cmd
+venv\Scripts\activate
+```
+
+### Git Bash
+
+```bash
+source venv/Scripts/activate
+```
+
+가상환경을 활성화한 후 필요한 Python 패키지를 설치합니다.
+
+```bash
+python -m pip install -r requirements.txt -r requirements-streamlit.txt
+```
+
+---
+
+## 15. GitHub에 포함해야 하는 파일
+
+다음 React 관련 파일은 GitHub에 포함해야 합니다.
+
+```text
+frontend/src/
+frontend/public/
+frontend/package.json
+frontend/package-lock.json
+frontend/vite.config.js
+frontend/eslint.config.js
+frontend/index.html
+frontend/README.md
+frontend/.gitignore
+```
+
+특히 아래 파일은 팀원들이 같은 패키지를 설치하기 위해 반드시 필요합니다.
+
+```text
+frontend/package.json
+frontend/package-lock.json
+```
+
+---
+
+## 16. GitHub에 포함하지 않는 파일
+
+다음 파일과 폴더는 GitHub에 업로드하지 않습니다.
+
+```text
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env
+```
+
+`frontend/.gitignore`에 아래와 같은 설정이 있으면 자동으로 제외됩니다.
+
+```gitignore
+node_modules
+dist
+dist-ssr
+*.local
+```
+
+환경변수 파일을 사용하는 경우 다음 내용도 추가할 수 있습니다.
+
+```gitignore
+.env
+.env.*
+!.env.example
+```
+
+---
+
+## 17. Git 작업 예시
+
+React 작업 내용을 Git에 추가합니다.
+
+```bash
+git add frontend
+```
+
+변경 내용을 확인합니다.
+
+```bash
+git status
+```
+
+커밋합니다.
+
+```bash
+git commit -m "feat: React 프론트엔드 화면 구현"
+```
+
+원격 저장소로 업로드합니다.
+
+```bash
+git push
+```
+
+README만 수정한 경우 다음과 같이 커밋할 수 있습니다.
+
+```bash
+git add frontend/README.md
+git commit -m "docs: 프론트엔드 실행 방법 보완"
+git push
+```
+
+---
+
+## 18. 자주 발생하는 오류
+
+### `npm` 명령을 찾을 수 없는 경우
+
+Node.js가 설치되어 있지 않거나 환경변수가 적용되지 않은 상태입니다.
+
+Node.js LTS 설치 후 VS Code와 터미널을 완전히 종료했다가 다시 실행합니다.
+
+확인 명령어:
+
+```bash
+node -v
+npm -v
+```
+
+---
+
+### `package.json`을 찾을 수 없는 경우
+
+현재 터미널 위치가 `frontend` 폴더가 아닐 가능성이 큽니다.
+
+현재 위치를 확인합니다.
+
+```bash
+pwd
+```
+
+Windows CMD에서는 다음 명령을 사용할 수 있습니다.
+
+```cmd
+cd
+```
+
+프로젝트 최상위 폴더에 있다면 다음 명령으로 이동합니다.
+
+```bash
+cd frontend
+```
+
+그다음 다시 실행합니다.
+
+```bash
+npm install
+npm run dev
+```
+
+---
+
+### `node_modules`가 없는 경우
+
+프로젝트를 처음 받았을 때 정상적으로 발생할 수 있습니다.
+
+다음 명령을 실행합니다.
+
+```bash
+cd frontend
+npm install
+```
+
+---
+
+### Recharts import 오류
+
+다음과 같은 오류가 발생할 수 있습니다.
+
+```text
+Failed to resolve import "recharts"
+```
+
+`frontend` 폴더에서 다음 명령을 실행합니다.
+
+```bash
+npm install recharts
+```
+
+다만 `package.json`과 `package-lock.json`이 최신 상태라면 일반적으로 다음 명령만 실행해도 설치됩니다.
+
+```bash
+npm install
+```
+
+---
+
+### 화면이 이전 코드로 보이는 경우
+
+다음을 확인합니다.
+
+1. 수정한 파일을 저장했는지 확인합니다.
+2. 올바른 프로젝트 폴더를 열었는지 확인합니다.
+3. React 개발 서버를 다시 실행합니다.
+4. 브라우저를 새로고침합니다.
+
+개발 서버 재실행:
+
+```bash
+Ctrl + C
+npm run dev
+```
+
+브라우저 강력 새로고침:
+
+```text
+Ctrl + F5
+```
+
+---
+
+### `npm install` 오류가 계속 발생하는 경우
+
+기존 설치 파일을 삭제한 후 다시 설치합니다.
+
+PowerShell:
+
+```powershell
+Remove-Item -Recurse -Force node_modules
+Remove-Item -Force package-lock.json
+npm install
+```
+
+다만 팀 프로젝트에서는 `package-lock.json`을 삭제하기 전에 팀원과 확인하는 것이 좋습니다.
+
+우선 아래 순서로 시도하는 것을 권장합니다.
+
+```bash
+npm install
+npm run dev
+```
+
+---
+
+### 포트 5173이 이미 사용 중인 경우
+
+Vite가 자동으로 다른 포트를 사용할 수 있습니다.
+
+터미널에 표시되는 실제 접속 주소를 확인합니다.
+
+예시:
+
+```text
+http://localhost:5174
+```
+
+---
+
+## 19. 저장소 위치 주의
+
+Windows에서 동일한 이름의 프로젝트를 여러 위치에 Clone하면 서로 다른 저장소를 수정할 수 있습니다.
+
+현재 작업에 사용하는 저장소 위치는 다음 경로인지 확인합니다.
+
+```text
+C:\Users\playdata2\Documents\GitHub\SKN34-2nd-5Team
+```
+
+다음 경로와는 다른 저장소일 수 있습니다.
+
+```text
+C:\Users\playdata2\SKN34-2nd-5Team
+```
+
+VS Code에서 프로젝트를 열 때 반드시 올바른 폴더를 선택합니다.
+
+---
+
+## 20. 개발 진행 상태
+
+현재 구현된 내용:
+
+- React 프로젝트 생성
+- Vite 개발 환경 설정
+- Tailwind CSS 적용
+- React Router 적용
+- Recharts 적용
+- 운영 대시보드 구현
+- 리뷰어 관리 화면 구현
+- 리뷰어 상세 화면 구현
+- 리텐션 플레이북 구현
+- 지역 분석 화면 구현
+- Trust Center 구현
+- 데모 데이터 적용
+- 관리자 판단 로컬 저장 기능 구현
+
+향후 진행 예정:
+
+- FastAPI 서버 연결
+- MySQL 데이터베이스 연결
+- 실제 Yelp 데이터 연결
+- 머신러닝 예측 결과 연결
+- 사용자 인증 기능
+- 관리자 판단 서버 저장
+- 배포 환경 구성
+- 반응형 화면 개선
+- 테스트 코드 추가
+
+---
+
+## 21. 참고 문서
+
+프로젝트의 상세 실행 및 의존성 관련 문서는 `docs` 폴더에서 확인할 수 있습니다.
+
+```text
+docs/FRONTEND_RUN_GUIDE.md
+docs/FRONTEND_DEPENDENCIES.md
+```
+
+문서 역할:
+
+| 문서 | 내용 |
+|---|---|
+| `frontend/README.md` | React 프론트엔드 소개 및 기본 실행 방법 |
+| `docs/FRONTEND_RUN_GUIDE.md` | 상세 실행 과정 및 오류 해결 |
+| `docs/FRONTEND_DEPENDENCIES.md` | npm 패키지와 의존성 관리 설명 |
+
+---
+
+## 22. 빠른 실행 요약
+
+Node.js가 이미 설치되어 있다면 아래 명령만 실행하면 됩니다.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+브라우저 접속:
+
+```text
+http://localhost:5173
+```
+
+Node.js가 설치되어 있지 않다면 Node.js LTS 버전을 먼저 설치한 후 위 명령을 실행합니다.
