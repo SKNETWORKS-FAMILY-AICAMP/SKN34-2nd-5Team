@@ -18,7 +18,12 @@ from core.components import (
     section_header,
 )
 from core.data import load_app_data
-from core.decisions import apply_decision, cancel_decision, get_decisions
+from core.decisions import (
+    UNDECIDED_LABEL,
+    apply_decision,
+    cancel_decision,
+    get_decision,
+)
 from core.formatters import percent, signed_phrase, signed_tone
 from core.insights import DECISION_STATE_MAP, risk_signals, strategy_for
 
@@ -34,6 +39,9 @@ if selected_user not in set(profiles["user_id"].astype(str)):
 row = profiles.loc[profiles["user_id"].astype(str).eq(selected_user)].iloc[0]
 strategy = strategy_for(row)
 signals = risk_signals(row)
+prior_available = bool(row["prior_activity_available"])
+comparison_unavailable = "전년도 대비 변화율 계산 불가"
+comparison_empty = f"{int(row['comparison_year'])}년 비교 활동 없음"
 
 ordered_ids = st.session_state.get("worklist_ordered_ids") or (
     profiles.sort_values("priority_rank")["user_id"].astype(str).tolist()
@@ -110,6 +118,7 @@ profile_header(
     weakened_score=float(row["weakened_score"]),
     stopped_score=float(row["stopped_score"]),
     selected_for_review=bool(row["crm_target"]),
+    comparison_year=int(row["comparison_year"]),
     selection_year=int(row["selection_year"]),
     target_year=int(row["target_year"]),
 )
@@ -118,53 +127,110 @@ main_column, action_column = st.columns([1.72, 0.58], gap="large")
 with main_column:
     section_header(
         "활동이 이렇게 변했습니다",
-        "선정 기간과 관찰 기간을 같은 기준으로 비교했습니다.",
+        (
+            f"{int(row['comparison_year'])}년 비교 활동과 "
+            f"{int(row['selection_year'])}년 선정·피처 마감 활동을 비교했습니다."
+        ),
         "현재 사용 가능",
     )
     change_story(
         [
             {
                 "label": "리뷰 수",
-                "before": f"{int(row['baseline_review_count'])}건",
-                "after": f"{int(row['recent_review_count'])}건",
-                "delta": signed_phrase(
-                    row["review_count_decline_rate"], percent,
-                    when_positive="감소", when_negative="증가",
+                "before": (
+                    f"{int(row['baseline_review_count'])}건"
+                    if prior_available
+                    else comparison_empty
                 ),
-                "delta_tone": signed_tone(row["review_count_decline_rate"]),
+                "after": f"{int(row['recent_review_count'])}건",
+                "delta": (
+                    signed_phrase(
+                        row["review_count_decline_rate"],
+                        percent,
+                        when_positive="감소",
+                        when_negative="증가",
+                    )
+                    if prior_available
+                    else comparison_unavailable
+                ),
+                "delta_tone": (
+                    signed_tone(row["review_count_decline_rate"])
+                    if prior_available
+                    else "muted"
+                ),
                 "icon": "rate_review",
             },
             {
                 "label": "활동 월",
-                "before": f"{int(row['baseline_active_months'])}개월",
-                "after": f"{int(row['recent_active_months'])}개월",
-                "delta": signed_phrase(
-                    row["active_month_decline_rate"], percent,
-                    when_positive="감소", when_negative="증가",
+                "before": (
+                    f"{int(row['baseline_active_months'])}개월"
+                    if prior_available
+                    else comparison_empty
                 ),
-                "delta_tone": signed_tone(row["active_month_decline_rate"]),
+                "after": f"{int(row['recent_active_months'])}개월",
+                "delta": (
+                    signed_phrase(
+                        row["active_month_decline_rate"],
+                        percent,
+                        when_positive="감소",
+                        when_negative="증가",
+                    )
+                    if prior_available
+                    else comparison_unavailable
+                ),
+                "delta_tone": (
+                    signed_tone(row["active_month_decline_rate"])
+                    if prior_available
+                    else "muted"
+                ),
                 "icon": "calendar_month",
             },
             {
                 "label": "고유 음식점",
-                "before": f"{int(row['baseline_unique_business_count'])}곳",
-                "after": f"{int(row['recent_unique_business_count'])}곳",
-                "delta": signed_phrase(
-                    row["unique_business_decline_rate"], percent,
-                    when_positive="감소", when_negative="증가",
+                "before": (
+                    f"{int(row['baseline_unique_business_count'])}곳"
+                    if prior_available
+                    else comparison_empty
                 ),
-                "delta_tone": signed_tone(row["unique_business_decline_rate"]),
+                "after": f"{int(row['recent_unique_business_count'])}곳",
+                "delta": (
+                    signed_phrase(
+                        row["unique_business_decline_rate"],
+                        percent,
+                        when_positive="감소",
+                        when_negative="증가",
+                    )
+                    if prior_available
+                    else comparison_unavailable
+                ),
+                "delta_tone": (
+                    signed_tone(row["unique_business_decline_rate"])
+                    if prior_available
+                    else "muted"
+                ),
                 "icon": "location_on",
             },
             {
                 "label": "리뷰 공백",
-                "before": f"{float(row['baseline_recency_days']):.0f}일",
+                "before": (
+                    f"{float(row['baseline_recency_days']):.0f}일"
+                    if prior_available
+                    else comparison_empty
+                ),
                 "after": f"{float(row['recent_recency_days']):.0f}일",
-                "delta": f"{float(row['recency_increase_days']):+.0f}일",
+                "delta": (
+                    f"{float(row['recency_increase_days']):+.0f}일"
+                    if prior_available
+                    else comparison_unavailable
+                ),
                 "delta_tone": (
-                    "positive"
-                    if float(row["recency_increase_days"]) < 0
-                    else "warning"
+                    (
+                        "positive"
+                        if float(row["recency_increase_days"]) < 0
+                        else "warning"
+                    )
+                    if prior_available
+                    else "muted"
                 ),
                 "icon": "hourglass_empty",
             },
@@ -247,9 +313,15 @@ with main_column:
         with truth_cols[0]:
             st.metric("실제 상태", str(row.get("retention_state_label", "—")))
         with truth_cols[1]:
-            st.metric("타깃 연도 리뷰", f"{int(row.get('target_review_count', 0)):,}건")
+            st.metric(
+                f"{int(row['target_year'])}년 리뷰",
+                f"{int(row.get('target_review_count', 0)):,}건",
+            )
         with truth_cols[2]:
-            st.metric("타깃 연도 활동 월", f"{int(row.get('target_active_months', 0))}개월")
+            st.metric(
+                f"{int(row['target_year'])}년 활동 월",
+                f"{int(row.get('target_active_months', 0))}개월",
+            )
     elif detail_view == "사후 검증":
         empty_state(
             "사후 검증 결과가 숨겨져 있습니다",
@@ -268,10 +340,11 @@ with action_column:
         ],
     )
 
-    decisions = get_decisions()
     user_id_str = str(row["user_id"])
+    sample_id_str = str(row["sample_id"])
+    model_version = str(row["model_version"])
     decision_options = ["리뷰 다시 시작 유도", "리뷰 활동 늘리기", "변화 지켜보기", "이번엔 제외"]
-    existing_decision = decisions.get(user_id_str)
+    existing_decision = get_decision(model_version, sample_id_str)
     if existing_decision not in decision_options:
         existing_decision = None
     recommended_decision = DECISION_STATE_MAP.get(
@@ -291,7 +364,7 @@ with action_column:
                 if st.button(
                     "취소", key="cancel_decision", icon=":material/close:"
                 ):
-                    cancel_decision(user_id_str)
+                    cancel_decision(model_version, sample_id_str)
                     st.toast("판단을 취소했습니다.", icon=":material/backspace:")
                     st.rerun()
         else:
@@ -321,7 +394,7 @@ with action_column:
             if manager_decision is None:
                 st.toast("검토 결과를 먼저 선택하세요.", icon=":material/error:")
             else:
-                apply_decision(user_id_str, manager_decision)
+                apply_decision(model_version, sample_id_str, manager_decision)
                 st.toast(
                     f"{manager_decision}으로 분류했습니다.",
                     icon=":material/check_circle:",
@@ -351,7 +424,18 @@ with action_column:
         width="stretch",
         key="open_playbook",
     ):
-        st.session_state["playbook_risk_type"] = strategy["risk_type"]
+        st.session_state["playbook_context"] = {
+            "sample_id": sample_id_str,
+            "user_id": user_id_str,
+            "manager_decision": existing_decision or UNDECIDED_LABEL,
+            "risk_type": str(row["risk_type"]),
+            "model_judgment": str(row["model_judgment"]),
+            "priority_rank": int(row["priority_rank"]),
+            "priority_top_percent": float(row["priority_top_percent"]),
+            "priority_score": float(row["priority_score"]),
+            "selected_for_crm": bool(row["crm_target"]),
+        }
+        st.session_state["playbook_view_mode"] = "현재 리뷰어에게 추천"
         st.switch_page("views/playbook.py")
     future_integration(
         "CRM 캠페인 배정",

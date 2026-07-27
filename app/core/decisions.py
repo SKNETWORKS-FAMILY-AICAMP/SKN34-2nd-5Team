@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 
 UNDECIDED_LABEL = "미검토"
+KEY_SEPARATOR = "::"
 
 _STORE_PATH = Path(__file__).resolve().parents[1] / ".runtime_state" / "reviewer_decisions.json"
 
@@ -45,16 +46,25 @@ def get_decisions() -> dict[str, str]:
     return st.session_state["reviewer_decisions"]
 
 
-def apply_decision(user_id: str, decision: str) -> None:
+def decision_key(model_version: str, sample_id: str) -> str:
+    return f"{model_version}{KEY_SEPARATOR}{sample_id}"
+
+
+def get_decision(model_version: str, sample_id: str) -> str | None:
+    return get_decisions().get(decision_key(model_version, sample_id))
+
+
+def apply_decision(model_version: str, sample_id: str, decision: str) -> None:
     decisions = get_decisions()
-    decisions[user_id] = decision
+    decisions[decision_key(model_version, sample_id)] = decision
     _save_to_disk(decisions)
 
 
-def cancel_decision(user_id: str) -> None:
+def cancel_decision(model_version: str, sample_id: str) -> None:
     decisions = get_decisions()
-    if user_id in decisions:
-        del decisions[user_id]
+    key = decision_key(model_version, sample_id)
+    if key in decisions:
+        del decisions[key]
         _save_to_disk(decisions)
 
 
@@ -65,7 +75,10 @@ def with_manager_decisions(profiles: "pd.DataFrame") -> "pd.DataFrame":
     """
     decisions = get_decisions()
     enriched = profiles.copy()
-    enriched["manager_decision"] = (
-        enriched["user_id"].astype(str).map(decisions).fillna(UNDECIDED_LABEL)
+    keys = (
+        enriched["model_version"].astype(str)
+        + KEY_SEPARATOR
+        + enriched["sample_id"].astype(str)
     )
+    enriched["manager_decision"] = keys.map(decisions).fillna(UNDECIDED_LABEL)
     return enriched

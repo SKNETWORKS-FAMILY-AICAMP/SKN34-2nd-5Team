@@ -133,7 +133,7 @@ def profile_activity(row: pd.Series) -> go.Figure:
     figure = go.Figure(
         [
             go.Bar(
-                name="선정 기간",
+                name="비교 연도",
                 x=labels,
                 y=baseline,
                 marker_color="#AEB9BF",
@@ -141,7 +141,7 @@ def profile_activity(row: pd.Series) -> go.Figure:
                 textposition="outside",
             ),
             go.Bar(
-                name="최근 관찰 기간",
+                name="선정·피처 마감 연도",
                 x=labels,
                 y=recent,
                 marker_color=COLORS["critical"],
@@ -187,8 +187,8 @@ def interval_comparison(row: pd.Series) -> go.Figure:
             continue
         rows.extend(
             [
-                {"지표": label, "기간": "선정 기간", "일수": baseline},
-                {"지표": label, "기간": "최근 관찰 기간", "일수": recent},
+                {"지표": label, "기간": "비교 연도", "일수": baseline},
+                {"지표": label, "기간": "선정·피처 마감 연도", "일수": recent},
             ]
         )
     data = pd.DataFrame(rows)
@@ -208,8 +208,8 @@ def interval_comparison(row: pd.Series) -> go.Figure:
         barmode="group",
         text="일수",
         color_discrete_map={
-            "선정 기간": "#AEB9BF",
-            "최근 관찰 기간": COLORS["primary"],
+            "비교 연도": "#AEB9BF",
+            "선정·피처 마감 연도": COLORS["primary"],
         },
     )
     figure.update_traces(texttemplate="%{text:.0f}일", textposition="outside")
@@ -286,25 +286,40 @@ def model_comparison(frame: pd.DataFrame) -> go.Figure:
     return polish(figure, 430)
 
 
+FEATURE_LABELS = {
+    "recent_recency_days": "최근 마지막 리뷰 공백",
+    "recent_mean_interval_days": "최근 평균 작성 간격",
+    "recent_active_months": "선정 연도 활동 월",
+    "baseline_active_months": "비교 연도 활동 월",
+    "recent_new_vs_baseline_count": "전년도에 없던 신규 음식점 수",
+    "recent_max_interval_days": "최근 최대 작성 간격",
+    "recent_new_business_rate": "최근 신규 음식점 비율",
+    "baseline_max_interval_days": "비교 연도 최대 작성 간격",
+    "baseline_new_business_rate": "비교 연도 신규 음식점 비율",
+    "baseline_reviews_per_active_month": "비교 연도 활동 월당 리뷰",
+    "recent_revisited_business_count": "최근 재방문 음식점 수",
+    "baseline_recency_days": "비교 연도 마지막 리뷰 공백",
+}
+
+
 def feature_importance(frame: pd.DataFrame, top_n: int = 12) -> go.Figure:
     data = frame.nlargest(top_n, "importance_mean").sort_values("importance_mean")
+    data = data.assign(
+        feature_label=data["feature"].map(FEATURE_LABELS).fillna(data["feature"])
+    )
     figure = px.bar(
         data,
         x="importance_mean",
-        y="feature",
+        y="feature_label",
         orientation="h",
         color="feature_group",
         error_x="importance_std" if "importance_std" in data.columns else None,
         color_discrete_map=GROUP_COLORS,
-        hover_data={
-            "importance_share_pct": ":.1f"
-        }
-        if "importance_share_pct" in data.columns
-        else None,
+        hover_data={"feature": True, "importance_mean": ":.4f"},
     )
     figure.update_layout(
         title="최종 모델 핵심 피처",
-        xaxis_title="Permutation importance · PR-AUC 감소량",
+        xaxis_title="단일 피처 Permutation · Macro PR-AUC 감소량",
         yaxis_title="",
     )
     return polish(figure, 480)
@@ -329,8 +344,8 @@ def group_importance(frame: pd.DataFrame) -> go.Figure:
         color_discrete_map=GROUP_COLORS,
     )
     figure.update_layout(
-        title="그룹 제거 시 PR-AUC 감소",
-        xaxis_title="PR-AUC 감소량",
+        title="그룹 공동 Permutation 시 Macro PR-AUC 감소량",
+        xaxis_title="Macro PR-AUC 감소량",
         yaxis_title="",
         showlegend=False,
     )
@@ -424,9 +439,10 @@ def multiclass_top_k_curve(frame: pd.DataFrame) -> go.Figure:
 
 
 def confusion_heatmap(frame: pd.DataFrame) -> go.Figure:
-    subset = frame.loc[
-        frame["split"].eq("final_test") & frame["decision_policy"].eq("threshold")
-    ]
+    mask = frame["split"].eq("final_test")
+    if "decision_policy" in frame.columns:
+        mask &= frame["decision_policy"].eq("threshold")
+    subset = frame.loc[mask]
     order = ["retained", "weakened", "stopped"]
     pivot = (
         subset.pivot(index="actual_state", columns="predicted_state", values="users")

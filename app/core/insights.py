@@ -174,6 +174,11 @@ def classify_risk_type(row: pd.Series) -> str:
 
 def risk_signals(row: pd.Series) -> list[Signal]:
     candidates: list[Signal] = []
+    prior_available = bool(_value(row, "prior_activity_available", 1))
+    comparison_year = int(_value(row, "comparison_year", 2017))
+    no_comparison = (
+        f"{comparison_year}년 비교 활동 없음 · 전년도 대비 변화율 계산 불가"
+    )
     recent_months = _value(row, "recent_active_months", 0)
     month_decline = _value(row, "active_month_decline_rate")
     review_decline = _value(row, "review_count_decline_rate")
@@ -182,20 +187,53 @@ def risk_signals(row: pd.Series) -> list[Signal]:
     recency_increase = _value(row, "recency_increase_days")
     interval_increase = _value(row, "mean_interval_increase_days")
     business_decline = _value(row, "unique_business_decline_rate")
+    month_evidence = (
+        f"최근 활동 {recent_months:.0f}개월 · 이전 대비 "
+        f"{signed_phrase(month_decline, percent, when_positive='감소', when_negative='증가')}"
+        if prior_available
+        else f"최근 활동 {recent_months:.0f}개월 · {no_comparison}"
+    )
+    review_evidence = (
+        f"최근 {recent_reviews:.0f}건 · 이전 대비 "
+        f"{signed_phrase(review_decline, percent, when_positive='감소', when_negative='증가')}"
+        if prior_available
+        else f"최근 {recent_reviews:.0f}건 · {no_comparison}"
+    )
+    recency_comparison = (
+        "이전 기간보다 "
+        + signed_phrase(
+            recency_increase,
+            days,
+            when_positive="증가",
+            when_negative="감소",
+        )
+        if prior_available
+        else f"{comparison_year}년 비교 활동 없음"
+    )
+    interval_evidence = (
+        "평균 리뷰 간격이 "
+        f"{signed_phrase(interval_increase, days, when_positive='증가', when_negative='감소')}"
+        if prior_available
+        else f"{comparison_year}년 비교 활동 없음 · 최근 작성 간격만 확인 가능"
+    )
+    business_evidence = (
+        "고유 음식점 수가 "
+        f"{signed_phrase(business_decline, percent, when_positive='감소', when_negative='증가')}"
+        if prior_available
+        else no_comparison
+    )
 
     candidates.extend(
         [
             Signal(
                 "최근 활동 지속성",
-                f"최근 활동 {recent_months:.0f}개월 · 이전 대비 "
-                f"{signed_phrase(month_decline, percent, when_positive='감소', when_negative='증가')}",
+                month_evidence,
                 max(month_decline, (6 - recent_months) / 6),
                 "활동량",
             ),
             Signal(
                 "리뷰 생산량",
-                f"최근 {recent_reviews:.0f}건 · 이전 대비 "
-                f"{signed_phrase(review_decline, percent, when_positive='감소', when_negative='증가')}",
+                review_evidence,
                 review_decline,
                 "활동량",
             ),
@@ -204,28 +242,20 @@ def risk_signals(row: pd.Series) -> list[Signal]:
                 " · ".join(
                     [f"최근 공백 {days(recency)}"]
                     + (["150일 기준선 초과"] if recency >= 150 else [])
-                    + [
-                        "이전 기간보다 "
-                        + signed_phrase(
-                            recency_increase, days,
-                            when_positive='증가', when_negative='감소',
-                        )
-                    ]
+                    + [recency_comparison]
                 ),
                 max(recency / 150, recency_increase / 90),
                 "작성 간격",
             ),
             Signal(
                 "평균 작성 간격",
-                "평균 리뷰 간격이 "
-                f"{signed_phrase(interval_increase, days, when_positive='증가', when_negative='감소')}",
+                interval_evidence,
                 interval_increase / 60,
                 "작성 간격",
             ),
             Signal(
                 "음식점 탐색량",
-                "고유 음식점 수가 "
-                f"{signed_phrase(business_decline, percent, when_positive='감소', when_negative='증가')}",
+                business_evidence,
                 business_decline,
                 "음식점 탐색",
             ),

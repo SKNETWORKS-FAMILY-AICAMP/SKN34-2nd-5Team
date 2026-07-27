@@ -50,7 +50,7 @@ if view == "성능과 Top-K":
     if multiclass_validation.empty:
         empty_state(
             "Test 성능",
-            "v03 검증 결과 파일이 연결되면 3클래스 성능을 표시합니다.",
+            f"{data.model_version} 검증 결과 파일이 연결되면 3클래스 성능을 표시합니다.",
             "데이터 연결 필요",
         )
     else:
@@ -58,8 +58,11 @@ if view == "성능과 Top-K":
             multiclass_validation["record_type"].eq("final_test")
         ].iloc[0]
         section_header(
-            "v03 3클래스 모델 성능",
-            "선정 2017 · 관찰 2018 · 검증 2019 Test 결과입니다.",
+            f"{data.model_version} 3클래스 모델 성능",
+            (
+                f"비교 {data.comparison_year} · 선정·피처 마감 "
+                f"{data.selection_year} · 실제 상태 검증 {data.target_year} 결과입니다."
+            ),
             "현재 사용 가능",
         )
         metric_strip(
@@ -94,7 +97,7 @@ if view == "성능과 Top-K":
     if data.multiclass_top_k.empty:
         empty_state(
             "통합 Top-K 성능",
-            "v03 Top-K 결과 파일이 연결되면 정책별 Recall과 Lift를 표시합니다.",
+            f"{data.model_version} Top-K 결과 파일이 연결되면 정책별 Recall과 Lift를 표시합니다.",
             "데이터 연결 필요",
         )
     else:
@@ -140,10 +143,101 @@ if view == "성능과 Top-K":
             },
         )
 
-    with st.expander("v02 비교 기준 (이진 이탈 모델, 참고용)", icon=":material/history:"):
+    if not data.multiclass_validation_v03.empty:
+        with st.expander(
+            "v03 비교 기준 (3클래스 이전 코호트, 참고용)",
+            expanded=False,
+            icon=":material/history:",
+        ):
+            st.caption(
+                "v03은 2017년 후보 선정 → 2018년 활동 관찰 → 2019년 실제 상태 "
+                "검증 구조를 사용한 이전 3클래스 모델입니다. "
+                f"{data.model_version} 운영 화면의 기본 수치로 혼합하지 않습니다."
+            )
+            v03_final = data.multiclass_validation_v03.loc[
+                data.multiclass_validation_v03["record_type"].eq("final_test")
+            ].iloc[0]
+            metric_strip(
+                [
+                    (
+                        "Macro F1",
+                        f"{float(v03_final['macro_f1']):.3f}",
+                        "v03 Test · 3클래스 평균 F1",
+                    ),
+                    (
+                        "Macro PR-AUC",
+                        f"{float(v03_final['macro_pr_auc']):.3f}",
+                        "v03 Test · 불균형 데이터 핵심 지표",
+                    ),
+                    (
+                        "Macro ROC-AUC",
+                        f"{float(v03_final['macro_ovr_roc_auc']):.3f}",
+                        "v03 Test · 전체 순위 구분 성능",
+                    ),
+                    (
+                        "Test 표본",
+                        f"{int(v03_final['validation_samples']):,}명",
+                        "v03 이전 코호트",
+                    ),
+                ]
+            )
+            st.plotly_chart(
+                multiclass_class_performance(data.multiclass_validation_v03),
+                width="stretch",
+                key="trust_class_performance_v03",
+            )
+            if not data.multiclass_confusion_v03.empty:
+                st.plotly_chart(
+                    confusion_heatmap(data.multiclass_confusion_v03),
+                    width="stretch",
+                    key="trust_confusion_heatmap_v03",
+                    config={"displayModeBar": False, "responsive": True},
+                )
+            if not data.multiclass_top_k_v03.empty:
+                st.plotly_chart(
+                    multiclass_top_k_curve(data.multiclass_top_k_v03),
+                    width="stretch",
+                    key="trust_top_k_curve_v03",
+                )
+                v03_top20 = data.multiclass_top_k_v03.loc[
+                    data.multiclass_top_k_v03["split"].eq("final_test")
+                    & data.multiclass_top_k_v03["ranking"].eq("unified")
+                    & data.multiclass_top_k_v03["target_rate"].eq(0.20)
+                ].iloc[0]
+                metric_strip(
+                    [
+                        ("상위 20%", f"{int(v03_top20['target_users']):,}명", "v03 검토 인원"),
+                        (
+                            "지위 상실 포착",
+                            f"{int(v03_top20['status_loss_captured']):,}명",
+                            "약화·중단 실제 결과",
+                        ),
+                        (
+                            "Precision",
+                            f"{float(v03_top20['status_loss_precision']):.2%}",
+                            "v03 상위 20%",
+                        ),
+                        (
+                            "Recall",
+                            f"{float(v03_top20['status_loss_recall']):.2%}",
+                            "v03 상위 20%",
+                        ),
+                        (
+                            "Lift",
+                            f"{float(v03_top20['status_loss_lift']):.2f}배",
+                            "v03 무작위 대비",
+                        ),
+                    ]
+                )
+
+    with st.expander(
+        "v02 비교 기준 (이진 이탈 모델, 참고용)",
+        expanded=False,
+        icon=":material/history:",
+    ):
         st.caption(
             "v02는 완전 이탈(churn)만을 이진 분류한 이전 세대 모델입니다. "
-            "v03 운영 화면의 기본 수치로 혼합하지 않습니다."
+            f"{data.model_version} 운영 화면의 기본 수치로 혼합하지 않습니다."
         )
         validation_test = data.validation_test
         if not validation_test.empty:
@@ -213,14 +307,15 @@ elif view == "시간 분할·누수 방지":
         "현재 사용 가능",
     )
     timeline_specs = [
-        ("2017", "선정 기준", "분석 대상 정의"),
-        ("2018", "관찰 기간", "행동 피처 생성"),
-        ("2019", "검증 기간", "실제 결과 확인"),
+        (str(data.comparison_year), "비교 연도", "이전 활동 패턴 비교"),
+        (
+            str(data.selection_year),
+            "후보 선정·피처 마감",
+            "파워 리뷰어 선정과 모델 입력 생성",
+        ),
+        (str(data.target_year), "실제 상태 검증", "유지·약화·중단 결과 확인"),
     ]
     timeline_band(timeline_specs)
-
-    if not data.split_summary.empty:
-        st.dataframe(data.split_summary, hide_index=True, width="stretch")
 
     section_header("누수 방지와 해석 원칙")
     capability_grid(
@@ -233,12 +328,16 @@ elif view == "시간 분할·누수 방지":
     )
 
 elif view == "피처 근거":
-    is_v03_importance = "v03" in data.sources.get("feature_importance", "")
+    is_v04_importance = "v04" in data.sources.get("feature_importance", "")
     feature_column, group_column = st.columns([1.2, 0.8], gap="large")
     with feature_column:
         section_header(
-            "피처 중요도" + (" · v03" if is_v03_importance else ""),
-            "최종 모델 전체의 주요 판단 근거입니다. Permutation Importance · macro PR-AUC 감소량입니다.",
+            "피처 중요도" + (f" · {data.model_version}" if is_v04_importance else ""),
+            (
+                f"최종 Test {int(data.model_metadata.get('test_samples', len(data.reviewer_profiles))):,}명 · "
+                "단일 피처 Permutation 20회 · "
+                "Macro PR-AUC 감소량입니다."
+            ),
             "현재 사용 가능" if not data.feature_importance.empty else "데이터 연결 필요",
         )
         if data.feature_importance.empty:
@@ -255,8 +354,11 @@ elif view == "피처 근거":
             )
     with group_column:
         section_header(
-            "피처 그룹" + (" · v03" if is_v03_importance else ""),
-            "활동량·작성 간격·탐색의 기여를 비교합니다.",
+            "피처 그룹" + (f" · {data.model_version}" if is_v04_importance else ""),
+            (
+                "그룹 내부 관계를 유지한 공동 Permutation 20회 결과입니다. "
+                "활동량·작성 간격·탐색을 비교합니다."
+            ),
             "현재 사용 가능" if not data.group_importance.empty else "데이터 연결 필요",
         )
         if data.group_importance.empty:
@@ -272,11 +374,49 @@ elif view == "피처 근거":
                 key="trust_group_importance",
             )
 
-    if is_v03_importance and not data.group_importance_v02.empty:
-        with st.expander("v02 비교 기준 (이진 이탈 모델, 참고용)", icon=":material/history:"):
+    st.caption(
+        "중요도는 모델 선정이 아닌 사후 해석 전용입니다. 값은 확률이나 "
+        "영향 비율이 아니라 정보를 섞었을 때 감소한 Macro PR-AUC입니다. "
+        f"기준 Macro PR-AUC {float(data.model_metadata.get('test_metrics', {}).get('macro_pr_auc', 0)):.4f}"
+    )
+
+    if is_v04_importance and not data.group_importance_v03.empty:
+        with st.expander(
+            "v03 비교 기준 (3클래스 이전 코호트, 참고용)",
+            expanded=False,
+            icon=":material/history:",
+        ):
+            st.caption(
+                "v03 최종 Test 4,157명의 Permutation 중요도입니다. "
+                "기준 Macro PR-AUC는 0.5986이며, v04 기본 중요도와 혼합하지 않는 "
+                "이전 코호트 비교 자료입니다."
+            )
+            v03_feature_column, v03_group_column = st.columns(
+                [1.2, 0.8],
+                gap="large",
+            )
+            with v03_feature_column:
+                st.plotly_chart(
+                    feature_importance(data.feature_importance_v03),
+                    width="stretch",
+                    key="trust_feature_importance_v03",
+                )
+            with v03_group_column:
+                st.plotly_chart(
+                    group_importance(data.group_importance_v03),
+                    width="stretch",
+                    key="trust_group_importance_v03",
+                )
+
+    if is_v04_importance and not data.group_importance_v02.empty:
+        with st.expander(
+            "v02 비교 기준 (이진 이탈 모델, 참고용)",
+            expanded=False,
+            icon=":material/history:",
+        ):
             st.caption(
                 "v02는 완전 이탈만 예측하는 이전 세대 모델의 중요도입니다. "
-                "그룹 순서가 v03와 다를 수 있습니다(v03는 작성 간격이 1위, v02는 활동량이 1위)."
+                f"{data.model_version} 기본 중요도와 혼합하지 않는 과거 비교 자료입니다."
             )
             v02_feature_column, v02_group_column = st.columns([1.2, 0.8], gap="large")
             with v02_feature_column:

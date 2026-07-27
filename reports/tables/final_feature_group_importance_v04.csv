@@ -1,0 +1,4 @@
+﻿feature_group,feature_count,importance_mean,importance_std,baseline_pr_auc,rank,feature_group_label,metric,split,model_version,method,repeats
+interval,13,0.14267128941344595,0.003992846974383062,0.5792363193087259,1,작성 간격,macro_pr_auc,final_test,v04,joint_group_permutation,20
+activity,15,0.05874035611557023,0.0035821971990233847,0.5792363193087259,2,리뷰 활동량,macro_pr_auc,final_test,v04,joint_group_permutation,20
+business,15,0.007736448508181226,0.0014006823517999343,0.5792363193087259,3,음식점 탐색,macro_pr_auc,final_test,v04,joint_group_permutation,20

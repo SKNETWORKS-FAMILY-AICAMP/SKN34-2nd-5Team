@@ -12,8 +12,8 @@ from core.components import (
     reviewer_list,
     stat_card_row,
 )
-from core.data import load_app_data
-from core.decisions import get_decisions
+from core.data import load_app_data, operational_profile_export
+from core.decisions import UNDECIDED_LABEL, with_manager_decisions
 from core.insights import risk_signals
 
 
@@ -31,19 +31,17 @@ if st.session_state.get("reviewer_workspace_mode") == "detail":
     st.stop()
 
 data = load_app_data()
-profiles = data.reviewer_profiles.copy()
+profiles = with_manager_decisions(data.reviewer_profiles)
 
 page_intro(
-    "Reviewer worklist · v03",
+    f"Reviewer worklist · {data.model_version}",
     "통합 리뷰어 검토 워크리스트",
     "약화·중단 점수를 하나의 순위로 검토하고 Reviewer 360에서 활동 근거를 확인합니다.",
     ["현재 데모에서 사용 가능" if data.data_mode == "demo" else "현재 사용 가능"],
 )
 
-decisions = get_decisions()
-processed_ids = {str(uid) for uid in decisions.keys()}
 all_ids = set(profiles["user_id"].astype(str))
-done_count = len(processed_ids & all_ids)
+done_count = int(profiles["manager_decision"].ne(UNDECIDED_LABEL).sum())
 pending_count = len(all_ids) - done_count
 
 status_filter = st.segmented_control(
@@ -113,7 +111,10 @@ with st.container(horizontal=True, vertical_alignment="bottom"):
         )
     st.download_button(
         "CSV 다운로드",
-        data=profiles.to_csv(index=False).encode("utf-8-sig"),
+        data=operational_profile_export(
+            profiles,
+            list(data.model_metadata.get("feature_columns", [])),
+        ).to_csv(index=False).encode("utf-8-sig"),
         file_name="reviewer_risk_worklist.csv",
         mime="text/csv",
         icon=":material/download:",
@@ -139,9 +140,9 @@ if crm_filter == "통합 상위 20%":
 elif crm_filter == "상위 20% 제외":
     filtered = filtered[filtered["crm_target"].eq(0)]
 if status_filter == "미검토":
-    filtered = filtered[~filtered["user_id"].astype(str).isin(processed_ids)]
+    filtered = filtered[filtered["manager_decision"].eq(UNDECIDED_LABEL)]
 elif status_filter == "검토 완료":
-    filtered = filtered[filtered["user_id"].astype(str).isin(processed_ids)]
+    filtered = filtered[filtered["manager_decision"].ne(UNDECIDED_LABEL)]
 
 sort_map = {
     "통합 우선순위": ("priority_rank", True),
@@ -167,9 +168,11 @@ rows = []
 for _, row in visible.iterrows():
     top_metrics = [signal.evidence for signal in risk_signals(row)[:2]]
     user_id = str(row["user_id"])
-    completed_label = None
-    if user_id in processed_ids:
-        completed_label = decisions[user_id]
+    completed_label = (
+        None
+        if row["manager_decision"] == UNDECIDED_LABEL
+        else str(row["manager_decision"])
+    )
     rows.append(
         {
             "user_id": user_id,

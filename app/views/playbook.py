@@ -27,6 +27,7 @@ JUDGMENT_TO_DECISION = {
 data = load_app_data()
 profiles = with_manager_decisions(data.reviewer_profiles)
 decision_counts = profiles["manager_decision"].value_counts()
+context = st.session_state.get("playbook_context")
 
 page_intro(
     "Retention playbook",
@@ -35,15 +36,18 @@ page_intro(
     ["규칙 기반 프로토타입", "외부 연동 필요"],
 )
 
+st.session_state.setdefault(
+    "playbook_view_mode",
+    "현재 리뷰어에게 추천" if context else "전략 라이브러리",
+)
 view_mode = st.segmented_control(
     "화면 모드",
     ["전략 라이브러리", "현재 리뷰어에게 추천"],
-    default="전략 라이브러리",
     key="playbook_view_mode",
     label_visibility="collapsed",
 )
 
-if view_mode == "현재 리뷰어에게 추천":
+if view_mode == "현재 리뷰어에게 추천" and not context:
     empty_state(
         "현재 리뷰어 기준 추천",
         "Reviewer 360에서 특정 리뷰어의 판단 결과와 함께 들어와야 활성화됩니다.",
@@ -59,69 +63,97 @@ if view_mode == "현재 리뷰어에게 추천":
     footer(data.data_mode)
     st.stop()
 
-decision_options = list(DECISION_PLAYBOOKS.keys()) + [UNDECIDED_LABEL]
-selected_decision = st.segmented_control(
-    "관리자 판단",
-    decision_options,
-    default=decision_options[0],
-    key="playbook_decision_filter",
-    label_visibility="collapsed",
-)
-if selected_decision is None:
-    selected_decision = decision_options[0]
-
-selected_model_judgment = None
-if selected_decision == UNDECIDED_LABEL:
-    st.html(
-        """
-        <div class="rr-playbook-model-hint">
-          미검토는 아직 확정된 조치가 없어, 모델 판단으로 좁혀서 봅니다.
-        </div>
-        """
+if view_mode == "현재 리뷰어에게 추천":
+    selected_decision = str(context["manager_decision"])
+    selected_model_judgment = str(context["model_judgment"])
+    selected_risk_type = str(context["risk_type"])
+    is_confirmed = selected_decision != UNDECIDED_LABEL
+    effective_decision = (
+        selected_decision
+        if is_confirmed
+        else JUDGMENT_TO_DECISION[selected_model_judgment]
     )
-    selected_model_judgment = st.segmented_control(
-        "모델 판단",
-        ["유지 우세", "약화 우세", "중단 우세"],
-        default="중단 우세",
-        key="playbook_model_judgment_filter",
+    pool = profiles.loc[
+        profiles["sample_id"].astype(str).eq(str(context["sample_id"]))
+        & profiles["model_version"].astype(str).eq(data.model_version)
+    ]
+else:
+    decision_options = list(DECISION_PLAYBOOKS.keys()) + [UNDECIDED_LABEL]
+    selected_decision = st.segmented_control(
+        "관리자 판단",
+        decision_options,
+        default=decision_options[0],
+        key="playbook_decision_filter",
         label_visibility="collapsed",
     )
-    if selected_model_judgment is None:
-        selected_model_judgment = "중단 우세"
-    effective_decision = JUDGMENT_TO_DECISION[selected_model_judgment]
-    is_confirmed = False
-else:
-    effective_decision = selected_decision
-    is_confirmed = True
+    if selected_decision is None:
+        selected_decision = decision_options[0]
 
-risk_type_options = ["전체"] + profiles["risk_type"].value_counts().index.tolist()
-selected_risk_type = st.segmented_control(
-    "위험 유형",
-    risk_type_options,
-    default="전체",
-    key="playbook_risk_type",
-    label_visibility="collapsed",
-)
-if selected_risk_type is None:
-    selected_risk_type = "전체"
+    selected_model_judgment = None
+    if selected_decision == UNDECIDED_LABEL:
+        st.html(
+            """
+            <div class="rr-playbook-model-hint">
+              미검토는 아직 확정된 조치가 없어, 모델 판단으로 좁혀서 봅니다.
+            </div>
+            """
+        )
+        selected_model_judgment = st.segmented_control(
+            "모델 판단",
+            ["유지 우세", "약화 우세", "중단 우세"],
+            default="중단 우세",
+            key="playbook_model_judgment_filter",
+            label_visibility="collapsed",
+        )
+        if selected_model_judgment is None:
+            selected_model_judgment = "중단 우세"
+        effective_decision = JUDGMENT_TO_DECISION[selected_model_judgment]
+        is_confirmed = False
+    else:
+        effective_decision = selected_decision
+        is_confirmed = True
 
-pool = profiles.loc[profiles["manager_decision"].eq(selected_decision)]
-if selected_model_judgment:
-    pool = pool.loc[pool["model_judgment"].eq(selected_model_judgment)]
-if selected_risk_type != "전체":
-    pool = pool.loc[pool["risk_type"].eq(selected_risk_type)]
+    risk_type_options = ["전체"] + profiles["risk_type"].value_counts().index.tolist()
+    selected_risk_type = st.segmented_control(
+        "위험 유형",
+        risk_type_options,
+        default="전체",
+        key="playbook_risk_type",
+        label_visibility="collapsed",
+    )
+    if selected_risk_type is None:
+        selected_risk_type = "전체"
+
+    pool = profiles.loc[profiles["manager_decision"].eq(selected_decision)]
+    if selected_model_judgment:
+        pool = pool.loc[pool["model_judgment"].eq(selected_model_judgment)]
+    if selected_risk_type != "전체":
+        pool = pool.loc[pool["risk_type"].eq(selected_risk_type)]
 
 playbook_entry = DECISION_PLAYBOOKS[effective_decision]
 sub_strategy_text = playbook_entry["sub_strategy"].get(selected_risk_type)
 
 status_label = "모델 추천 · 판단 전" if not is_confirmed else "규칙 기반 프로토타입"
-sub_title = (
-    f"{selected_decision} · {selected_model_judgment} 조합에 대한 추천 전략입니다."
-    if not is_confirmed
-    else f"실제로 이렇게 판단된 {len(pool):,}명에게 적용되는 전략입니다."
-)
+if view_mode == "현재 리뷰어에게 추천":
+    sub_title = (
+        f"리뷰어 {context['user_id']} · 통합 우선순위 "
+        f"{int(context['priority_rank']):,}위 · {selected_model_judgment}"
+    )
+elif not is_confirmed:
+    sub_title = (
+        f"{selected_decision} · {selected_model_judgment} 조합에 대한 추천 전략입니다."
+    )
+else:
+    sub_title = f"실제로 이렇게 판단된 {len(pool):,}명에게 적용되는 전략입니다."
 
 section_header(effective_decision, sub_title, status_label)
+
+if view_mode == "현재 리뷰어에게 추천":
+    st.caption(
+        f"표본 {context['sample_id']} · 위험 유형 {selected_risk_type} · "
+        f"통합 상위 {float(context['priority_top_percent']):.1f}% · "
+        f"관리자 판단 {selected_decision}"
+    )
 
 tiles_html = (
     '<div class="rr-playbook-grid">'

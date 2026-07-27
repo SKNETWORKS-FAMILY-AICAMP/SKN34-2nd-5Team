@@ -24,6 +24,14 @@ page_intro(
     "거주지가 아닌 음식점 리뷰 활동 지역을 기준으로 정의와 데이터 준비 상태를 관리합니다.",
     ["현재 사용 가능" if not region.empty else "정의·데이터 필요"],
 )
+regional_source = data.sources.get(
+    "regional_risk",
+    "reports/tables/regional_risk_summary_v01.csv · 현재 미연결",
+)
+st.caption(
+    "이 화면은 v04 모델 결과가 아닙니다. 지역 콘텐츠 위험 v01 데이터 계약을 "
+    f"유지합니다. 출처 · {regional_source}"
+)
 
 if region.empty:
     section_header(

@@ -12,12 +12,12 @@ from core.components import (
     status_badge,
 )
 from core.data import load_app_data
-from core.decisions import get_decisions
+from core.decisions import UNDECIDED_LABEL, with_manager_decisions
 from core.formatters import percent, signed_phrase
 
 
 data = load_app_data()
-profiles = data.reviewer_profiles.copy()
+profiles = with_manager_decisions(data.reviewer_profiles)
 policy = data.primary_policy.iloc[0] if not data.primary_policy.empty else pd.Series()
 
 target_users = int(policy.get("target_users", profiles["crm_target"].sum()))
@@ -28,29 +28,29 @@ lift = float(policy.get("status_loss_lift", 0.0))
 recall_ceiling = (target_users / (captured_users / recall)) if recall else 0.0
 
 predicted_counts = profiles["predicted_state"].value_counts()
+retained_total = int(predicted_counts.get(0, 0))
 weakened_total = int(predicted_counts.get(1, 0))
 stopped_total = int(predicted_counts.get(2, 0))
 
-decisions = get_decisions()
-processed_ids = {str(uid) for uid in decisions.keys()}
 pending_pool = profiles.loc[
-    profiles["crm_target"].eq(1) & ~profiles["user_id"].astype(str).isin(processed_ids)
+    profiles["crm_target"].eq(1)
+    & profiles["manager_decision"].eq(UNDECIDED_LABEL)
 ].sort_values("priority_rank")
 queue_df = pending_pool.head(5)
-completed_count = len(processed_ids)
+completed_count = int(profiles["manager_decision"].ne(UNDECIDED_LABEL).sum())
 
 status_label = "현재 데모에서 사용 가능" if data.data_mode == "demo" else "현재 사용 가능"
 st.html(
     f"""
     <div class="rr-hero-head">
       <div>
-        <div class="rr-eyebrow">OPERATIONS · V03</div>
+        <div class="rr-eyebrow">OPERATIONS · {data.model_version.upper()}</div>
         <div class="rr-title">우선 대응 대상 리뷰어</div>
         <p class="rr-copy">통합 우선순위 상위 20% · {target_users:,}명</p>
       </div>
       <div class="rr-hero-badge-col">
         {status_badge(status_label)}
-        <div class="rr-snapshot-note">Test 2019 스냅샷 기준</div>
+        <div class="rr-snapshot-note">{data.target_year}년 실제 상태 검증 스냅샷</div>
       </div>
     </div>
     """
@@ -75,15 +75,22 @@ with queue_column:
     else:
         rows = []
         for row in queue_df.itertuples():
-            change_text = (
-                f"리뷰 수 {int(row.baseline_review_count)}건 → {int(row.recent_review_count)}건 · "
-                + signed_phrase(
-                    row.review_count_decline_rate,
-                    percent,
-                    when_positive="감소",
-                    when_negative="증가",
+            if int(row.prior_activity_available) == 0:
+                change_text = (
+                    f"{data.comparison_year}년 비교 활동 없음 · "
+                    "전년도 대비 변화율 계산 불가"
                 )
-            )
+            else:
+                change_text = (
+                    f"리뷰 수 {int(row.baseline_review_count)}건 → "
+                    f"{int(row.recent_review_count)}건 · "
+                    + signed_phrase(
+                        row.review_count_decline_rate,
+                        percent,
+                        when_positive="감소",
+                        when_negative="증가",
+                    )
+                )
             rows.append(
                 {
                     "user_id": str(row.user_id),
@@ -111,6 +118,7 @@ with policy_column:
         recall=recall,
         recall_ceiling=recall_ceiling,
         lift=lift,
+        retained_total=retained_total,
         weakened_total=weakened_total,
         stopped_total=stopped_total,
     )

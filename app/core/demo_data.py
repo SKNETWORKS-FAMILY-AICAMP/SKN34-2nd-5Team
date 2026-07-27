@@ -7,14 +7,6 @@ import numpy as np
 import pandas as pd
 
 
-TIER_SPECS = [
-    ("긴급 관리", 208, 112, 0.8465, 0.7790),
-    ("집중 관리", 624, 234, 0.7786, 0.6579),
-    ("관찰 대상", 831, 185, 0.6574, 0.4110),
-    ("일반", 2_494, 139, 0.4109, 0.0232),
-]
-
-
 @dataclass
 class DemoData:
     reviewer_profiles: pd.DataFrame
@@ -33,355 +25,268 @@ class DemoData:
     multiclass_confusion: pd.DataFrame
 
 
-def _banded_churn(total: int) -> np.ndarray:
-    """Reproduce the validated Test Top-K counts without exposing real user IDs."""
-    band_sizes = [208, 208, 208, 208, 208, 208, 207, 208, 2_494]
-    band_churn = [112, 90, 79, 65, 51, 51, 42, 41, 139]
-    rng = np.random.default_rng(34)
-    labels: list[np.ndarray] = []
-    for size, positives in zip(band_sizes, band_churn):
-        band = np.zeros(size, dtype="int8")
-        chosen = rng.choice(size, size=positives, replace=False)
-        band[chosen] = 1
-        labels.append(band)
-    result = np.concatenate(labels)
-    assert len(result) == total
-    assert int(result.sum()) == 670
-    return result
+STATE_LABELS = {
+    0: "파워 지위 유지",
+    1: "파워 지위 약화",
+    2: "리뷰 활동 중단",
+}
+STATE_NAMES = {0: "retained", 1: "weakened", 2: "stopped"}
+CONFUSION = np.array(
+    [
+        [1_523, 924, 137],
+        [711, 1_789, 565],
+        [98, 325, 461],
+    ]
+)
+SELECTED_ACTUAL_COUNTS = {0: 165, 1: 661, 2: 481}
+
+
+def _state_pairs() -> tuple[np.ndarray, np.ndarray]:
+    """Create anonymous states matching the validated v04 Test confusion matrix."""
+    rng = np.random.default_rng(3405)
+    selected: list[tuple[int, int]] = []
+    remaining: list[tuple[int, int]] = []
+    for actual in range(3):
+        pairs = np.concatenate(
+            [
+                np.tile(np.array([[actual, predicted]], dtype="int8"), (users, 1))
+                for predicted, users in enumerate(CONFUSION[actual])
+            ]
+        )
+        rng.shuffle(pairs)
+        cut = SELECTED_ACTUAL_COUNTS[actual]
+        selected.extend(map(tuple, pairs[:cut]))
+        remaining.extend(map(tuple, pairs[cut:]))
+    rng.shuffle(selected)
+    rng.shuffle(remaining)
+    ordered = np.asarray([*selected, *remaining], dtype="int8")
+    return ordered[:, 0], ordered[:, 1]
 
 
 def _profile_frame() -> pd.DataFrame:
-    total = sum(spec[1] for spec in TIER_SPECS)
-    rng = np.random.default_rng(3405)
+    total = 6_533
+    selected_users = 1_307
+    no_prior_users = 1_692
+    rng = np.random.default_rng(3406)
+    actual_states, predicted_states = _state_pairs()
 
-    tiers: list[str] = []
-    scores: list[float] = []
-    for tier, users, _, maximum, minimum in TIER_SPECS:
-        tiers.extend([tier] * users)
-        scores.extend(np.linspace(maximum, minimum, users).tolist())
-
-    def shuffled_states(size: int, counts: tuple[int, int, int]) -> np.ndarray:
-        values = np.concatenate(
-            [
-                np.full(counts[0], 0, dtype="int8"),
-                np.full(counts[1], 1, dtype="int8"),
-                np.full(counts[2], 2, dtype="int8"),
-            ]
-        )
-        assert len(values) == size
-        rng.shuffle(values)
-        return values
-
-    actual_states = np.concatenate(
-        [
-            shuffled_states(832, (59, 444, 329)),
-            shuffled_states(total - 832, (1_480, 1_504, 341)),
-        ]
-    )
-    predicted_states = np.concatenate(
-        [
-            shuffled_states(832, (0, 27, 805)),
-            shuffled_states(total - 832, (1_400, 1_730, 195)),
-        ]
-    )
-    priority_score = np.linspace(0.98, 0.15, total)
-    stopped_share = np.where(predicted_states == 2, 0.62, 0.32)
+    priority_score = np.linspace(0.98, 0.12, total)
+    stopped_share = np.where(predicted_states == 2, 0.62, 0.30)
     stopped_score = priority_score * stopped_share
     weakened_score = priority_score - stopped_score
 
+    recent_reviews = np.maximum(10, np.rint(rng.gamma(3.2, 4.4, total) + 9)).astype(int)
+    recent_months = np.clip(np.rint(rng.normal(6.8, 1.8, total)), 3, 12).astype(int)
+    recent_businesses = np.maximum(
+        1,
+        recent_reviews - rng.binomial(np.minimum(recent_reviews, 5), 0.18),
+    )
+    recent_recency = np.clip(rng.gamma(2.4, 28, total), 0, 365)
+    recent_interval = np.clip(rng.normal(22, 10, total), 1, 180)
+
+    prior_available = np.ones(total, dtype="int8")
+    prior_available[:no_prior_users] = 0
+    rng.shuffle(prior_available)
+    has_prior = prior_available == 1
+
+    baseline_reviews = np.zeros(total, dtype=int)
+    baseline_months = np.zeros(total, dtype=int)
+    baseline_businesses = np.zeros(total, dtype=int)
+    baseline_recency = np.full(total, np.nan)
+    baseline_interval = np.full(total, np.nan)
+    baseline_reviews[has_prior] = np.maximum(
+        1,
+        np.rint(recent_reviews[has_prior] * rng.uniform(0.8, 1.8, has_prior.sum())),
+    ).astype(int)
+    baseline_months[has_prior] = np.clip(
+        np.rint(recent_months[has_prior] * rng.uniform(0.8, 1.4, has_prior.sum())),
+        1,
+        12,
+    ).astype(int)
+    baseline_businesses[has_prior] = np.maximum(
+        1,
+        np.rint(recent_businesses[has_prior] * rng.uniform(0.8, 1.7, has_prior.sum())),
+    ).astype(int)
+    baseline_recency[has_prior] = np.clip(
+        recent_recency[has_prior] + rng.normal(-10, 35, has_prior.sum()),
+        0,
+        365,
+    )
+    baseline_interval[has_prior] = np.clip(
+        recent_interval[has_prior] + rng.normal(-4, 12, has_prior.sum()),
+        1,
+        180,
+    )
+
+    target_reviews = np.where(
+        actual_states == 0,
+        rng.integers(10, 30, total),
+        np.where(actual_states == 1, rng.integers(1, 10, total), 0),
+    )
+    target_months = np.where(
+        actual_states == 0,
+        rng.integers(3, 10, total),
+        np.where(actual_states == 1, rng.integers(1, 3, total), 0),
+    )
+
     frame = pd.DataFrame(
         {
-            "risk_rank": np.arange(1, total + 1),
-            "risk_tier": tiers,
-            "risk_score": scores,
-            "churn": actual_states == 2,
+            "sample_id": [f"demo_reviewer_{rank:05d}_2018" for rank in range(1, total + 1)],
+            "user_id": [f"demo_reviewer_{rank:05d}" for rank in range(1, total + 1)],
+            "comparison_year": 2017,
+            "selection_year": 2018,
+            "target_year": 2019,
+            "target_review_count": target_reviews,
+            "target_active_months": target_months,
             "retention_state": actual_states,
-            "predicted_state": predicted_states,
+            "churn": (actual_states == 2).astype("int8"),
+            "prior_activity_available": prior_available,
+            "scope": "익명 합성 데모",
+            "baseline_review_count": baseline_reviews,
+            "recent_review_count": recent_reviews,
+            "baseline_active_months": baseline_months,
+            "recent_active_months": recent_months,
+            "baseline_unique_business_count": baseline_businesses,
+            "recent_unique_business_count": recent_businesses,
+            "baseline_recency_days": baseline_recency,
+            "recent_recency_days": recent_recency,
+            "baseline_mean_interval_days": baseline_interval,
+            "recent_mean_interval_days": recent_interval,
             "retained_score": 1 - priority_score,
             "weakened_score": weakened_score,
             "stopped_score": stopped_score,
             "priority_score": priority_score,
+            "predicted_state": predicted_states,
             "priority_rank": np.arange(1, total + 1),
+            "priority_top_percent": np.arange(1, total + 1) / total * 100,
+            "selected_for_crm": (
+                np.arange(1, total + 1) <= selected_users
+            ).astype("int8"),
         }
     )
-    state_labels = {
-        0: "파워 지위 유지",
-        1: "파워 지위 약화",
-        2: "리뷰 활동 중단",
-    }
-    frame["retention_state_label"] = frame["retention_state"].map(state_labels)
-    frame["predicted_state_label"] = frame["predicted_state"].map(state_labels)
-    frame["sample_id"] = frame["risk_rank"].map(lambda value: f"2017_demo_{value:05d}")
-    frame["user_id"] = frame["risk_rank"].map(lambda value: f"demo_reviewer_{value:05d}")
-    frame["selection_year"] = 2017
-    frame["target_year"] = 2019
-    frame["risk_top_percent"] = frame["risk_rank"] / total * 100
-    frame["priority_top_percent"] = frame["priority_rank"] / total * 100
-    frame["risk_percentile"] = 100 - (frame["risk_rank"] - 1) / total * 100
-    frame["crm_target"] = (frame["risk_rank"] <= 832).astype("int8")
-    frame["selected_for_crm"] = frame["crm_target"]
-    frame["crm_target_label"] = np.where(
-        frame["crm_target"].eq(1),
-        "Top 20% 관리 대상",
-        "일반 모니터링",
+    frame["retention_state_label"] = frame["retention_state"].map(STATE_LABELS)
+    frame["predicted_state_label"] = frame["predicted_state"].map(STATE_LABELS)
+    frame["risk_score"] = frame["priority_score"]
+    frame["risk_rank"] = frame["priority_rank"]
+    frame["risk_top_percent"] = frame["priority_top_percent"]
+    frame["crm_target"] = frame["selected_for_crm"]
+    frame["review_count_decline_rate"] = np.where(
+        has_prior,
+        1 - frame["recent_review_count"] / frame["baseline_review_count"],
+        np.nan,
     )
-    frame["actual_result"] = frame["retention_state_label"]
-
-    normalized_risk = (frame["risk_score"] - frame["risk_score"].min()) / (
-        frame["risk_score"].max() - frame["risk_score"].min()
+    frame["active_month_decline_rate"] = np.where(
+        has_prior,
+        1 - frame["recent_active_months"] / frame["baseline_active_months"],
+        np.nan,
     )
-    churn_boost = frame["churn"].astype(float)
-
-    baseline_reviews = np.maximum(
-        10,
-        np.rint(rng.gamma(3.0, 5.1, total) + 9 + 4 * (1 - normalized_risk)),
-    ).astype(int)
-    decline = np.clip(
-        0.08 + 0.56 * normalized_risk + 0.09 * churn_boost + rng.normal(0, 0.14, total),
-        -0.35,
-        0.94,
+    frame["unique_business_decline_rate"] = np.where(
+        has_prior,
+        1
+        - frame["recent_unique_business_count"]
+        / frame["baseline_unique_business_count"],
+        np.nan,
     )
-    recent_reviews = np.maximum(
-        1,
-        np.rint(baseline_reviews * (1 - decline)),
-    ).astype(int)
-    actual_decline = 1 - recent_reviews / baseline_reviews
-
-    baseline_months = np.clip(
-        np.rint(8.2 - 2.3 * normalized_risk + rng.normal(0, 1.4, total)),
-        3,
-        12,
-    ).astype(int)
-    month_decline = np.clip(
-        0.02 + 0.43 * normalized_risk + 0.07 * churn_boost + rng.normal(0, 0.12, total),
-        -0.25,
-        0.85,
+    frame["recency_increase_days"] = (
+        frame["recent_recency_days"] - frame["baseline_recency_days"]
     )
-    recent_months = np.maximum(
-        1,
-        np.rint(baseline_months * (1 - month_decline)),
-    ).astype(int)
-
-    baseline_businesses = np.maximum(
-        8,
-        baseline_reviews - rng.binomial(np.minimum(baseline_reviews, 5), 0.18),
+    frame["mean_interval_increase_days"] = (
+        frame["recent_mean_interval_days"] - frame["baseline_mean_interval_days"]
     )
-    recent_businesses = np.maximum(
-        1,
-        recent_reviews - rng.binomial(np.minimum(recent_reviews, 4), 0.13),
-    )
-    business_decline = 1 - recent_businesses / baseline_businesses
-
-    baseline_recency = np.clip(
-        rng.gamma(2.2, 14.0, total) + 5,
-        1,
-        170,
-    )
-    recency_increase = np.clip(
-        -4 + 48 * normalized_risk + 11 * churn_boost + rng.normal(0, 17, total),
-        -55,
-        170,
-    )
-    recent_recency = np.maximum(0, baseline_recency + recency_increase)
-
-    baseline_interval = np.clip(
-        rng.normal(15.6, 5.7, total),
-        2,
-        55,
-    )
-    interval_increase = np.clip(
-        -1 + 29 * normalized_risk + 7 * churn_boost + rng.normal(0, 11, total),
-        -30,
-        130,
-    )
-    recent_interval = np.maximum(1, baseline_interval + interval_increase)
-
-    frame["baseline_review_count"] = baseline_reviews
-    frame["recent_review_count"] = recent_reviews
-    frame["review_count_decline_rate"] = actual_decline
-    frame["baseline_active_months"] = baseline_months
-    frame["recent_active_months"] = recent_months
-    frame["active_month_decline_rate"] = 1 - recent_months / baseline_months
-    frame["baseline_unique_business_count"] = baseline_businesses
-    frame["recent_unique_business_count"] = recent_businesses
-    frame["unique_business_decline_rate"] = business_decline
-    frame["baseline_recency_days"] = baseline_recency
-    frame["recent_recency_days"] = recent_recency
-    frame["recency_increase_days"] = recent_recency - baseline_recency
-    frame["baseline_mean_interval_days"] = baseline_interval
-    frame["recent_mean_interval_days"] = recent_interval
-    frame["mean_interval_increase_days"] = recent_interval - baseline_interval
-
     return frame
+
+
+def _validation() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "record_type": "final_test",
+                "split": "selection_2018_target_2019",
+                "train_selection_years": "2010~2017",
+                "validation_selection_year": 2018,
+                "train_samples": 31_420,
+                "validation_samples": 6_533,
+                "accuracy": 0.5775294658,
+                "balanced_accuracy": 0.5648587613,
+                "macro_precision": 0.5461167960,
+                "macro_recall": 0.5648587613,
+                "macro_f1": 0.5520979095,
+                "weighted_f1": 0.5810733959,
+                "macro_pr_auc": 0.5792363193,
+                "macro_ovr_roc_auc": 0.7560738477,
+                "retained_precision": 0.6530874786,
+                "retained_recall": 0.5893962848,
+                "retained_f1": 0.6196094386,
+                "weakened_precision": 0.5888742594,
+                "weakened_recall": 0.5836867863,
+                "weakened_f1": 0.5862690480,
+                "stopped_precision": 0.3963886500,
+                "stopped_recall": 0.5214932127,
+                "stopped_f1": 0.4504152418,
+            }
+        ]
+    )
 
 
 def _top_k() -> pd.DataFrame:
-    target_rate = [5, 10, 15, 20, 25, 30, 35, 40]
-    target_users = [208, 416, 624, 832, 1_040, 1_248, 1_455, 1_663]
-    captured = [112, 202, 281, 346, 397, 448, 490, 531]
-    precision = [0.5385, 0.4856, 0.4503, 0.4159, 0.3817, 0.3590, 0.3368, 0.3193]
-    recall = [0.1672, 0.3015, 0.4194, 0.5164, 0.5925, 0.6687, 0.7313, 0.7925]
-    lift = [3.34, 3.01, 2.79, 2.58, 2.37, 2.23, 2.09, 1.98]
-    minimum_score = [0.7790, 0.7409, 0.7024, 0.6579, 0.6040, 0.5511, 0.4782, 0.4110]
     return pd.DataFrame(
-        {
-            "target_rate_pct": target_rate,
-            "target_users": target_users,
-            "captured_churn_users": captured,
-            "precision_at_k": precision,
-            "recall_at_k": recall,
-            "lift_at_k": lift,
-            "minimum_risk_score": minimum_score,
-        }
+        [
+            {
+                "split": "final_test",
+                "ranking": "unified",
+                "target_rate": 0.20,
+                "target_users": 1_307,
+                "status_loss_captured": 1_142,
+                "status_loss_precision": 0.8737566947,
+                "status_loss_recall": 0.2891871360,
+                "status_loss_lift": 1.4454931594,
+                "stopped_captured": 481,
+                "stopped_recall": 0.5441176471,
+                "weakened_captured": 661,
+                "weakened_recall": 0.2156606852,
+            }
+        ]
     )
 
 
-def _feature_importance() -> pd.DataFrame:
-    rows = [
-        ("activity", "recent_active_months", 0.10151, 0.01333, 45.01969),
-        ("interval", "recent_recency_days", 0.07113, 0.00498, 31.54586),
-        ("activity", "recent_review_count", 0.01355, 0.00507, 6.00738),
-        ("interval", "baseline_recency_days", 0.01010, 0.00296, 4.47940),
-        ("interval", "baseline_median_interval_days", 0.00372, 0.00237, 1.64955),
-        ("activity", "baseline_active_months", 0.00335, 0.00144, 1.48374),
-        ("business", "baseline_new_business_rate", 0.00299, 0.00155, 1.32704),
-        ("interval", "recent_mean_interval_days", 0.00275, 0.00127, 1.21809),
-        ("interval", "recency_increase_days", 0.00231, 0.00161, 1.02338),
-        ("interval", "recent_max_interval_days", 0.00222, 0.00270, 0.98665),
-        ("activity", "review_count_ratio", 0.00219, 0.00218, 0.97086),
-        ("interval", "baseline_mean_interval_days", 0.00201, 0.00096, 0.89026),
-        ("business", "recent_new_business_rate", 0.00157, 0.00098, 0.69805),
-        ("interval", "recent_median_interval_days", 0.00140, 0.00123, 0.62059),
-        ("activity", "baseline_reviews_per_active_month", 0.00133, 0.00428, 0.59100),
-    ]
-    frame = pd.DataFrame(
-        rows,
-        columns=[
-            "feature_group",
-            "feature",
-            "importance_mean",
-            "importance_std",
-            "importance_share_pct",
-        ],
+def _confusion() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "split": "final_test",
+                "actual_state": STATE_NAMES[actual],
+                "predicted_state": STATE_NAMES[predicted],
+                "users": int(CONFUSION[actual, predicted]),
+            }
+            for actual in range(3)
+            for predicted in range(3)
+        ]
     )
-    frame.insert(0, "rank", np.arange(1, len(frame) + 1))
-    return frame
 
 
 def build_demo_data() -> DemoData:
     profiles = _profile_frame()
-    top_k = _top_k()
-    policy = pd.DataFrame(
-        [
-            {
-                "policy": "Top 20% CRM targeting",
-                "target_rate": 0.20,
-                "target_users": 832,
-                "true_positive": 346,
-                "false_positive": 486,
-                "false_negative": 324,
-                "true_negative": 3_001,
-                "precision": 0.4159,
-                "recall": 0.5164,
-                "f1": 0.4607,
-                "lift": 2.5802,
-            }
-        ]
-    )
-    validation_test = pd.DataFrame(
-        [
-            {
-                "dataset": "Validation",
-                "selection_year": 2016,
-                "target_year": 2018,
-                "precision": 0.3107,
-                "recall": 0.7476,
-                "f1": 0.4390,
-                "roc_auc": 0.8146,
-                "pr_auc": 0.4032,
-            },
-            {
-                "dataset": "Test",
-                "selection_year": 2017,
-                "target_year": 2019,
-                "precision": 0.3436,
-                "recall": 0.7134,
-                "f1": 0.4639,
-                "roc_auc": 0.8125,
-                "pr_auc": 0.4264,
-            },
-        ]
-    )
-    group_importance = pd.DataFrame(
-        {
-            "feature_group": ["activity", "interval", "business"],
-            "feature_count": [15, 13, 15],
-            "importance_mean": [0.13656, 0.11170, 0.00600],
-            "importance_std": [0.01304, 0.00530, 0.00389],
-            "baseline_pr_auc": [0.42641, 0.42641, 0.42641],
-            "rank": [1, 2, 3],
-        }
-    )
-    feature_sets = pd.DataFrame(
-        [
-            ("01_core", 43, 0.3107, 0.7476, 0.4390, 0.8146, 0.4032),
-            ("02_core+category", 57, 0.3192, 0.7723, 0.4517, 0.8146, 0.3854),
-            ("03_core+spatial", 55, 0.3167, 0.7362, 0.4429, 0.8152, 0.3986),
-            ("04_core+rating", 55, 0.3080, 0.7533, 0.4372, 0.8106, 0.3970),
-            ("05_core+category+spatial", 69, 0.3186, 0.7647, 0.4498, 0.8177, 0.3991),
-            ("06_all", 81, 0.3173, 0.7514, 0.4462, 0.8156, 0.3991),
-        ],
-        columns=[
-            "feature_set",
-            "feature_count",
-            "precision",
-            "recall",
-            "f1",
-            "roc_auc",
-            "pr_auc",
-        ],
-    )
-    feature_sets["model"] = "HistGradientBoosting"
-    split_summary = pd.DataFrame(
-        [
-            ("train", 13_720, 8_483, 2009, 2015, 2_189, 15.95),
-            ("validation", 3_724, 3_724, 2016, 2016, 527, 14.15),
-            ("test", 4_157, 4_157, 2017, 2017, 670, 16.12),
-        ],
-        columns=[
-            "split",
-            "samples",
-            "unique_users",
-            "minimum_selection_year",
-            "maximum_selection_year",
-            "churn_samples",
-            "churn_rate_pct",
-        ],
-    )
     metadata = {
-        "version": "v03",
-        "model_type": "LogisticRegression",
-        "feature_set": "activity + interval + business",
+        "version": "v04",
+        "model_name": "Core Multiclass Logistic v04 · 익명 합성 데모",
         "feature_count": 43,
-        "train_selection_years": "2009~2016",
-        "test_selection_year": 2017,
+        "test_selection_year": 2018,
         "test_target_year": 2019,
-        "primary_target_policy": "Top 20%",
-        "risk_score_warning": (
-            "클래스별 점수는 확률 보정 전 점수이므로 "
-            "상태 확률이 아닌 상대 점수로 해석합니다."
+        "test_samples": 6_533,
+        "test_metrics": {"macro_pr_auc": 0.5792363193},
+        "priority_policy": {
+            "score": "weakened_score + stopped_score",
+            "primary_target_rate": 0.20,
+        },
+        "score_warning": (
+            "클래스별 점수는 확률 보정 전 모델 점수이며 실제 상태 확률로 "
+            "표현하지 않는다."
         ),
-    }
-    policy_json = {
-        "version": "v03",
-        "primary_policy": "unified_top_20_percent",
-        "priority_score": "weakened_score + stopped_score",
     }
     retention_distribution = pd.DataFrame(
         [
-            (2017, 2019, 0, "파워 지위 유지", 1_539, 4_157, 1_539 / 4_157),
-            (2017, 2019, 1, "파워 지위 약화", 1_948, 4_157, 1_948 / 4_157),
-            (2017, 2019, 2, "리뷰 활동 중단", 670, 4_157, 670 / 4_157),
+            (2018, 2019, state, STATE_LABELS[state], int((profiles["retention_state"] == state).sum()))
+            for state in range(3)
         ],
         columns=[
             "selection_year",
@@ -389,82 +294,24 @@ def build_demo_data() -> DemoData:
             "retention_state",
             "retention_state_label",
             "users",
-            "year_total",
-            "share",
         ],
-    )
-    multiclass_validation = pd.DataFrame(
-        [
-            {
-                "record_type": "final_test",
-                "split": "selection_2017_target_2019",
-                "accuracy": 0.5915,
-                "balanced_accuracy": 0.5943,
-                "macro_f1": 0.5754,
-                "macro_pr_auc": 0.5986,
-                "retained_precision": 0.7157,
-                "retained_recall": 0.6511,
-                "weakened_precision": 0.6061,
-                "weakened_recall": 0.5467,
-                "stopped_precision": 0.3920,
-                "stopped_recall": 0.5851,
-            }
-        ]
-    )
-    multiclass_top_k = pd.DataFrame(
-        [
-            {
-                "split": "final_test",
-                "ranking": "unified",
-                "target_rate": 0.20,
-                "target_users": 832,
-                "status_loss_captured": 773,
-                "status_loss_precision": 0.9291,
-                "status_loss_recall": 0.2953,
-                "status_loss_lift": 1.4753,
-                "stopped_captured": 329,
-                "stopped_recall": 0.4910,
-                "weakened_captured": 444,
-                "weakened_recall": 0.2279,
-            }
-        ]
-    )
-    confusion_values = [
-        ("retained", "retained", 1002),
-        ("retained", "weakened", 450),
-        ("retained", "stopped", 87),
-        ("weakened", "retained", 362),
-        ("weakened", "weakened", 1065),
-        ("weakened", "stopped", 521),
-        ("stopped", "retained", 36),
-        ("stopped", "weakened", 242),
-        ("stopped", "stopped", 392),
-    ]
-    multiclass_confusion = pd.DataFrame(
-        [
-            {
-                "split": "final_test",
-                "decision_policy": "threshold",
-                "actual_state": actual,
-                "predicted_state": predicted,
-                "users": users,
-            }
-            for actual, predicted, users in confusion_values
-        ]
     )
     return DemoData(
         reviewer_profiles=profiles,
-        top_k=top_k,
-        primary_policy=policy,
-        validation_test=validation_test,
-        feature_importance=_feature_importance(),
-        group_importance=group_importance,
-        feature_sets=feature_sets,
-        split_summary=split_summary,
+        top_k=pd.DataFrame(),
+        primary_policy=pd.DataFrame(),
+        validation_test=pd.DataFrame(),
+        feature_importance=pd.DataFrame(),
+        group_importance=pd.DataFrame(),
+        feature_sets=pd.DataFrame(),
+        split_summary=pd.DataFrame(),
         model_metadata=metadata,
-        risk_policy=policy_json,
+        risk_policy={
+            "version": "v04",
+            "primary_policy": "unified_top_20_percent",
+        },
         retention_distribution=retention_distribution,
-        multiclass_validation=multiclass_validation,
-        multiclass_top_k=multiclass_top_k,
-        multiclass_confusion=multiclass_confusion,
+        multiclass_validation=_validation(),
+        multiclass_top_k=_top_k(),
+        multiclass_confusion=_confusion(),
     )

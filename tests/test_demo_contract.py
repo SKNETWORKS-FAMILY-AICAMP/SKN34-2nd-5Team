@@ -18,19 +18,23 @@ class DemoContractTest(unittest.TestCase):
         self.profiles = enrich_profiles(self.data.reviewer_profiles)
 
     def test_validated_test_counts(self) -> None:
-        self.assertEqual(len(self.profiles), 4_157)
-        self.assertEqual(int(self.profiles["churn"].sum()), 670)
-        self.assertEqual(int(self.profiles["crm_target"].sum()), 832)
+        self.assertEqual(len(self.profiles), 6_533)
+        self.assertEqual(int(self.profiles["churn"].sum()), 884)
+        self.assertEqual(int(self.profiles["crm_target"].sum()), 1_307)
         target = self.profiles.loc[self.profiles["crm_target"].eq(1)]
-        self.assertEqual(int(target["retention_state"].ne(0).sum()), 773)
-        self.assertEqual(int(target["retention_state"].eq(2).sum()), 329)
-        self.assertEqual(int(target["retention_state"].eq(1).sum()), 444)
+        self.assertEqual(int(target["retention_state"].ne(0).sum()), 1_142)
+        self.assertEqual(int(target["retention_state"].eq(2).sum()), 481)
+        self.assertEqual(int(target["retention_state"].eq(1).sum()), 661)
+        self.assertEqual(
+            int(self.profiles["prior_activity_available"].eq(0).sum()),
+            1_692,
+        )
 
     def test_retention_state_counts(self) -> None:
         expected = {
-            "파워 지위 유지": 1_539,
-            "파워 지위 약화": 1_948,
-            "리뷰 활동 중단": 670,
+            "파워 지위 유지": 2_584,
+            "파워 지위 약화": 3_065,
+            "리뷰 활동 중단": 884,
         }
         observed = self.profiles["retention_state_label"].value_counts().to_dict()
         self.assertEqual(observed, expected)
@@ -39,9 +43,9 @@ class DemoContractTest(unittest.TestCase):
         self.assertEqual(
             predicted,
             {
-                "파워 지위 약화": 1_757,
-                "파워 지위 유지": 1_400,
-                "리뷰 활동 중단": 1_000,
+                "파워 지위 약화": 3_038,
+                "파워 지위 유지": 2_332,
+                "리뷰 활동 중단": 1_163,
             },
         )
 
@@ -61,6 +65,14 @@ class DemoContractTest(unittest.TestCase):
         row = self.profiles.iloc[0]
         self.assertEqual(len(risk_signals(row)), 5)
         self.assertTrue(strategy_for(row)["primary"])
+
+        no_prior = self.profiles.loc[
+            self.profiles["prior_activity_available"].eq(0)
+        ].iloc[0]
+        evidence = " ".join(signal.evidence for signal in risk_signals(no_prior))
+        self.assertIn("2017년 비교 활동 없음", evidence)
+        self.assertIn("전년도 대비 변화율 계산 불가", evidence)
+        self.assertNotIn("0.0% 감소", evidence)
 
 
 if __name__ == "__main__":

@@ -83,11 +83,16 @@ def signed_phrase(
     Metrics like decline rates can go negative (an actual increase), and a
     hardcoded "감소"/"증가" word would then contradict the sign.
     """
-    numeric = safe_float(value)
+    if is_missing(value):
+        return "—"
+    numeric = safe_float(value, default=math.nan)
+    if not math.isfinite(numeric):
+        return "—"
     magnitude = formatter(abs(numeric))
     return f"{magnitude} {when_positive}" if numeric >= 0 else f"{magnitude} {when_negative}"
 
 
 def signed_tone(value: Any, *, positive: str = "warning", negative: str = "positive") -> str:
+    if is_missing(value):
+        return "muted"
     return positive if safe_float(value) >= 0 else negative
-

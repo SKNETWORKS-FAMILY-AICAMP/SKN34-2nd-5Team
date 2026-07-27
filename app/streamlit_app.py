@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import sys
 from pathlib import Path
 
@@ -21,6 +22,7 @@ data = load_app_data()
 st.session_state.setdefault("selected_reviewer_id", None)
 st.session_state.setdefault("reviewer_workspace_mode", "list")
 st.session_state.setdefault("validation_mode", False)
+st.session_state.setdefault("playbook_context", None)
 get_decisions()
 
 pages = [
@@ -84,7 +86,7 @@ with st.container(
         f"""
         <div class="product-mode">
           <span>{mode_label}</span>
-          <span>v03 · Test 2019</span>
+          <span>{html.escape(data.model_version)} · 실제 상태 검증 {data.target_year}</span>
         </div>
         """
     )

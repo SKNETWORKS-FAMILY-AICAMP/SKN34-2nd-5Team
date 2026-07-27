@@ -21,8 +21,8 @@ Yelp 음식 리뷰 활동을 기반으로 다음 연도의
 <br>
 
 ![Model](https://img.shields.io/badge/Model-v04%20검증%20완료-138A65?style=for-the-badge)
-![UI](https://img.shields.io/badge/Streamlit-v03%20연결-F0A04B?style=for-the-badge)
-![Next](https://img.shields.io/badge/Next-v04%20화면%20전환-5667E9?style=for-the-badge)
+![UI](https://img.shields.io/badge/Streamlit-v04%20연결(DEC--010%20승인)-138A65?style=for-the-badge)
+![Next](https://img.shields.io/badge/Next-v04%20화면%20재설계-5667E9?style=for-the-badge)
 
 </div>
 
@@ -159,10 +159,8 @@ Reviewer 360
 └─ 검토 결과에 따라 무엇을 할 것인가
 ```
 
-> 현재 Streamlit은 v03 데이터에 연결되어 있다.  
-> v04 데이터 계약과 화면 변경안 승인 후 기본 연결을 전환한다.
-
-<br>
+> 현재 Streamlit은 v04 데이터에 연결되어 있다(DEC-010·DEC-011 팀 승인, 2026-07-27).<br>
+> v03 데이터 계약·산출물은 삭제하지 않고 비교 기준으로 보존한다. 남은 작업은 화면 레이아웃 재설계다.<br>
 
 ## 🧠 v04 모델 설계
 
@@ -332,8 +330,8 @@ SKN34-2nd-5Team/
 |---|---|---|
 | v04 코호트·피처 | ✅ 완료 | 2018 파워리뷰어 전체와 Core 43 |
 | v04 모델 검증 | ✅ 완료 | 5-Fold, Test, 혼동행렬, Top-K |
-| Streamlit 운영 화면 | ✅ 구현 | 현재 v03 데이터 연결 |
-| Streamlit v04 전환 | 🔄 다음 단계 | 데이터 계약·화면 변경안 승인 필요 |
+| v04 데이터 계약·기본 연결 승인 | ✅ 완료 | DEC-010·DEC-011 팀 승인(2026-07-27), Streamlit 기본 연결 v04로 전환 |
+| Streamlit 화면 재설계 | 🔄 다음 단계 | 데이터는 v04, 레이아웃·인터랙션 재설계 진행 |
 | MySQL 운영 적재 | 🟣 고도화 예정 | ERD, 배치, 판단·감사 이력 |
 | CRM 실행 연동 | 🟣 외부 연동 필요 | 채널, 동의, 캠페인 결과 |
 | 개입 효과 검증 | 🟣 데이터 필요 | 재참여·성과 데이터 축적 |
@@ -365,4 +363,3 @@ SKN34-2nd-5Team/
 `데이터로 발견하고 · 근거로 판단하고 · 전략으로 연결합니다`
 
 </div>
-

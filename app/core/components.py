@@ -134,6 +134,7 @@ def policy_panel(
     recall: float,
     recall_ceiling: float,
     lift: float,
+    retained_total: int,
     weakened_total: int,
     stopped_total: int,
 ) -> None:
@@ -177,6 +178,7 @@ def policy_panel(
           </div>
 
           <div class="rr-policy-split">
+            <span>유지 우세 {retained_total:,}명</span>
             <span>약화 우세 {weakened_total:,}명</span>
             <span>중단 우세 {stopped_total:,}명</span>
           </div>
@@ -445,6 +447,7 @@ def profile_header(
     weakened_score: float,
     stopped_score: float,
     selected_for_review: bool,
+    comparison_year: int,
     selection_year: int,
     target_year: int,
 ) -> None:
@@ -471,7 +474,7 @@ def profile_header(
               </div>
             </div>
             <div class="rr-profile-meta">
-              <span>선정 {selection_year} · 관찰 {selection_year + 1} · 검증 {target_year}</span>
+              <span>비교 {comparison_year} · 선정·피처 마감 {selection_year} · 실제 상태 검증 {target_year}</span>
               <small>클래스 점수는 확률이 아닌 상대 모델 점수입니다.</small>
             </div>
           </div>
