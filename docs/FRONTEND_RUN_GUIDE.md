@@ -4,7 +4,7 @@
 
 이 문서는 `SKN34-2ND-5TEAM` 프로젝트의 React 프론트엔드를 설치하고 실행하는 방법을 정리한 문서입니다.
 
-기존 Streamlit 앱은 `app/`에서 실행하고, React 프론트엔드는 `frontend/`에서 별도로 실행합니다.
+기존 Streamlit 앱은 `archive/app_streamlit_v04/`에서 실행하고, React 프론트엔드는 `app/`에서 별도로 실행합니다.
 
 ---
 
@@ -12,12 +12,12 @@
 
 Python은 `requirements.txt`에 라이브러리를 기록하지만, React/Node.js 프로젝트는 다음 두 파일을 사용합니다.
 
-- `frontend/package.json`: 필요한 라이브러리와 실행 명령을 선언합니다.
-- `frontend/package-lock.json`: 실제 설치된 라이브러리의 정확한 버전을 고정합니다.
+- `app/package.json`: 필요한 라이브러리와 실행 명령을 선언합니다.
+- `app/package-lock.json`: 실제 설치된 라이브러리의 정확한 버전을 고정합니다.
 
 따라서 React용 `requirements.txt`를 별도로 만들지 않습니다.
 
-다른 PC에서 프로젝트를 받은 사람은 `frontend` 폴더에서 `npm install`을 실행하면 `package.json`과 `package-lock.json`을 기준으로 필요한 라이브러리가 설치됩니다.
+다른 PC에서 프로젝트를 받은 사람은 `app` 폴더에서 `npm install`을 실행하면 `package.json`과 `package-lock.json`을 기준으로 필요한 라이브러리가 설치됩니다.
 
 ---
 
@@ -31,7 +31,7 @@ Python은 `requirements.txt`에 라이브러리를 기록하지만, React/Node.j
 - 라우팅: React Router
 - 차트: Recharts
 
-실제 설치 버전은 `frontend/package.json`과 `frontend/package-lock.json`을 기준으로 확인합니다.
+실제 설치 버전은 `app/package.json`과 `app/package-lock.json`을 기준으로 확인합니다.
 
 ---
 
@@ -39,8 +39,8 @@ Python은 `requirements.txt`에 라이브러리를 기록하지만, React/Node.j
 
 ```text
 SKN34-2ND-5TEAM/
-├─ app/                       # 기존 Streamlit 앱
-├─ frontend/                  # React 프론트엔드
+├─ archive/app_streamlit_v04/  # 기존 Streamlit 앱
+├─ app/                        # React 프론트엔드
 │  ├─ node_modules/           # npm install로 생성, Git에 올리지 않음
 │  ├─ public/
 │  ├─ src/
@@ -66,7 +66,7 @@ SKN34-2ND-5TEAM/
 프로젝트 최상위 폴더에서 터미널을 연 뒤 실행합니다.
 
 ```bash
-cd frontend
+cd app
 npm install
 ```
 
@@ -79,7 +79,7 @@ npm install
 ## 6. React 개발 서버 실행
 
 ```bash
-cd frontend
+cd app
 npm run dev
 ```
 
@@ -121,14 +121,14 @@ http://localhost:5173/reviewers/demo_reviewer_00001
 개발이 끝난 뒤 배포 가능한 파일이 정상 생성되는지 확인합니다.
 
 ```bash
-cd frontend
+cd app
 npm run build
 ```
 
 성공하면 다음 폴더가 생성됩니다.
 
 ```text
-frontend/dist/
+app/dist/
 ```
 
 빌드 결과를 로컬에서 확인하려면 실행합니다.
@@ -142,7 +142,7 @@ npm run preview
 ## 9. 코드 검사
 
 ```bash
-cd frontend
+cd app
 npm run lint
 ```
 
@@ -169,7 +169,7 @@ python -m pip install -r requirements.txt -r requirements-streamlit.txt
 ### Streamlit 실행
 
 ```powershell
-python -m streamlit run app/streamlit_app.py
+python -m streamlit run archive/app_streamlit_v04/streamlit_app.py
 ```
 
 기본 주소:
@@ -181,7 +181,7 @@ http://localhost:8501
 React는 별도 터미널에서 실행합니다.
 
 ```bash
-cd frontend
+cd app
 npm run dev
 ```
 
@@ -205,7 +205,7 @@ http://localhost:5173
 | Vite | React 개발 서버와 빌드 |
 | ESLint | JavaScript/JSX 코드 검사 |
 
-정확한 설치 버전은 `frontend/package.json`에서 확인합니다.
+정확한 설치 버전은 `app/package.json`에서 확인합니다.
 
 ---
 
@@ -214,24 +214,24 @@ http://localhost:5173
 다음 파일과 폴더는 GitHub에 포함합니다.
 
 ```text
-frontend/src/
-frontend/public/
-frontend/package.json
-frontend/package-lock.json
-frontend/vite.config.js
-frontend/eslint.config.js
-frontend/index.html
+app/src/
+app/public/
+app/package.json
+app/package-lock.json
+app/vite.config.js
+app/eslint.config.js
+app/index.html
 docs/FRONTEND_RUN_GUIDE.md
 ```
 
 다음 폴더는 포함하지 않습니다.
 
 ```text
-frontend/node_modules/
-frontend/dist/
+app/node_modules/
+app/dist/
 ```
 
-루트 또는 `frontend/.gitignore`에 다음 항목이 있어야 합니다.
+루트 또는 `app/.gitignore`에 다음 항목이 있어야 합니다.
 
 ```gitignore
 node_modules/
@@ -254,7 +254,7 @@ npm -v
 ### `Failed to resolve import "recharts"`
 
 ```bash
-cd frontend
+cd app
 npm install recharts
 ```
 

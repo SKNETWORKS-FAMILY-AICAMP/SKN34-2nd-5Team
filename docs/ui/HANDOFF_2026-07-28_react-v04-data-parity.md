@@ -1,3 +1,7 @@
+> **경로 변경 안내(2026-07-28 이후)**: 이 문서는 작성 시점 기준 경로(`app/` = Streamlit,
+> `frontend/` = React)로 쓰였다. 이후 `frontend/` → `app/`, 기존 `app/` →
+> `archive/app_streamlit_v04/`로 이름이 바뀌었다. 아래 본문은 작성 당시 경로 그대로 둔다.
+
 `C:\Users\playdata2\SKN34-2nd-5Team`에서 React/Streamlit v04 데이터 정합성 작업을 이어서 진행해줘.
 
 ## 배경

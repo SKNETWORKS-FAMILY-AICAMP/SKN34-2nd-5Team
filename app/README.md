@@ -46,18 +46,22 @@ Yelp 파워 리뷰어의 활동 감소와 이탈 위험을 확인하기 위한 R
 
 ## 3. 프로젝트 폴더 위치
 
-React 프론트엔드는 프로젝트 최상위의 `frontend` 폴더에 있습니다.
+React 프론트엔드는 프로젝트 최상위의 `app` 폴더에 있습니다(과거에는 `frontend` 폴더였습니다).
+기존 Streamlit 애플리케이션(v04)은 `archive/app_streamlit_v04`로, 과거 분석 프로토타입(v01)은
+`archive/app_streamlit_v01_prototype`로 옮겨졌습니다.
 
 ```text
 SKN34-2ND-5TEAM/
-├─ app/                     # 기존 Streamlit 애플리케이션
-├─ frontend/                # React 프론트엔드
+├─ app/                                    # React 프론트엔드(현재 운영 서비스)
 │  ├─ public/
 │  ├─ src/
 │  ├─ package.json
 │  ├─ package-lock.json
 │  ├─ vite.config.js
 │  └─ README.md
+├─ archive/
+│  ├─ app_streamlit_v04/                   # 기존 Streamlit 애플리케이션(모델·데이터 로직 기준)
+│  └─ app_streamlit_v01_prototype/         # 과거 분석 프로토타입 · 수정 금지
 ├─ docs/
 ├─ notebooks/
 ├─ reports/
@@ -65,7 +69,7 @@ SKN34-2ND-5TEAM/
 └─ README.md
 ```
 
-React 코드는 `app` 폴더 안이 아니라, 프로젝트 최상위의 `frontend` 폴더에서 실행합니다.
+React 코드는 프로젝트 최상위의 `app` 폴더에서 실행합니다.
 
 ---
 
@@ -131,7 +135,7 @@ git pull
 프로젝트 최상위 폴더에서 React 폴더로 이동합니다.
 
 ```bash
-cd frontend
+cd app
 ```
 
 처음 프로젝트를 실행하는 경우 필요한 패키지를 설치합니다.
@@ -167,7 +171,7 @@ http://localhost:5173
 ```text
 1. Node.js LTS 설치
 2. GitHub 프로젝트 Clone 또는 Pull
-3. 프로젝트 최상위 폴더에서 frontend 폴더로 이동
+3. 프로젝트 최상위 폴더에서 app 폴더로 이동
 4. npm install 실행
 5. npm run dev 실행
 6. http://localhost:5173 접속
@@ -176,7 +180,7 @@ http://localhost:5173
 실제 명령어는 다음과 같습니다.
 
 ```bash
-cd frontend
+cd app
 npm install
 npm run dev
 ```
@@ -212,7 +216,7 @@ npm install
 설치된 패키지는 다음 폴더에 저장됩니다.
 
 ```text
-frontend/node_modules/
+app/node_modules/
 ```
 
 `node_modules`는 용량이 크기 때문에 GitHub에 업로드하지 않습니다.
@@ -232,7 +236,7 @@ npm run build
 생성 결과는 다음 폴더에 저장됩니다.
 
 ```text
-frontend/dist/
+app/dist/
 ```
 
 `dist` 폴더 역시 다시 생성할 수 있으므로 GitHub에 업로드하지 않습니다.
@@ -346,7 +350,7 @@ http://localhost:5173/trust
 데모 데이터는 일반적으로 다음 위치에서 관리합니다.
 
 ```text
-frontend/src/data/
+app/src/data/
 ```
 
 또는 각 페이지 및 컴포넌트 내부에서 임시 데이터로 사용할 수 있습니다.
@@ -393,7 +397,7 @@ MySQL / 머신러닝 모델
 프로젝트 최상위에서 다음 명령을 실행합니다.
 
 ```bash
-cd frontend
+cd app
 npm install
 npm run dev
 ```
@@ -409,13 +413,13 @@ http://localhost:5173
 새로운 터미널을 열고 프로젝트 최상위 폴더에서 실행합니다.
 
 ```bash
-python -m streamlit run app/streamlit_app.py
+python -m streamlit run archive/app_streamlit_v04/streamlit_app.py
 ```
 
 Windows 환경에서 `python` 명령이 작동하지 않는 경우 다음 명령을 사용할 수 있습니다.
 
 ```bash
-py -m streamlit run app/streamlit_app.py
+py -m streamlit run archive/app_streamlit_v04/streamlit_app.py
 ```
 
 Streamlit 기본 접속 주소:
@@ -467,22 +471,22 @@ python -m pip install -r requirements.txt -r requirements-streamlit.txt
 다음 React 관련 파일은 GitHub에 포함해야 합니다.
 
 ```text
-frontend/src/
-frontend/public/
-frontend/package.json
-frontend/package-lock.json
-frontend/vite.config.js
-frontend/eslint.config.js
-frontend/index.html
-frontend/README.md
-frontend/.gitignore
+app/src/
+app/public/
+app/package.json
+app/package-lock.json
+app/vite.config.js
+app/eslint.config.js
+app/index.html
+app/README.md
+app/.gitignore
 ```
 
 특히 아래 파일은 팀원들이 같은 패키지를 설치하기 위해 반드시 필요합니다.
 
 ```text
-frontend/package.json
-frontend/package-lock.json
+app/package.json
+app/package-lock.json
 ```
 
 ---
@@ -492,13 +496,13 @@ frontend/package-lock.json
 다음 파일과 폴더는 GitHub에 업로드하지 않습니다.
 
 ```text
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
-frontend/.env
+app/node_modules/
+app/dist/
+app/.vite/
+app/.env
 ```
 
-`frontend/.gitignore`에 아래와 같은 설정이 있으면 자동으로 제외됩니다.
+`app/.gitignore`에 아래와 같은 설정이 있으면 자동으로 제외됩니다.
 
 ```gitignore
 node_modules
@@ -522,7 +526,7 @@ dist-ssr
 React 작업 내용을 Git에 추가합니다.
 
 ```bash
-git add frontend
+git add app
 ```
 
 변경 내용을 확인합니다.
@@ -546,7 +550,7 @@ git push
 README만 수정한 경우 다음과 같이 커밋할 수 있습니다.
 
 ```bash
-git add frontend/README.md
+git add app/README.md
 git commit -m "docs: 프론트엔드 실행 방법 보완"
 git push
 ```
@@ -572,7 +576,7 @@ npm -v
 
 ### `package.json`을 찾을 수 없는 경우
 
-현재 터미널 위치가 `frontend` 폴더가 아닐 가능성이 큽니다.
+현재 터미널 위치가 `app` 폴더가 아닐 가능성이 큽니다.
 
 현재 위치를 확인합니다.
 
@@ -589,7 +593,7 @@ cd
 프로젝트 최상위 폴더에 있다면 다음 명령으로 이동합니다.
 
 ```bash
-cd frontend
+cd app
 ```
 
 그다음 다시 실행합니다.
@@ -608,7 +612,7 @@ npm run dev
 다음 명령을 실행합니다.
 
 ```bash
-cd frontend
+cd app
 npm install
 ```
 
@@ -622,7 +626,7 @@ npm install
 Failed to resolve import "recharts"
 ```
 
-`frontend` 폴더에서 다음 명령을 실행합니다.
+`app` 폴더에서 다음 명령을 실행합니다.
 
 ```bash
 npm install recharts
@@ -762,7 +766,7 @@ docs/FRONTEND_DEPENDENCIES.md
 
 | 문서 | 내용 |
 |---|---|
-| `frontend/README.md` | React 프론트엔드 소개 및 기본 실행 방법 |
+| `app/README.md` | React 프론트엔드 소개 및 기본 실행 방법 |
 | `docs/FRONTEND_RUN_GUIDE.md` | 상세 실행 과정 및 오류 해결 |
 | `docs/FRONTEND_DEPENDENCIES.md` | npm 패키지와 의존성 관리 설명 |
 
@@ -773,7 +777,7 @@ docs/FRONTEND_DEPENDENCIES.md
 Node.js가 이미 설치되어 있다면 아래 명령만 실행하면 됩니다.
 
 ```bash
-cd frontend
+cd app
 npm install
 npm run dev
 ```

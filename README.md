@@ -230,22 +230,25 @@ python -m venv venv
 .\venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-python -m pip install -r requirements-streamlit.txt
 ```
 
 ### 2. Streamlit
 
 ```powershell
-.\run_app.ps1
-```
-
-또는:
-
-```powershell
-.\venv\Scripts\python.exe -m streamlit run app\streamlit_app.py
+.\venv\Scripts\python.exe -m streamlit run archive\app_streamlit_v04\streamlit_app.py
 ```
 
 브라우저에서 `http://localhost:8501`로 접속한다.
+
+### 3. React
+
+```powershell
+cd app
+npm install
+npm run dev
+```
+
+브라우저에서 `http://localhost:5173`로 접속한다. 자세한 실행 방법은 [app/README.md](app/README.md) 참고.
 
 ### 3. 빠른 검증
 
@@ -307,19 +310,19 @@ reports/
 
 ```text
 SKN34-2nd-5Team/
-├─ app/                    # Streamlit 운영 서비스
-├─ app_data_prototype/     # 과거 분석 프로토타입 · 수정 금지
+├─ app/                                  # React 운영 서비스(현재 메인 앱)
+├─ archive/
+│  ├─ app_streamlit_v04/                 # 기존 Streamlit 앱 · 모델·데이터 로직 기준
+│  └─ app_streamlit_v01_prototype/       # 과거 분석 프로토타입 · 수정 금지
 ├─ configs/                # 분석·코호트 설정
 ├─ data/                   # raw · interim · processed
 ├─ docs/                   # 요구사항·계약·결정 문서
 ├─ models/                 # 모델·메타데이터
 ├─ notebooks/              # 데이터·피처·모델 재현
 ├─ reports/                # 모델 보고서·평가표
+├─ scripts/                # Streamlit 로직을 재사용해 React용 JSON을 내보내는 유틸리티
 ├─ tests/                  # 데이터·UI 계약 테스트
-├─ requirements.txt
-├─ requirements-streamlit.txt
-├─ run_app.bat
-└─ run_app.ps1
+└─ requirements.txt
 ```
 
 <br>

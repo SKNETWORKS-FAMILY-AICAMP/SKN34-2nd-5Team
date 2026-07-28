@@ -1,5 +1,9 @@
 # React ↔ Streamlit v04 화면 통합 계획
 
+> **경로 변경 안내(2026-07-28 이후)**: 이 문서는 작성 시점 기준 경로(`app/` = Streamlit,
+> `frontend/` = React)로 쓰였다. 이후 `frontend/` → `app/`, 기존 `app/` →
+> `archive/app_streamlit_v04/`로 이름이 바뀌었다. 아래 본문은 작성 당시 경로 그대로 둔다.
+
 ## 목적
 
 `app/` (v04 Streamlit)을 기준(source of truth)으로 `frontend/` (React)의 화면 구성·수치·문구·인터랙션을 맞춘다.

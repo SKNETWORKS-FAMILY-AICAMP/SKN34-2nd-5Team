@@ -36,8 +36,10 @@ Yelp 플랫폼 운영팀이 위험 리뷰어를 발견하고
 
 ## 4. 프로젝트 경로
 
-- 현재 운영 서비스 개발 경로는 `app/`이다.
-- `app_data_prototype/`은 과거 분석 프로토타입이므로 수정하지 않는다.
+- 현재 운영 서비스(React) 개발 경로는 `app/`이다.
+- 모델·데이터 파생 로직의 기준(source of truth)은 `archive/app_streamlit_v04/`의 Streamlit 앱이다.
+  `app/`(React)은 `scripts/export_frontend_data.py`로 이 로직을 그대로 재사용해 실데이터를 읽는다.
+- `archive/app_streamlit_v01_prototype/`(과거 분석 프로토타입)은 수정하지 않는다.
 - 분석 설정값은 `configs/analysis_config.yaml`을 우선 확인한다.
 - 프로젝트의 세부 정의와 현재 상태는 `docs/CODEX_HANDOFF.md`를 확인한다.
 - 확정된 의사결정은 `docs/decisions/`의 문서를 따른다.

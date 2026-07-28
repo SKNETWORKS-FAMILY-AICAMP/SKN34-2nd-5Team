@@ -5,8 +5,8 @@
 React 프로젝트에서는 Python의 `requirements.txt` 대신 다음 파일을 사용합니다.
 
 ```text
-frontend/package.json
-frontend/package-lock.json
+app/package.json
+app/package-lock.json
 ```
 
 - `package.json`: 필요한 라이브러리와 npm 실행 명령을 선언합니다.
@@ -15,7 +15,7 @@ frontend/package-lock.json
 ## 설치 명령
 
 ```bash
-cd frontend
+cd app
 npm install
 ```
 
@@ -33,7 +33,7 @@ vite
 eslint
 ```
 
-정확한 버전은 현재 프로젝트의 `frontend/package.json`과 `frontend/package-lock.json`을 기준으로 합니다.
+정확한 버전은 현재 프로젝트의 `app/package.json`과 `app/package-lock.json`을 기준으로 합니다.
 
 ## Git 관리 원칙
 

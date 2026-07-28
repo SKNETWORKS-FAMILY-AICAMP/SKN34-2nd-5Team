@@ -1,7 +1,7 @@
 """Export v04 project data as JSON for the React frontend.
 
 React has no API yet, so it reads static JSON instead of hitting FastAPI/MySQL.
-This script reuses the Streamlit app's own `app/core` modules so the exported
+This script reuses the Streamlit app's own `core` modules so the exported
 values go through exactly the same derivation logic the Streamlit screens use —
 reimplementing that logic in JavaScript would let the two apps drift apart.
 
@@ -19,9 +19,9 @@ from pathlib import Path
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
-APP_DIR = ROOT / "app"
-OUT_DIR = ROOT / "frontend" / "src" / "data"
-PUBLIC_DIR = ROOT / "frontend" / "public" / "data"
+APP_DIR = ROOT / "archive" / "app_streamlit_v04"
+OUT_DIR = ROOT / "app" / "src" / "data"
+PUBLIC_DIR = ROOT / "app" / "public" / "data"
 
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
