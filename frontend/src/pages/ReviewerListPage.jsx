@@ -1,36 +1,39 @@
 import { useMemo, useState } from "react";
-import { getDecisions } from "../services/decisionStorage";
+import { getDecisionsForModel } from "../services/decisionStorage";
+import DataModeBadge from "../components/DataModeBadge";
 import ReviewerFilters from "../components/reviewers/ReviewerFilters";
 import ReviewerTable from "../components/reviewers/ReviewerTable";
-import { reviewerData } from "../mocks/reviewerData";
+import { operationsSummary, reviewers, riskTypes } from "../data";
 
 function ReviewerListPage() {
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("전체");
-  const [judgmentFilter, setJudgmentFilter] = useState("전체");
+  const [judgmentFilters, setJudgmentFilters] = useState([
+    "약화 우세",
+    "중단 우세",
+  ]);
   const [riskTypeFilter, setRiskTypeFilter] = useState("전체");
+  const [crmRangeFilter, setCrmRangeFilter] = useState("전체");
   const [sortRule, setSortRule] = useState("우선순위");
-  const [visibleCount, setVisibleCount] = useState(8);
-  const [decisions] = useState(() => getDecisions());
+  const [visibleCount, setVisibleCount] = useState(100);
+  const [decisions] = useState(() =>
+    getDecisionsForModel(operationsSummary.modelVersion),
+  );
 
   const reviewersWithDecisions = useMemo(
     () =>
-      reviewerData.map((reviewer) => ({
+      reviewers.map((reviewer) => ({
         ...reviewer,
-        managerDecision: decisions[reviewer.userId] ?? null,
+        managerDecision: decisions[reviewer.sampleId] ?? null,
       })),
     [decisions],
-  );  
-  
+  );
+
   const completedCount = reviewersWithDecisions.filter(
     (reviewer) => reviewer.managerDecision,
   ).length;
 
   const pendingCount = reviewersWithDecisions.length - completedCount;
-
-  const riskTypes = [
-    ...new Set(reviewersWithDecisions.map((reviewer) => reviewer.riskType)),
-  ];
 
   const filteredReviewers = useMemo(() => {
     let result = [...reviewersWithDecisions];
@@ -51,9 +54,9 @@ function ReviewerListPage() {
       result = result.filter((reviewer) => reviewer.managerDecision);
     }
 
-    if (judgmentFilter !== "전체") {
-      result = result.filter(
-        (reviewer) => reviewer.modelJudgment === judgmentFilter,
+    if (judgmentFilters.length > 0) {
+      result = result.filter((reviewer) =>
+        judgmentFilters.includes(reviewer.modelJudgment),
       );
     }
 
@@ -63,15 +66,29 @@ function ReviewerListPage() {
       );
     }
 
-    if (sortRule === "리뷰 공백") {
+    if (crmRangeFilter === "상위 20%") {
+      result = result.filter((reviewer) => reviewer.crmTarget);
+    } else if (crmRangeFilter === "상위 20% 제외") {
+      result = result.filter((reviewer) => !reviewer.crmTarget);
+    }
+
+    if (sortRule === "중단 점수") {
+      result.sort(
+        (first, second) => second.scores.stopped - first.scores.stopped,
+      );
+    } else if (sortRule === "약화 점수") {
+      result.sort(
+        (first, second) => second.scores.weakened - first.scores.weakened,
+      );
+    } else if (sortRule === "활동 감소순") {
+      result.sort(
+        (first, second) =>
+          second.activeMonthDeclineRate - first.activeMonthDeclineRate,
+      );
+    } else if (sortRule === "리뷰 공백") {
       result.sort(
         (first, second) =>
           second.recentRecencyDays - first.recentRecencyDays,
-      );
-    } else if (sortRule === "최근 활동 월") {
-      result.sort(
-        (first, second) =>
-          first.recentActiveMonths - second.recentActiveMonths,
       );
     } else {
       result.sort(
@@ -84,11 +101,53 @@ function ReviewerListPage() {
   }, [
     searchText,
     statusFilter,
-    judgmentFilter,
+    judgmentFilters,
     riskTypeFilter,
+    crmRangeFilter,
     sortRule,
     reviewersWithDecisions,
   ]);
+
+  function handleDownloadCsv() {
+    const header = [
+      "priority_rank",
+      "user_id",
+      "model_judgment",
+      "risk_type",
+      "core_change",
+      "recommended_review",
+      "manager_decision",
+    ];
+
+    const rows = filteredReviewers.map((reviewer) => [
+      reviewer.priorityRank,
+      reviewer.userId,
+      reviewer.modelJudgment,
+      reviewer.riskType,
+      reviewer.coreChange,
+      reviewer.recommendedReview,
+      reviewer.managerDecision ?? "",
+    ]);
+
+    const csvContent = [header, ...rows]
+      .map((row) =>
+        row
+          .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+          .join(","),
+      )
+      .join("\n");
+
+    // Excel needs the BOM to read the Korean columns as UTF-8.
+    const blob = new Blob([`\ufeff${csvContent}`], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "reviewer_worklist.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   const visibleReviewers = filteredReviewers.slice(0, visibleCount);
   const remainingCount =
@@ -98,7 +157,7 @@ function ReviewerListPage() {
     <section>
       <div className="border-b border-[#DDE4DF] pb-7">
         <p className="text-xs font-bold tracking-[0.15em] text-[#4C987C]">
-          REVIEWER WORKLIST · REACT
+          REVIEWER WORKLIST
         </p>
 
         <h1 className="mt-3 text-4xl font-bold tracking-[-0.04em] text-[#17211D] md:text-5xl">
@@ -110,9 +169,9 @@ function ReviewerListPage() {
           상세 화면에서 활동 변화 근거를 확인합니다.
         </p>
 
-        <span className="mt-4 inline-flex rounded-full bg-[#17211D] px-3 py-1 text-xs font-bold text-white">
-          DEMO 데이터
-        </span>
+        <div className="mt-4">
+          <DataModeBadge />
+        </div>
       </div>
 
       <div className="mt-7 grid gap-3 sm:grid-cols-3">
@@ -129,6 +188,7 @@ function ReviewerListPage() {
         <StatCard
           label="검토 완료"
           value={`${completedCount.toLocaleString()}명`}
+          note="이 브라우저 기준"
           good
         />
       </div>
@@ -138,27 +198,42 @@ function ReviewerListPage() {
           searchText={searchText}
           onSearchChange={(value) => {
             setSearchText(value);
-            setVisibleCount(8);
+            setVisibleCount(100);
           }}
           statusFilter={statusFilter}
           onStatusChange={(value) => {
             setStatusFilter(value);
-            setVisibleCount(8);
+            setVisibleCount(100);
           }}
-          judgmentFilter={judgmentFilter}
-          onJudgmentChange={(value) => {
-            setJudgmentFilter(value);
-            setVisibleCount(8);
+          judgmentFilters={judgmentFilters}
+          onJudgmentFiltersChange={(value) => {
+            setJudgmentFilters(value);
+            setVisibleCount(100);
           }}
           riskTypeFilter={riskTypeFilter}
           onRiskTypeChange={(value) => {
             setRiskTypeFilter(value);
-            setVisibleCount(8);
+            setVisibleCount(100);
+          }}
+          crmRangeFilter={crmRangeFilter}
+          onCrmRangeChange={(value) => {
+            setCrmRangeFilter(value);
+            setVisibleCount(100);
           }}
           sortRule={sortRule}
           onSortChange={setSortRule}
           riskTypes={riskTypes}
         />
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <button
+          type="button"
+          onClick={handleDownloadCsv}
+          className="min-h-9 rounded-lg border border-[#DDE4DF] px-4 text-xs font-bold text-[#68736D] transition hover:border-[#137A5A] hover:text-[#137A5A]"
+        >
+          CSV 다운로드
+        </button>
       </div>
 
       <div className="mt-6">
@@ -167,29 +242,31 @@ function ReviewerListPage() {
 
       <div className="mt-5 text-center">
         <p className="text-xs text-[#68736D]">
-          {filteredReviewers.length.toLocaleString()}명 중{" "}
+          전체 {operationsSummary.totalReviewers.toLocaleString()}명 · 조건에
+          맞는 {filteredReviewers.length.toLocaleString()}명 중{" "}
           {visibleReviewers.length.toLocaleString()}명 표시
         </p>
 
         {remainingCount > 0 && (
           <button
             type="button"
-            onClick={() => setVisibleCount((count) => count + 8)}
+            onClick={() => setVisibleCount((count) => count + 100)}
             className="mt-3 min-h-11 rounded-lg border border-[#137A5A] px-6 font-bold text-[#137A5A] transition hover:bg-[#E3F1EA]"
           >
-            더 보기 · {Math.min(8, remainingCount)}명 추가
+            더 보기 · {Math.min(100, remainingCount)}명 추가
           </button>
         )}
       </div>
 
       <footer className="mt-12 border-t border-[#DDE4DF] pt-5 text-xs text-[#68736D]">
-        현재 목록은 화면 기능 검증을 위한 합성 DEMO 데이터입니다.
+        {operationsSummary.modelVersion} 실데이터 · 전체 코호트{" "}
+        {reviewersWithDecisions.length.toLocaleString()}명
       </footer>
     </section>
   );
 }
 
-function StatCard({ label, value, good = false }) {
+function StatCard({ label, value, note, good = false }) {
   return (
     <div className="rounded-xl border border-[#DDE4DF] bg-white px-5 py-4">
       <p className="text-sm text-[#68736D]">
@@ -204,6 +281,8 @@ function StatCard({ label, value, good = false }) {
       >
         {value}
       </p>
+
+      {note && <p className="mt-1 text-xs text-[#68736D]">{note}</p>}
     </div>
   );
 }

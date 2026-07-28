@@ -25,6 +25,8 @@ function PolicyRow({ label, value, good = false }) {
 function PolicyPanel({ summary }) {
   const liftWidth = Math.min(100, Math.max(5, summary.lift / 2 * 100));
 
+  const recallCeiling = (summary.recallCeiling ?? 0) * 100;
+
   return (
     <aside className="rounded-xl border border-[#DDE4DF] bg-white p-6">
       <h2 className="text-lg font-bold text-[#17211D]">
@@ -57,6 +59,11 @@ function PolicyPanel({ summary }) {
           label="재현율"
           value={formatPercent(summary.recall)}
         />
+
+        <p className="mt-1 text-xs leading-5 text-[#68736D]">
+          한 번에 20%만 볼 수 있어 최대로 잡아도 {recallCeiling.toFixed(1)}%까지가
+          한계입니다
+        </p>
       </div>
 
       <div className="border-t border-[#DDE4DF] py-4">

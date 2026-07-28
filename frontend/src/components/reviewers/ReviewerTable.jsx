@@ -25,7 +25,7 @@ function ReviewerTable({ reviewers }) {
           <span>리뷰어</span>
           <span>모델 판단</span>
           <span>핵심 변화</span>
-          <span>위험 유형</span>
+          <span>핵심 신호</span>
           <span>권장 검토</span>
           <span />
         </div>
@@ -54,12 +54,16 @@ function ReviewerTable({ reviewers }) {
 
               <StatusBadge judgment={reviewer.modelJudgment} />
 
-              <span className="truncate text-[#68736D]">
-                {reviewer.coreChange}
+              <span className="text-[#68736D]">
+                {(reviewer.metrics ?? [reviewer.coreChange]).map((metric) => (
+                  <span key={metric} className="block truncate text-xs">
+                    {metric}
+                  </span>
+                ))}
               </span>
 
               <span className="w-fit rounded bg-[#F1F4F1] px-2 py-1 text-xs text-[#68736D]">
-                {reviewer.riskType}
+                {reviewer.coreSignal}
               </span>
 
               {isCompleted ? (

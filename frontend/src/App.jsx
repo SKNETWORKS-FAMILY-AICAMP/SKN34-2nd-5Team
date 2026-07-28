@@ -1,6 +1,7 @@
 import { Route, Routes } from "react-router";
 
 import Header from "./components/Header";
+import ScrollToTop from "./components/ScrollToTop";
 import OperationsPage from "./pages/OperationsPage";
 import PlaybookPage from "./pages/PlaybookPage";
 import RegionalRiskPage from "./pages/RegionalRiskPage";
@@ -11,6 +12,7 @@ import ReviewerDetailPage from "./pages/ReviewerDetailPage";
 function App() {
   return (
     <div className="min-h-screen bg-[#F7F8F5] text-[#17211D]">
+      <ScrollToTop />
       <Header />
 
       <main className="mx-auto max-w-[1540px] px-6 py-10">

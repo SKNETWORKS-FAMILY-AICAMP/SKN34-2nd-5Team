@@ -8,7 +8,35 @@ import {
   YAxis,
 } from "recharts";
 
-function MonthlyActivityChart({ data }) {
+// Builds a continuous month axis so gaps (months with zero reviews) show up
+// as dips instead of being skipped — `data` only carries months that had
+// activity, exported sparsely to keep reviewer-details.json smaller.
+function buildSeries(data, comparisonYear, selectionYear) {
+  const bySampleMonth = new Map(data.map((item) => [item.month, item]));
+  const months = [];
+
+  for (let year = comparisonYear; year <= selectionYear; year += 1) {
+    for (let month = 1; month <= 12; month += 1) {
+      const key = `${year}-${String(month).padStart(2, "0")}`;
+      const found = bySampleMonth.get(key);
+
+      months.push({
+        month: key,
+        reviewCount: found?.reviewCount ?? 0,
+        uniqueBusinessCount: found?.uniqueBusinessCount ?? 0,
+      });
+    }
+  }
+
+  return months;
+}
+
+// Restricted to comparison_year..selection_year (never the target/validation
+// year) so this always-visible tab can't leak the post-hoc outcome that the
+// "검증 정답 표시" toggle is meant to gate.
+function MonthlyActivityChart({ data, comparisonYear, selectionYear }) {
+  const series = buildSeries(data, comparisonYear, selectionYear);
+
   return (
     <div className="rounded-xl border border-[#DDE4DF] bg-white p-5">
       <div>
@@ -17,35 +45,22 @@ function MonthlyActivityChart({ data }) {
         </h3>
 
         <p className="mt-2 text-sm text-[#68736D]">
-          관찰 기간 동안 월별로 작성한 리뷰 수의 변화를 표시합니다.
+          {comparisonYear}년 ~ {selectionYear}년(비교~선정·피처 마감 구간)
+          동안 월별 리뷰 수와 방문 음식점 수의 변화를 표시합니다.
         </p>
       </div>
 
       <div className="mt-6 h-80 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={data}
-            margin={{
-              top: 10,
-              right: 20,
-              bottom: 10,
-              left: 0,
-            }}
-          >
-            <CartesianGrid
-              stroke="#E6EBE7"
-              strokeDasharray="4 4"
-              vertical={false}
-            />
+          <LineChart data={series} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
+            <CartesianGrid stroke="#E6EBE7" strokeDasharray="4 4" vertical={false} />
 
             <XAxis
               dataKey="month"
               axisLine={false}
               tickLine={false}
-              tick={{
-                fill: "#68736D",
-                fontSize: 12,
-              }}
+              interval={1}
+              tick={{ fill: "#68736D", fontSize: 11 }}
             />
 
             <YAxis
@@ -53,17 +68,11 @@ function MonthlyActivityChart({ data }) {
               axisLine={false}
               tickLine={false}
               width={35}
-              tick={{
-                fill: "#68736D",
-                fontSize: 12,
-              }}
+              tick={{ fill: "#68736D", fontSize: 12 }}
             />
 
             <Tooltip
-              formatter={(value) => [
-                `${value}건`,
-                "리뷰 수",
-              ]}
+              formatter={(value, name) => [`${value}건`, name]}
               labelFormatter={(label) => `${label} 활동`}
             />
 
@@ -73,21 +82,25 @@ function MonthlyActivityChart({ data }) {
               name="리뷰 수"
               stroke="#137A5A"
               strokeWidth={3}
-              dot={{
-                fill: "#137A5A",
-                strokeWidth: 0,
-                r: 4,
-              }}
-              activeDot={{
-                r: 6,
-              }}
+              dot={{ fill: "#137A5A", strokeWidth: 0, r: 3 }}
+            />
+
+            <Line
+              type="monotone"
+              dataKey="uniqueBusinessCount"
+              name="고유 음식점 수"
+              stroke="#A66A18"
+              strokeWidth={2}
+              dot={{ fill: "#A66A18", strokeWidth: 0, r: 3 }}
             />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
       <p className="mt-3 text-xs leading-5 text-[#68736D]">
-        현재 차트는 React 화면 검증을 위한 DEMO 데이터입니다.
+        이 차트는 React에서 원천 리뷰 데이터로 직접 집계한 것으로, Streamlit
+        v04는 아직 별도 계약 파일(reviewer_monthly_activity_v01.parquet)이
+        연결되지 않아 같은 화면을 빈 상태로 표시합니다.
       </p>
     </div>
   );

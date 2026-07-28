@@ -1,5 +1,7 @@
 import { NavLink } from "react-router";
 
+import { operationsSummary } from "../data";
+
 const menuItems = [
   {
     label: "운영 홈",
@@ -26,8 +28,8 @@ const menuItems = [
 function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-[#DDE4DF] bg-[#F7F8F5]/95 backdrop-blur">
-      <div className="mx-auto flex min-h-16 max-w-[1540px] items-center gap-6 px-6">
-        <div className="min-w-48 font-bold tracking-tight text-[#17211D]">
+      <div className="mx-auto flex min-h-16 max-w-[1540px] flex-wrap items-center gap-x-6 gap-y-2 px-6 py-2">
+        <div className="shrink-0 font-bold tracking-tight text-[#17211D]">
           Reviewer Retention
         </div>
 
@@ -51,11 +53,22 @@ function Header() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 text-xs text-[#68736D] lg:flex">
-          <span className="rounded-full bg-[#17211D] px-2 py-1 font-bold text-white">
-            DEMO
+        {/* The single place model version + data provenance show — every
+            page eyebrow and the old header title used to repeat this. */}
+        <div className="flex shrink-0 items-center gap-2 text-xs text-[#68736D]">
+          <span
+            className="rounded-full bg-[#17211D] px-2 py-1 font-bold text-white"
+            title="화면에 표시되는 값의 출처와 모델 버전 — 실데이터 vs 데모"
+          >
+            {operationsSummary.dataModeLabel} DATA ·{" "}
+            {operationsSummary.modelVersion.toUpperCase()}
           </span>
-          <span>React 전환 중</span>
+          <span
+            className="hidden sm:inline"
+            title="제품(React 화면) 자체의 완성도 단계"
+          >
+            React 전환 검증 중
+          </span>
         </div>
       </div>
     </header>

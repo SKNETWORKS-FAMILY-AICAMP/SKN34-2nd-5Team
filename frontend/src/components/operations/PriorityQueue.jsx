@@ -27,6 +27,8 @@ function PriorityQueue({ reviewers }) {
       {reviewers.map((reviewer) => {
         const style = getJudgmentStyle(reviewer.modelJudgment);
 
+        const isTopRank = reviewer.rank <= 2;
+
         return (
           <Link
             key={reviewer.userId}
@@ -34,7 +36,11 @@ function PriorityQueue({ reviewers }) {
             className="grid gap-3 border-b border-[#DDE4DF] px-5 py-4 transition last:border-b-0 hover:bg-[#F6F8F6] md:grid-cols-[40px_1.1fr_110px_1.5fr_1fr_24px] md:items-center"
           >
             <span
-              className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white ${style.rank}`}
+              className={[
+                "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white",
+                style.rank,
+                isTopRank ? "ring-2 ring-offset-1 ring-[#17211D]/20" : "opacity-80",
+              ].join(" ")}
             >
               {reviewer.rank}
             </span>

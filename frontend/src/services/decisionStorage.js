@@ -1,6 +1,15 @@
+// Keyed by `${modelVersion}::${sampleId}`, mirroring Streamlit's
+// model_version + sample_id composite key (docs/STREAMLIT_DATA_CONTRACT.md).
+// This is a separate, browser-local store — it is never synced with
+// Streamlit's server-side judgment file, and old v03 `userId`-only entries
+// are not carried forward under the new key.
 const STORAGE_KEY = "reviewer-retention-decisions";
 
-export function getDecisions() {
+function buildKey(modelVersion, sampleId) {
+  return `${modelVersion}::${sampleId}`;
+}
+
+function readAll() {
   try {
     const savedValue = window.localStorage.getItem(STORAGE_KEY);
 
@@ -18,38 +27,46 @@ export function getDecisions() {
   }
 }
 
-export function getDecision(reviewerId) {
-  const decisions = getDecisions();
-
-  return decisions[reviewerId] ?? null;
+function writeAll(decisions) {
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(decisions));
 }
 
-export function saveDecision(reviewerId, decision) {
-  const decisions = getDecisions();
+// { [sampleId]: decision } for one model version, so callers can look
+// reviewers up by sampleId without repeating the model_version prefix.
+export function getDecisionsForModel(modelVersion) {
+  const prefix = buildKey(modelVersion, "");
+  const scoped = {};
 
+  Object.entries(readAll()).forEach(([key, value]) => {
+    if (key.startsWith(prefix)) {
+      scoped[key.slice(prefix.length)] = value;
+    }
+  });
+
+  return scoped;
+}
+
+export function getDecision(modelVersion, sampleId) {
+  return readAll()[buildKey(modelVersion, sampleId)] ?? null;
+}
+
+export function saveDecision(modelVersion, sampleId, decision) {
   const nextDecisions = {
-    ...decisions,
-    [reviewerId]: decision,
+    ...readAll(),
+    [buildKey(modelVersion, sampleId)]: decision,
   };
 
-  window.localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(nextDecisions),
-  );
+  writeAll(nextDecisions);
 
   return nextDecisions;
 }
 
-export function removeDecision(reviewerId) {
-  const decisions = getDecisions();
-  const nextDecisions = { ...decisions };
+export function removeDecision(modelVersion, sampleId) {
+  const nextDecisions = { ...readAll() };
 
-  delete nextDecisions[reviewerId];
+  delete nextDecisions[buildKey(modelVersion, sampleId)];
 
-  window.localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(nextDecisions),
-  );
+  writeAll(nextDecisions);
 
   return nextDecisions;
 }

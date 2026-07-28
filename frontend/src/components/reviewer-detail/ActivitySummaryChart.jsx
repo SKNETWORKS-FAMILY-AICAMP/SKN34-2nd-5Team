@@ -9,17 +9,16 @@ import {
   YAxis,
 } from "recharts";
 
-function ReviewIntervalChart({ data }) {
+function ActivitySummaryChart({ data }) {
   return (
     <div className="rounded-xl border border-[#DDE4DF] bg-white p-5">
       <div>
         <h3 className="text-lg font-bold text-[#17211D]">
-          리뷰 작성 간격 비교
+          활동 변화 요약
         </h3>
 
         <p className="mt-2 text-sm text-[#68736D]">
-          이전 기간과 최근 기간의 작성 간격 및 리뷰 공백을
-          비교합니다.
+          비교 연도와 선정·피처 마감 연도의 활동량을 비교합니다.
         </p>
       </div>
 
@@ -61,25 +60,20 @@ function ReviewIntervalChart({ data }) {
               }}
             />
 
-            <Tooltip
-              formatter={(value, name) => [
-                `${Math.round(value).toLocaleString()}일`,
-                name,
-              ]}
-            />
+            <Tooltip />
 
             <Legend />
 
             <Bar
               dataKey="before"
-              name="이전 기간"
+              name="비교 연도"
               fill="#B8C0BB"
               radius={[5, 5, 0, 0]}
             />
 
             <Bar
               dataKey="after"
-              name="최근 기간"
+              name="선정·피처 마감 연도"
               fill="#137A5A"
               radius={[5, 5, 0, 0]}
             />
@@ -88,11 +82,11 @@ function ReviewIntervalChart({ data }) {
       </div>
 
       <p className="mt-3 text-xs leading-5 text-[#68736D]">
-        값이 커질수록 리뷰 작성 주기가 길어졌거나 마지막 리뷰
-        이후 공백이 증가했다는 의미입니다.
+        선정·피처 마감 연도의 값이 비교 연도보다 낮을수록 활동이 줄어든
+        것입니다.
       </p>
     </div>
   );
 }
 
-export default ReviewIntervalChart;
+export default ActivitySummaryChart;

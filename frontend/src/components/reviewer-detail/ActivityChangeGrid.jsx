@@ -29,7 +29,9 @@ function ActivityChangeGrid({ changes }) {
               "mt-2 text-sm font-bold",
               change.tone === "positive"
                 ? "text-[#137A5A]"
-                : "text-[#E15D47]",
+                : change.tone === "muted"
+                  ? "text-[#68736D]"
+                  : "text-[#E15D47]",
             ].join(" ")}
           >
             {change.delta}
