@@ -72,7 +72,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--apply-schema",
         action="store_true",
-        help="적재 전에 database/ddl/001~009 SQL을 순서대로 실행합니다.",
+        help="적재 전에 database/ddl/001~010 SQL을 순서대로 실행합니다.",
     )
     parser.add_argument(
         "--confirm-database",

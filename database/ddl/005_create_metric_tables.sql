@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS feature_group_importance (
     rank_no SMALLINT UNSIGNED NOT NULL,
     feature_group_label VARCHAR(64) NOT NULL,
     importance_mean DOUBLE NOT NULL,
-    importance_std DOUBLE NOT NULL,
+    importance_std DOUBLE NULL,
     baseline_pr_auc DOUBLE NOT NULL,
     metric VARCHAR(64) NOT NULL,
     method VARCHAR(64) NOT NULL,

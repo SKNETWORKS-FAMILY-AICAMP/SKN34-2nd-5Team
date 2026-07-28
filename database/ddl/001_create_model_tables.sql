@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS model_versions (
     test_target_year SMALLINT UNSIGNED NOT NULL,
     test_samples INT UNSIGNED NOT NULL,
     priority_target_rate DECIMAL(6,5) NOT NULL,
-    model_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    model_sha256 CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
     python_version VARCHAR(32) NULL,
     sklearn_version VARCHAR(32) NULL,
     pandas_version VARCHAR(32) NULL,

@@ -24,6 +24,13 @@ final_core_logistic_multiclass_metadata_v04.json
 
 reports/tables/*_v04.csv
     └─ 모델 평가·피처 중요도 테이블
+
+reports/tables/*_v03.csv
+    └─ 기존 다중분류 평가·피처 중요도 테이블
+
+reports/tables/*_v02.csv
+    ├─ 이진분류 평가 전용 테이블
+    └─ 공용 혼동행렬·피처 중요도 테이블
 ```
 
 ## 관계
@@ -33,6 +40,8 @@ erDiagram
     MODEL_VERSIONS ||--o{ COHORT_SAMPLES : contains
     MODEL_VERSIONS ||--o{ MODEL_VALIDATION_METRICS : evaluates
     MODEL_VERSIONS ||--o{ MODEL_TOPK_METRICS : evaluates
+    MODEL_VERSIONS ||--o{ MODEL_BINARY_VALIDATION_METRICS : evaluates_binary
+    MODEL_VERSIONS ||--o{ MODEL_BINARY_TOPK_METRICS : evaluates_binary
     MODEL_VERSIONS ||--o{ MODEL_CONFUSION_MATRIX : evaluates
     MODEL_VERSIONS ||--o{ FEATURE_IMPORTANCE : explains
     MODEL_VERSIONS ||--o{ FEATURE_GROUP_IMPORTANCE : explains

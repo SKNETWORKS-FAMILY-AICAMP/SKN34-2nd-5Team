@@ -1,7 +1,11 @@
-# Yelp Reviewer Retention v04 MySQL
+# Yelp Reviewer Retention MySQL
 
 실제 v04 코호트·피처·예측·평가 산출물을 MySQL에 적재하고 운영 큐와
 관리자 판단 이력을 제공한다. 데모·합성 데이터는 사용하지 않는다.
+
+v02·v03은 Trust Center 비교에 필요한 실제 평가 리포트만 같은 DB에
+버전별로 적재한다. 두 버전의 과거 코호트나 모델 바이너리가 없는 상태를
+숨기지 않으며, 리포트 전용 버전으로 명시한다.
 
 ## 1. 적재 원본
 
@@ -140,8 +144,42 @@ DB를 선택하고 `SELECT DATABASE()` 결과가 의도한 이름인지 확인�
 `vw_regional_risk_summary`는 리뷰어 단위 권역과 모델 예측을 결합해
 권역별 유지·약화·중단, 고위험 비율, CRM 대상 수와 대표 도시를 집계한다.
 
-## 8. 모델 파일
+## 8. v02·v03 Trust Center 비교 지표 적재
+
+먼저 DB 변경 없이 두 리포트 묶음의 계약을 검증한다.
+
+```powershell
+.\.venv\Scripts\python.exe database\load\load_v03.py --dry-run
+.\.venv\Scripts\python.exe database\load\load_v02.py --dry-run
+```
+
+v04가 들어 있는 동일 개발 DB에 버전별로 이어서 적재할 수 있다.
+
+```powershell
+.\.venv\Scripts\python.exe database\load\load_v03.py `
+  --apply-schema `
+  --confirm-database yelp_retention_v04_derived_dev
+
+.\.venv\Scripts\python.exe database\load\load_v02.py `
+  --apply-schema `
+  --confirm-database yelp_retention_v04_derived_dev
+```
+
+적재 후 `database/validation/validate_historical_metrics.sql`을 실행한다.
+세부 정규화 규칙은
+`database/docs/HISTORICAL_MODEL_METRICS_CONTRACT.md`에 기록한다.
+
+v03 다중분류 지표는 기존 평가 테이블을 재사용한다. v02 이진 검증과
+Top-K만 각각 `model_binary_validation_metrics`,
+`model_binary_topk_metrics`에 저장하고, 혼동행렬과 피처 중요도는 기존
+테이블을 재사용한다.
+
+## 9. 모델 파일
 
 `joblib`은 DB 적재 과정에서 역직렬화하거나 실행하지 않는다. 파일 SHA256만
 metadata와 대조하고 `model_versions`에 기록한다. 신규 예측 서비스가 별도로
 승인될 때만 모델 추론 코드에서 사용한다.
+
+v02·v03 모델 바이너리는 저장소에 없으므로 해당 버전의 `model_sha256`은
+NULL이다. 대신 비교 리포트 파일별 SHA256과 리포트 묶음 계약 SHA256을
+`metadata_json`에 저장한다.
