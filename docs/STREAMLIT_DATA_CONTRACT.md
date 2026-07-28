@@ -162,16 +162,23 @@ selected_for_crm
 
 ## 6. 지역 콘텐츠 위험
 
-지역 콘텐츠 위험은 v04 모델 결과가 아니다.
+지역 콘텐츠 위험은 새 지역 예측 모델의 결과가 아니다. v04 Test 표본의
+관찰 구간 리뷰 활동 권역과 기존 `predicted_state`를 재집계한다.
 
-권장 출처:
+파이프라인 산출물:
 
 ```text
-reports/tables/regional_risk_summary_v01.csv
+data/processed/reviewer_region_v04.parquet
+data/processed/reviewer_monthly_activity_v04.parquet
 ```
 
-파일이 없으면 가짜 지역 수치를 생성하지 않고 `정의·데이터 필요` 상태를
-유지한다. 지역은 거주지가 아니라 음식점 리뷰 활동 지역이다.
+상세 컬럼·기간·검증 조건은
+[`DERIVED_REVIEWER_DATA_CONTRACT_v04.md`](../database/docs/DERIVED_REVIEWER_DATA_CONTRACT_v04.md)를
+따른다. 파일이 없으면 가짜 지역·월별 수치를 생성하지 않는다. 지역은
+거주지가 아니라 음식점 리뷰 활동 지역이다.
+
+현재 React는 두 파일을 JSON으로 변환해 사용한다. 기존 Streamlit 지역·월별
+화면 연결은 별도 작업으로 유지한다.
 
 ## 7. 실행 모드
 

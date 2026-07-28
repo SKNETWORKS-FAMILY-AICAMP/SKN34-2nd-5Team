@@ -7,7 +7,11 @@ from pathlib import Path
 from streamlit.testing.v1 import AppTest
 
 
-APP_DIR = Path(__file__).resolve().parents[1] / "app"
+APP_DIR = (
+    Path(__file__).resolve().parents[1]
+    / "archive"
+    / "app_streamlit_v04"
+)
 sys.path.insert(0, str(APP_DIR))
 
 from core.data import (  # noqa: E402

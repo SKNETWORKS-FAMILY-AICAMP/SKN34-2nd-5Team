@@ -98,9 +98,8 @@ function MonthlyActivityChart({ data, comparisonYear, selectionYear }) {
       </div>
 
       <p className="mt-3 text-xs leading-5 text-[#68736D]">
-        이 차트는 React에서 원천 리뷰 데이터로 직접 집계한 것으로, Streamlit
-        v04는 아직 별도 계약 파일(reviewer_monthly_activity_v01.parquet)이
-        연결되지 않아 같은 화면을 빈 상태로 표시합니다.
+        파이프라인이 생성한 reviewer_monthly_activity_v04.parquet을 사용하며,
+        타깃·검증 연도는 제외하고 비교 연도부터 선정 연도까지만 표시합니다.
       </p>
     </div>
   );

@@ -1,17 +1,19 @@
 # React 데이터 출처 (v04)
 
 `app/`(React)가 v04 모델 산출물을 어떻게 읽고, 어떤 부분은 그대로 pass-through 하고
-어떤 부분은 원천 데이터에서 직접 파생하는지 정의한다. Streamlit 쪽 데이터 계약은
+어떤 부분은 파이프라인 산출물에서 파생하는지 정의한다. Streamlit 쪽 데이터 계약은
 [`STREAMLIT_DATA_CONTRACT.md`](STREAMLIT_DATA_CONTRACT.md) 참고 — 이 문서는 그 v04
 산출물을 React가 어떻게 소비하는지 설명하는 짝문서다.
 
 React는 자체 백엔드/API가 없다. `scripts/export_frontend_data.py`가 Streamlit의
 `archive/app_streamlit_v04/core` 모듈을 그대로 불러와서, 화면별로 필요한 값을 JSON으로
 내보내면(`app/src/data/*.json`, `app/public/data/reviewer-details.json`) React는 그걸
-정적 파일로 읽기만 한다. 모델·프로파일이 갱신되면 재실행한다.
+정적 파일로 읽기만 한다. 권역·월별 활동 계산은 export 스크립트가 원본 리뷰를 직접
+읽지 않고 `pipeline/v04/derived_reviewer_activity.py`가 생성한 Parquet을 소비한다.
 
-```bash
-./venv/Scripts/python.exe scripts/export_frontend_data.py
+```powershell
+.\.venv\Scripts\python.exe pipeline\v04\derived_reviewer_activity.py
+.\.venv\Scripts\python.exe scripts\export_frontend_data.py
 ```
 
 ---
@@ -21,7 +23,7 @@ React는 자체 백엔드/API가 없다. `scripts/export_frontend_data.py`가 St
 | 방식 | 의미 | 해당 화면 |
 |---|---|---|
 | **pass-through** | 모델 프로파일(`final_test_retention_profiles_v04.parquet`)이나 리포트 CSV의 컬럼을 그대로, 혹은 단순 포맷팅만 거쳐 JSON으로 옮김 | 운영 홈, 리뷰어 관리, 리뷰어 상세의 활동 변화/작성 주기/사후 검증 탭, 플레이북, Trust Center의 v04 기본 지표 |
-| **파생(derived)** | 모델 프로파일에 없는 값을, 원천 리뷰/음식점 데이터나 별도 리포트 파일에서 React 전용으로 새로 계산 | 콘텐츠 위험(권역 집계), 리뷰어 상세의 월별 타임라인, Trust Center의 v02/v03 이전 모델 비교 |
+| **파생(derived)** | 원천 리뷰에서 파이프라인이 만든 리뷰어 단위 Parquet 또는 별도 리포트 파일을 JSON으로 변환 | 콘텐츠 위험(권역 집계), 리뷰어 상세의 월별 타임라인, Trust Center의 v02/v03 이전 모델 비교 |
 
 이 문서는 **파생** 쪽만 다룬다 — pass-through는 컬럼명만 다를 뿐 별도 로직이 없어서
 문서화할 게 없다.
@@ -31,21 +33,26 @@ React는 자체 백엔드/API가 없다. `scripts/export_frontend_data.py`가 St
 ## 2. 콘텐츠 위험 — 권역별 집계
 
 화면: `/regional` ([RegionalRiskPage.jsx](../app/src/pages/RegionalRiskPage.jsx))
-내보내기 함수: [`export_regional()`](../scripts/export_frontend_data.py) (`scripts/export_frontend_data.py:745`)
+파이프라인: [`derived_reviewer_activity.py`](../pipeline/v04/derived_reviewer_activity.py)
+내보내기 함수: [`export_regional()`](../scripts/export_frontend_data.py)
 
 ### 2-1. 원천 데이터
 
 | 파일 | 사용한 컬럼 | 용도 |
 |---|---|---|
-| `data/interim/restaurant_reviews.parquet` | `user_id`, `business_id`, `date` | 리뷰 원본 |
-| `data/interim/additional_culinary_reviews_v02.parquet` | `user_id`, `business_id`, `date` | 리뷰 원본 — 위 파일 하나만으로는 리뷰 수가 부족함(3절 참고), 반드시 이 파일과 합쳐야 함 |
-| `data/interim/restaurant_businesses.parquet` | `business_id`, `city`, `state` | 리뷰가 어느 지역 음식점에 달렸는지 매핑 |
-| `final_test_retention_profiles_v04.parquet` (모델 프로파일) | `predicted_state`, `crm_target`, `comparison_year`, `selection_year` | 이미 나온 모델 예측 결과를 지역 기준으로 재집계하기 위한 값 |
+| `data/processed/reviewer_region_v04.parquet` | `sample_id`, `user_id`, `state`, `top_city` | 파이프라인이 확정한 리뷰어 단위 리뷰 활동 권역 |
+| `final_test_retention_profiles_v04.parquet` (모델 프로파일) | `sample_id`, `predicted_state`, `crm_target`, `comparison_year`, `selection_year` | 이미 나온 모델 예측 결과를 지역 기준으로 재집계 |
+
+`reviewer_region_v04.parquet`의 원천은
+`restaurant_reviews.parquet`, `additional_culinary_reviews.parquet`,
+`restaurant_businesses.parquet`이다. 상세 계약은
+[`DERIVED_REVIEWER_DATA_CONTRACT_v04.md`](../database/docs/DERIVED_REVIEWER_DATA_CONTRACT_v04.md)를
+따른다.
 
 ### 2-2. 처리 단계
 
-1. 두 리뷰 파일(`restaurant_reviews` + `additional_culinary_reviews_v02`)을 합쳐서 하나의
-   리뷰 테이블을 만든다(`_load_all_reviews()`, `scripts/export_frontend_data.py:627`).
+1. 파이프라인이 두 리뷰 파일(`restaurant_reviews` + `additional_culinary_reviews`)을
+   합쳐 하나의 리뷰 테이블을 만든다.
 2. 모델의 관찰 구간(`comparison_year`~`selection_year`, 현재 v04 기준 2017~2018)에
    해당하는 리뷰만 남긴다.
 3. `restaurant_businesses`와 조인해서 리뷰마다 `state`를 붙인다. `state`가 없는(조인
@@ -53,9 +60,10 @@ React는 자체 백엔드/API가 없다. `scripts/export_frontend_data.py`가 St
 4. **리뷰어별로 그 구간에 가장 많이 리뷰를 남긴 `state`를 그 리뷰어의 "권역"으로
    확정한다.** 이건 거주지·직장이 아니라 순수하게 관찰된 리뷰 활동 기준이다 — city
    단위(208개)로 하면 교외가 도심에서 갈라져 나가서 의미가 흐려지므로 state로 묶는다.
-5. 표시용 대표 도시(`topCity`)도 같은 방식으로, 그 권역 안에서 리뷰어가 가장 많이
-   몰린 도시를 고른다.
-6. 권역별로 묶어서 `predicted_state`를 집계한다 — 유지(0)/약화(1)/중단(2) 인원수,
+5. 리뷰어별 선택 권역과 그 안의 최다 리뷰 도시를
+   `reviewer_region_v04.parquet`에 저장한다.
+6. export 스크립트 또는 DB View가 권역별로 묶어서 `predicted_state`를 집계한다 —
+   유지(0)/약화(1)/중단(2) 인원수,
    고위험 비율(`highRiskRate` = (약화+중단) / 전체), CRM 대상 수(`crmTargets` =
    `crm_target` 합).
 7. 표본이 30명(`minimum_reviewers`) 미만인 권역은 순위에서 제외하지 않고 `belowMinimum`
@@ -81,9 +89,9 @@ React는 자체 백엔드/API가 없다. `scripts/export_frontend_data.py`가 St
 
 ## 3. 리뷰 수 이중 소스 — 두 화면에 공통되는 버그와 수정
 
-`export_regional()`과 아래 4절의 `export_monthly_activity()` 둘 다
-[`_load_all_reviews()`](../scripts/export_frontend_data.py) (`scripts/export_frontend_data.py:627`)를
-공유해서 쓴다. 이 함수가 생긴 이유를 남겨둔다.
+권역과 월별 활동은
+[`derived_reviewer_activity.py`](../pipeline/v04/derived_reviewer_activity.py)의
+동일한 리뷰 결합 함수를 공유한다. export 스크립트는 원본 리뷰를 다시 읽지 않는다.
 
 **발견 경위**: 월별 타임라인을 만들면서 `restaurant_reviews.parquet` 하나만으로 리뷰어별
 월간 리뷰 수를 더해보니, 모델 프로파일의 `baseline_review_count` + `recent_review_count`
@@ -94,14 +102,12 @@ React는 자체 백엔드/API가 없다. `scripts/export_frontend_data.py`가 St
 - 63.1%의 리뷰어가 실제보다 적게 집계됨
 
 **원인**: `pipeline/v04/preprocessing.py`의 코호트 생성 SQL이
-`restaurant_reviews.parquet`와 `additional_culinary_reviews.parquet`(리포지토리에는
-`additional_culinary_reviews_v02.parquet`라는 이름으로 존재) 두 파일을 `UNION ALL`로
-합쳐서 리뷰 수를 계산한다. React 쪽에서 후자를 빠뜨리고 있었다.
+`restaurant_reviews.parquet`와 `additional_culinary_reviews.parquet` 두 파일을
+`UNION ALL`로 합쳐서 리뷰 수를 계산한다. legacy
+`additional_culinary_reviews_v02.parquet` 파일명도 입력 호환을 위해 지원한다.
 
-**수정**: 두 파일을 합쳐 읽는 `_load_all_reviews()`로 통일한 뒤 재검증하니 6,533명
-전원 오차 0으로 정확히 일치했다. 이 수정은 콘텐츠 위험 화면(권역 판단은 원래도 이
-버그의 영향이 적었지만 더 정확해짐)과 월별 타임라인(아래 4절, 합계가 안 맞으면 바로
-눈에 띄는 화면이라 이 버그의 영향이 컸음) 양쪽에 적용됐다.
+**수정**: 파이프라인에서 두 파일을 합친 뒤 표본별 월간 리뷰 합계가 프로필의
+`baseline_review_count + recent_review_count`와 전원 일치해야만 산출물을 저장한다.
 
 ---
 
@@ -116,21 +122,19 @@ React는 자체 백엔드/API가 없다. `scripts/export_frontend_data.py`가 St
 
 | 파일 | 사용한 컬럼 | 용도 |
 |---|---|---|
-| `data/interim/restaurant_reviews.parquet` | `user_id`, `business_id`, `date` | 리뷰 원본 |
-| `data/interim/additional_culinary_reviews_v02.parquet` | `user_id`, `business_id`, `date` | 리뷰 원본 — 3절 참고, 반드시 합쳐야 함 |
-| `final_test_retention_profiles_v04.parquet` (모델 프로파일) | `user_id`, `comparison_year`, `selection_year` | 어느 리뷰어의, 어느 구간을 볼지 정하는 기준 |
+| `data/processed/reviewer_monthly_activity_v04.parquet` | `sample_id`, `year_month`, `review_count`, `unique_business_count` | 파이프라인이 만든 표본별 월간 활동 |
+| `final_test_retention_profiles_v04.parquet` (모델 프로파일) | `sample_id`, `user_id`, `comparison_year`, `selection_year` | 표본·사용자 매핑과 관찰 구간 검증 |
 
 이 화면은 원래 Streamlit이 `data/processed/predictions/reviewer_monthly_activity_v01.parquet`라는
 별도 계약 파일을 기다리다가, 그 파일이 저장소에 없어서 빈 상태로 두고 있던 자리다
 ([`app/views/reviewer_360.py:278-294`](../archive/app_streamlit_v04/views/reviewer_360.py)).
-그런데 이 계약 파일이 담으려던 값(리뷰 작성 월, 월별 리뷰 수, 월별 고유 음식점 수)은
-이미 있는 원천 리뷰 데이터로 직접 계산 가능하다는 걸 확인해서, **React 쪽에서만**
-채워 넣었다. Streamlit은 그대로 빈 상태를 유지한다(2026-07-28 결정 — Streamlit 코드는
-이번 작업 범위에서 건드리지 않기로 함).
+그 계약을 v04 `sample_id` 단위로 정식 구현한 파일이
+`reviewer_monthly_activity_v04.parquet`이다. React는 이 파일을 JSON으로 변환해
+사용한다. Streamlit 화면 연결은 이번 범위에 포함하지 않는다.
 
 ### 4-2. 처리 단계
 
-1. 두 리뷰 파일을 합쳐서(`_load_all_reviews()`) 해당 리뷰어의 리뷰만 남긴다.
+1. 파이프라인이 두 리뷰 파일을 합쳐 해당 `sample_id`의 리뷰만 남긴다.
 2. **`comparison_year`~`selection_year` 구간만** 남긴다(예: 2017-01~2018-12).
    `target_year`(검증 연도, 2019)는 의도적으로 제외한다 — 이 탭은 "검증 정답 표시"
    토글 뒤에 숨겨진 사후 검증 탭과 달리 항상 보이는 탭이라, 여기에 검증 연도 활동을
@@ -176,8 +180,9 @@ v04 기본 지표와 달리, 이 섹션은 v04 프로파일이 아니라 **과�
 
 ### 5-2. 처리 단계
 
-- **v03**: v04와 스키마가 동일한 3클래스 리포트라, v04 처리 로직(`_multiclass_trust_block()`)을
-  그대로 재사용해서 지표를 뽑는다. 별도로 `_v03_top20()`이 "상위 20%" 요약(대상자 수,
+- **v03**: 화면에서 사용하는 3클래스 지표 컬럼이 v04와 호환되므로
+  처리 로직(`_multiclass_trust_block()`)을 재사용한다. 원본 CSV의 부가 컬럼까지
+  완전히 같은 것은 아니다. 별도로 `_v03_top20()`이 "상위 20%" 요약(대상자 수,
   포착 인원, Precision/Recall/Lift)만 추가로 뽑는다.
 - **v02**: 이진 이탈 분류 모델이라 3클래스와 지표 체계 자체가 다르다(`_v02_block()`).
   `validation_test_comparison_v02.csv`에서 `dataset == "Test"` 행을 기본 지표로 쓰고,
@@ -196,12 +201,13 @@ v02 PR-AUC 0.426·Recall 71.3% 등 브라우저에서 렌더링된 값이 CSV �
 
 ## 6. 재생성 방법
 
-원천 데이터, 모델 프로파일, 리포트 CSV 중 하나라도 바뀌면 아래 스크립트를 다시
-실행해서 `app/src/data/*.json`, `app/public/data/reviewer-details.json`을 갱신한다.
+원천 리뷰·음식점 데이터가 바뀌면 파생 Parquet을 먼저 재생성한다. 이후 모델
+프로파일, 파생 Parquet, 리포트 CSV 중 하나라도 바뀌면 React JSON을 갱신한다.
 
-```bash
-./venv/Scripts/python.exe scripts/export_frontend_data.py
+```powershell
+.\.venv\Scripts\python.exe pipeline\v04\derived_reviewer_activity.py
+.\.venv\Scripts\python.exe scripts\export_frontend_data.py
 ```
 
-이 문서에 적힌 파일 경로(`data/interim/*.parquet`, `reports/tables/*.csv`)나 컬럼명이
-바뀌면 `scripts/export_frontend_data.py`와 이 문서를 함께 갱신해야 한다.
+파생 파일의 경로나 컬럼이 바뀌면 데이터 계약, 파이프라인, DB 로더,
+`scripts/export_frontend_data.py`를 함께 갱신해야 한다.

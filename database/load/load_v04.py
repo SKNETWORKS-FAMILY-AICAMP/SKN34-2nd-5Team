@@ -34,6 +34,8 @@ class SourcePaths:
     confusion_matrix: Path
     feature_importance: Path
     feature_group_importance: Path
+    reviewer_region: Path
+    monthly_activity: Path
 
 
 @dataclass
@@ -48,6 +50,8 @@ class SourceBundle:
     confusion_matrix: pd.DataFrame
     feature_importance: pd.DataFrame
     feature_group_importance: pd.DataFrame
+    reviewer_region: pd.DataFrame
+    monthly_activity: pd.DataFrame
 
 
 def parse_args() -> argparse.Namespace:
@@ -68,7 +72,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--apply-schema",
         action="store_true",
-        help="적재 전에 database/ddl/001~007 SQL을 순서대로 실행합니다.",
+        help="적재 전에 database/ddl/001~009 SQL을 순서대로 실행합니다.",
     )
     parser.add_argument(
         "--confirm-database",
@@ -119,6 +123,15 @@ def source_paths(project_root: Path) -> SourcePaths:
         feature_group_importance=(
             root / "reports" / "tables" / "final_feature_group_importance_v04.csv"
         ),
+        reviewer_region=(
+            root / "data" / "processed" / "reviewer_region_v04.parquet"
+        ),
+        monthly_activity=(
+            root
+            / "data"
+            / "processed"
+            / "reviewer_monthly_activity_v04.parquet"
+        ),
     )
 
 
@@ -136,6 +149,8 @@ def require_files(paths: SourcePaths) -> None:
             paths.confusion_matrix,
             paths.feature_importance,
             paths.feature_group_importance,
+            paths.reviewer_region,
+            paths.monthly_activity,
         ]
         if not path.is_file()
     ]
@@ -176,6 +191,8 @@ def load_and_validate(paths: SourcePaths) -> SourceBundle:
     confusion_matrix = pd.read_csv(paths.confusion_matrix)
     feature_importance = pd.read_csv(paths.feature_importance)
     feature_group_importance = pd.read_csv(paths.feature_group_importance)
+    reviewer_region = pd.read_parquet(paths.reviewer_region)
+    monthly_activity = pd.read_parquet(paths.monthly_activity)
 
     if metadata.get("version") != MODEL_VERSION:
         raise ValueError("메타데이터 version이 v04가 아닙니다.")
@@ -245,6 +262,18 @@ def load_and_validate(paths: SourcePaths) -> SourceBundle:
     if int(feature_group_importance["feature_count"].sum()) != 43:
         raise ValueError("그룹 중요도 feature_count 합이 43이 아닙니다.")
 
+    project_root = str(paths.project_root)
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    from pipeline.v04.derived_reviewer_activity import validate_outputs
+
+    validate_outputs(
+        profiles,
+        reviewer_region,
+        monthly_activity,
+        expected_profile_rows=EXPECTED_TEST_ROWS,
+    )
+
     final_validation = validation_metrics.loc[
         validation_metrics["record_type"].eq("final_test")
     ]
@@ -283,6 +312,8 @@ def load_and_validate(paths: SourcePaths) -> SourceBundle:
         confusion_matrix=confusion_matrix,
         feature_importance=feature_importance,
         feature_group_importance=feature_group_importance,
+        reviewer_region=reviewer_region,
+        monthly_activity=monthly_activity,
     )
 
 
@@ -308,6 +339,8 @@ def validation_summary(bundle: SourceBundle) -> dict[str, Any]:
         "test_no_prior_activity": int(
             profiles["prior_activity_available"].eq(0).sum()
         ),
+        "reviewer_region_rows": len(bundle.reviewer_region),
+        "monthly_activity_rows": len(bundle.monthly_activity),
     }
 
 
@@ -371,7 +404,21 @@ def apply_schema(connection, project_root: Path) -> None:
         raise RuntimeError("database/ddl SQL 파일이 없습니다.")
     for path in ddl_files:
         for statement in sql_statements(path):
-            connection.exec_driver_sql(statement)
+            try:
+                connection.exec_driver_sql(statement)
+            except Exception as error:
+                # MySQL has no portable CREATE INDEX IF NOT EXISTS syntax.
+                # A failed schema run can therefore leave 001~006 applied and
+                # stop in a later file. On retry, duplicate index name (1061)
+                # is safe to skip; every table DDL is already IF NOT EXISTS
+                # and every view DDL is CREATE OR REPLACE.
+                original = getattr(error, "orig", None)
+                args = getattr(original, "args", ())
+                error_code = args[0] if args else None
+                if error_code == 1061:
+                    print(f"schema already applied: duplicate index in {path.name}")
+                    continue
+                raise
         print(f"schema applied: {path.name}")
 
 
@@ -391,6 +438,8 @@ def assert_clean_target(connection, model_version: str) -> None:
         "model_confusion_matrix",
         "feature_importance",
         "feature_group_importance",
+        "reviewer_region",
+        "reviewer_monthly_activity",
     ]
     occupied: dict[str, int] = {}
     for table in tables:
@@ -490,6 +539,21 @@ def frames_for_mysql(bundle: SourceBundle) -> list[tuple[str, pd.DataFrame]]:
     model_predictions = bundle.profiles[prediction_columns].copy()
     model_predictions.insert(0, "model_version", MODEL_VERSION)
 
+    reviewer_region = bundle.reviewer_region[
+        ["sample_id", "state", "top_city"]
+    ].copy()
+    reviewer_region.insert(0, "model_version", MODEL_VERSION)
+
+    monthly_activity = bundle.monthly_activity[
+        [
+            "sample_id",
+            "year_month",
+            "review_count",
+            "unique_business_count",
+        ]
+    ].copy()
+    monthly_activity.insert(0, "model_version", MODEL_VERSION)
+
     validation_metrics = bundle.validation_metrics.copy()
     validation_metrics.insert(0, "model_version", MODEL_VERSION)
 
@@ -546,6 +610,8 @@ def frames_for_mysql(bundle: SourceBundle) -> list[tuple[str, pd.DataFrame]]:
         ("reviewer_features", reviewer_features),
         ("validation_outcomes", validation_outcomes),
         ("model_predictions", model_predictions),
+        ("reviewer_region", reviewer_region),
+        ("reviewer_monthly_activity", monthly_activity),
         ("model_validation_metrics", validation_metrics),
         ("model_topk_metrics", topk_metrics),
         ("model_confusion_matrix", confusion_matrix),

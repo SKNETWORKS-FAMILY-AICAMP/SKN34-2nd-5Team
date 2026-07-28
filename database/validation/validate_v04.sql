@@ -1,4 +1,6 @@
-USE yelp_retention_v04_dev;
+-- DBeaver에서 검증할 DB를 명시적으로 선택한 뒤 실행한다.
+-- 예: USE yelp_retention_v04_derived_dev;
+SELECT DATABASE() AS validation_database;
 
 -- 1. 모델 계약: 정확히 v04 1행
 SELECT
@@ -131,4 +133,106 @@ WHERE model_version = 'v04'
 UNION ALL
 SELECT 'feature_group_importance', COUNT(*)
 FROM feature_group_importance
+WHERE model_version = 'v04';
+
+-- 11. 파생 리뷰어 데이터 적재 건수
+SELECT 'reviewer_region' AS table_name, COUNT(*) AS rows_found
+FROM reviewer_region
+WHERE model_version = 'v04'
+UNION ALL
+SELECT 'reviewer_monthly_activity', COUNT(*)
+FROM reviewer_monthly_activity
+WHERE model_version = 'v04';
+
+-- 12. 파생 데이터 PK 중복: 두 결과 모두 0이어야 함
+SELECT 'reviewer_region_duplicate' AS check_name, COUNT(*) AS issue_count
+FROM (
+    SELECT sample_id
+    FROM reviewer_region
+    WHERE model_version = 'v04'
+    GROUP BY sample_id
+    HAVING COUNT(*) > 1
+) AS duplicated_region
+UNION ALL
+SELECT 'reviewer_monthly_duplicate', COUNT(*)
+FROM (
+    SELECT sample_id, `year_month`
+    FROM reviewer_monthly_activity
+    WHERE model_version = 'v04'
+    GROUP BY sample_id, `year_month`
+    HAVING COUNT(*) > 1
+) AS duplicated_month;
+
+-- 13. 파생 데이터 참조·시간 계약: 세 결과 모두 0이어야 함
+SELECT 'region_without_cohort' AS check_name, COUNT(*) AS issue_count
+FROM reviewer_region AS region
+LEFT JOIN cohort_samples AS cohort
+  ON cohort.model_version = region.model_version
+ AND cohort.sample_id = region.sample_id
+WHERE region.model_version = 'v04'
+  AND cohort.sample_id IS NULL
+UNION ALL
+SELECT 'monthly_without_cohort', COUNT(*)
+FROM reviewer_monthly_activity AS activity
+LEFT JOIN cohort_samples AS cohort
+  ON cohort.model_version = activity.model_version
+ AND cohort.sample_id = activity.sample_id
+WHERE activity.model_version = 'v04'
+  AND cohort.sample_id IS NULL
+UNION ALL
+SELECT 'prediction_without_region', COUNT(*)
+FROM model_predictions AS prediction
+LEFT JOIN reviewer_region AS region
+  ON region.model_version = prediction.model_version
+ AND region.sample_id = prediction.sample_id
+WHERE prediction.model_version = 'v04'
+  AND region.sample_id IS NULL
+UNION ALL
+SELECT 'prediction_without_monthly_activity', COUNT(*)
+FROM model_predictions AS prediction
+LEFT JOIN (
+    SELECT DISTINCT model_version, sample_id
+    FROM reviewer_monthly_activity
+    WHERE model_version = 'v04'
+) AS activity
+  ON activity.model_version = prediction.model_version
+ AND activity.sample_id = prediction.sample_id
+WHERE prediction.model_version = 'v04'
+  AND activity.sample_id IS NULL
+UNION ALL
+SELECT 'monthly_outside_feature_window', COUNT(*)
+FROM reviewer_monthly_activity AS activity
+JOIN cohort_samples AS cohort
+  ON cohort.model_version = activity.model_version
+ AND cohort.sample_id = activity.sample_id
+WHERE activity.model_version = 'v04'
+  AND CAST(LEFT(activity.`year_month`, 4) AS UNSIGNED)
+      NOT BETWEEN cohort.comparison_year AND cohort.selection_year;
+
+-- 14. 월별 리뷰 합계와 프로필 피처 합계: issue_count=0이어야 함
+SELECT COUNT(*) AS issue_count
+FROM (
+    SELECT
+        activity.sample_id,
+        SUM(activity.review_count) AS monthly_reviews,
+        feature.baseline_review_count + feature.recent_review_count
+            AS expected_reviews
+    FROM reviewer_monthly_activity AS activity
+    JOIN reviewer_features AS feature
+      ON feature.model_version = activity.model_version
+     AND feature.sample_id = activity.sample_id
+    WHERE activity.model_version = 'v04'
+    GROUP BY
+        activity.sample_id,
+        feature.baseline_review_count,
+        feature.recent_review_count
+    HAVING monthly_reviews <> expected_reviews
+) AS mismatched_review_totals;
+
+-- 15. 권역 View 합계: 6,533명 / CRM 1,307명
+SELECT
+    COUNT(*) AS regions,
+    SUM(total_reviewers) AS total_reviewers,
+    SUM(crm_targets) AS crm_targets
+FROM vw_regional_risk_summary
 WHERE model_version = 'v04';

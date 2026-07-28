@@ -22,9 +22,17 @@ ROOT = Path(__file__).resolve().parent.parent
 APP_DIR = ROOT / "archive" / "app_streamlit_v04"
 OUT_DIR = ROOT / "app" / "src" / "data"
 PUBLIC_DIR = ROOT / "app" / "public" / "data"
+REVIEWER_REGION_PATH = (
+    ROOT / "data" / "processed" / "reviewer_region_v04.parquet"
+)
+MONTHLY_ACTIVITY_PATH = (
+    ROOT / "data" / "processed" / "reviewer_monthly_activity_v04.parquet"
+)
 
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from core.data import load_app_data  # noqa: E402
 from core.formatters import days, percent, signed_phrase  # noqa: E402
@@ -36,6 +44,11 @@ from core.insights import (  # noqa: E402
     STRATEGIES,
     risk_signals,
     strategy_for,
+)
+from pipeline.v04.derived_reviewer_activity import (  # noqa: E402
+    MONTHLY_COLUMNS,
+    REGION_COLUMNS,
+    validate_outputs,
 )
 
 # `feature_group_label` in the report CSVs is written in cp949 and comes back
@@ -624,75 +637,66 @@ def export_playbooks() -> list[dict]:
     ]
 
 
-def _load_all_reviews() -> pd.DataFrame:
-    """restaurant_reviews.parquet alone undercounts — pipeline/v04/preprocessing.py
-    unions it with a second reviews file (there as additional_culinary_reviews_v02.parquet
-    here) to build baseline_review_count/recent_review_count. Skipping that union
-    left review-count derivations short for 63% of reviewers (mean gap ~2,
-    max 40) versus the profile's own counts — verified against
-    final_test_retention_profiles_v04.parquet before wiring this in.
-    """
-    paths = [
-        ROOT / "data" / "interim" / "restaurant_reviews.parquet",
-        ROOT / "data" / "interim" / "additional_culinary_reviews_v02.parquet",
+def load_derived_reviewer_data(
+    profiles: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Load and validate pipeline-owned artifacts before frontend export."""
+    missing = [
+        str(path)
+        for path in [REVIEWER_REGION_PATH, MONTHLY_ACTIVITY_PATH]
+        if not path.is_file()
     ]
-    frames = [
-        pd.read_parquet(path, columns=["user_id", "business_id", "date"])
-        for path in paths
-        if path.exists()
-    ]
-    if not frames:
-        return pd.DataFrame(columns=["user_id", "business_id", "date"])
-    return pd.concat(frames, ignore_index=True)
-
-
-def export_monthly_activity(profiles: pd.DataFrame) -> dict[str, list[dict]]:
-    """Per-reviewer monthly review count + unique business count, derived from
-    raw reviews rather than waiting on reviewer_monthly_activity_v01.parquet.
-
-    That contract file does not exist in this repo, so Streamlit's own
-    reviewer_360.py (lines 278-294) falls back to an empty state for the same
-    reason — this derivation only fills the gap on the React side (Streamlit
-    is left untouched, decision 2026-07-28).
-
-    Restricted to comparison_year..selection_year — the model's actual feature
-    window — and never target_year, so this tab (not gated behind the "검증
-    정답 표시" toggle) can't leak the post-hoc validation outcome.
-    """
-    if profiles.empty:
-        return {}
-
-    cohort = profiles.copy()
-    cohort["user_id"] = cohort["user_id"].astype(str)
-    comparison_year = _i(cohort["comparison_year"].iloc[0], 2017)
-    selection_year = _i(cohort["selection_year"].iloc[0], 2018)
-
-    reviews = _load_all_reviews()
-    if reviews.empty:
-        return {}
-    reviews["user_id"] = reviews["user_id"].astype(str)
-    reviews = reviews[reviews["user_id"].isin(cohort["user_id"])]
-    reviews["date"] = pd.to_datetime(reviews["date"], errors="coerce")
-    reviews = reviews[reviews["date"].dt.year.between(comparison_year, selection_year)]
-    reviews["month"] = reviews["date"].dt.strftime("%Y-%m")
-
-    grouped = (
-        reviews.groupby(["user_id", "month"])
-        .agg(
-            reviewCount=("business_id", "size"),
-            uniqueBusinessCount=("business_id", "nunique"),
+    if missing:
+        raise FileNotFoundError(
+            "React 파생 데이터 파일이 없습니다:\n- "
+            + "\n- ".join(missing)
+            + "\n먼저 다음 명령을 실행하세요:\n"
+            + r".\.venv\Scripts\python.exe "
+            + r"pipeline\v04\derived_reviewer_activity.py"
         )
-        .reset_index()
-        .sort_values(["user_id", "month"])
+
+    reviewer_region = pd.read_parquet(
+        REVIEWER_REGION_PATH,
+        columns=REGION_COLUMNS,
     )
+    monthly_activity = pd.read_parquet(
+        MONTHLY_ACTIVITY_PATH,
+        columns=MONTHLY_COLUMNS,
+    )
+    validate_outputs(
+        profiles,
+        reviewer_region,
+        monthly_activity,
+        expected_profile_rows=len(profiles),
+    )
+    return reviewer_region, monthly_activity
+
+
+def export_monthly_activity(
+    profiles: pd.DataFrame,
+    monthly_activity: pd.DataFrame,
+) -> dict[str, list[dict]]:
+    """Convert the validated sample-month artifact to Reviewer 360 JSON."""
+    if profiles.empty or monthly_activity.empty:
+        return {}
+
+    sample_users = profiles[["sample_id", "user_id"]].copy()
+    sample_users["sample_id"] = sample_users["sample_id"].astype(str)
+    sample_users["user_id"] = sample_users["user_id"].astype(str)
+    activity = monthly_activity.merge(
+        sample_users,
+        on="sample_id",
+        how="left",
+        validate="many_to_one",
+    ).sort_values(["user_id", "year_month"], kind="mergesort")
 
     result: dict[str, list[dict]] = {}
-    for user_id, group in grouped.groupby("user_id"):
-        result[user_id] = [
+    for user_id, group in activity.groupby("user_id", sort=True):
+        result[str(user_id)] = [
             {
-                "month": row.month,
-                "reviewCount": int(row.reviewCount),
-                "uniqueBusinessCount": int(row.uniqueBusinessCount),
+                "month": str(row.year_month),
+                "reviewCount": int(row.review_count),
+                "uniqueBusinessCount": int(row.unique_business_count),
             }
             for row in group.itertuples()
         ]
@@ -718,6 +722,7 @@ def main() -> None:
     print(f"loaded {len(profiles):,} reviewer profiles (mode={data.data_mode})")
 
     ordered = profiles.sort_values("priority_rank")
+    reviewer_region, monthly_activity_frame = load_derived_reviewer_data(profiles)
 
     # Worklist rows are bundled; per-reviewer detail is served from public/ and
     # fetched only when a Reviewer 360 screen opens, so the whole cohort stays
@@ -726,10 +731,16 @@ def main() -> None:
     write(OUT_DIR / "trust.json", export_trust(data))
     write(OUT_DIR / "playbooks.json", export_playbooks())
     write(OUT_DIR / "strategies.json", export_strategies())
-    write(OUT_DIR / "regional.json", export_regional(profiles))
+    write(
+        OUT_DIR / "regional.json",
+        export_regional(profiles, reviewer_region),
+    )
     write(OUT_DIR / "reviewers.json", [build_row(row) for _, row in ordered.iterrows()])
 
-    monthly_activity = export_monthly_activity(profiles)
+    monthly_activity = export_monthly_activity(
+        profiles,
+        monthly_activity_frame,
+    )
     details = {}
     for _, row in ordered.iterrows():
         user_id = str(row["user_id"])
@@ -742,77 +753,52 @@ def main() -> None:
 
 
 
-def export_regional(profiles: pd.DataFrame) -> dict:
-    """Aggregate content-supply risk by 권역 (the reviewer's most-reviewed state).
-
-    DEC/regional_risk.py refuses to show invented numbers, so this is built from
-    the actual review-to-business join rather than a placeholder table:
-
-    - 지역 정의: the state a reviewer wrote about most during the feature window,
-      so suburbs fold into their metro instead of splitting into 200+ cities.
-      This is review activity, never a claim about where the reviewer lives.
-    - 표본 기준: regions below MINIMUM_REVIEWERS are reported separately instead
-      of being ranked, because a handful of reviewers makes the rate meaningless.
-    """
+def export_regional(
+    profiles: pd.DataFrame,
+    reviewer_region: pd.DataFrame,
+) -> dict:
+    """Aggregate the pipeline-owned reviewer-region rows for React."""
     minimum_reviewers = 30
-
-    business_path = ROOT / "data" / "interim" / "restaurant_businesses.parquet"
-
-    reviews = _load_all_reviews()
-    if reviews.empty or not business_path.exists():
+    if profiles.empty or reviewer_region.empty:
         return {"available": False, "regions": [], "minimumReviewers": minimum_reviewers}
 
     cohort = profiles.copy()
+    cohort["sample_id"] = cohort["sample_id"].astype(str)
     cohort["user_id"] = cohort["user_id"].astype(str)
-    cohort = cohort.set_index("user_id")
 
     selection_year = _i(cohort["selection_year"].iloc[0], 2018)
     comparison_year = _i(cohort["comparison_year"].iloc[0], 2017)
 
-    reviews["user_id"] = reviews["user_id"].astype(str)
-    reviews = reviews[reviews["user_id"].isin(cohort.index)]
-    reviews["year"] = pd.to_datetime(reviews["date"], errors="coerce").dt.year
-    window = reviews[
-        reviews["year"].between(comparison_year, selection_year)
-    ]
-
-    businesses = pd.read_parquet(
-        business_path, columns=["business_id", "city", "state"]
-    )
-    joined = window.merge(businesses, on="business_id", how="left").dropna(
-        subset=["state"]
-    )
-
-    # One region per reviewer: where they reviewed most in the window.
-    per_user = (
-        joined.groupby(["user_id", "state"])
-        .size()
-        .reset_index(name="reviews")
-        .sort_values("reviews", ascending=False)
-        .drop_duplicates("user_id")
-    )
-    per_user = per_user.join(
-        cohort[["predicted_state", "crm_target"]],
-        on="user_id",
+    per_sample = reviewer_region.merge(
+        cohort[
+            [
+                "sample_id",
+                "predicted_state",
+                "crm_target",
+            ]
+        ],
+        on="sample_id",
+        how="inner",
+        validate="one_to_one",
     )
 
-    # Label each region by the city most of its reviewers write about.
+    # Pick the city selected by the largest number of reviewers in each region.
     top_city = (
-        joined.groupby(["user_id", "state", "city"])
-        .size()
-        .reset_index(name="reviews")
-        .sort_values("reviews", ascending=False)
-        .drop_duplicates("user_id")
-        .groupby(["state", "city"])
+        per_sample.dropna(subset=["top_city"])
+        .groupby(["state", "top_city"])
         .size()
         .reset_index(name="reviewers")
-        .sort_values("reviewers", ascending=False)
+        .sort_values(
+            ["state", "reviewers", "top_city"],
+            ascending=[True, False, True],
+            kind="mergesort",
+        )
         .drop_duplicates("state")
-        .set_index("state")["city"]
+        .set_index("state")["top_city"]
     )
 
     regions = []
-    for state, group in per_user.groupby("state"):
+    for state, group in per_sample.groupby("state"):
         reviewers = int(len(group))
         weakened = int((group["predicted_state"] == 1).sum())
         stopped = int((group["predicted_state"] == 2).sum())
@@ -840,7 +826,7 @@ def export_regional(profiles: pd.DataFrame) -> dict:
         "minimumReviewers": minimum_reviewers,
         "comparisonYear": comparison_year,
         "selectionYear": selection_year,
-        "coveredReviewers": int(len(per_user)),
+        "coveredReviewers": int(len(per_sample)),
         "totalReviewers": int(len(cohort)),
         "regions": regions,
     }

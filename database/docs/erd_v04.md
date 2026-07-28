@@ -13,6 +13,12 @@ modeling_dataset_rolling_v04.parquet (37,953, Core 43)
 final_test_retention_profiles_v04.parquet (6,533)
     └─ model_predictions
 
+reviewer_region_v04.parquet (6,533)
+    └─ reviewer_region
+
+reviewer_monthly_activity_v04.parquet
+    └─ reviewer_monthly_activity
+
 final_core_logistic_multiclass_metadata_v04.json
     └─ model_versions
 
@@ -34,6 +40,8 @@ erDiagram
     COHORT_SAMPLES ||--|| REVIEWER_FEATURES : has
     COHORT_SAMPLES ||--|| VALIDATION_OUTCOMES : validates
     COHORT_SAMPLES ||--o| MODEL_PREDICTIONS : scores
+    COHORT_SAMPLES ||--o| REVIEWER_REGION : maps_activity_region
+    COHORT_SAMPLES ||--o{ REVIEWER_MONTHLY_ACTIVITY : records_activity_month
     MODEL_PREDICTIONS ||--o{ OPERATOR_DECISIONS : reviewed_by
     RETENTION_PLAYBOOKS ||--o{ OPERATOR_DECISIONS : references
 ```

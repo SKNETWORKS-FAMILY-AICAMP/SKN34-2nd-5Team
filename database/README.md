@@ -18,10 +18,18 @@ reports/tables/multiclass_top_k_performance_v04.csv
 reports/tables/multiclass_confusion_matrix_v04.csv
 reports/tables/final_feature_importance_v04.csv
 reports/tables/final_feature_group_importance_v04.csv
+data/processed/reviewer_region_v04.parquet
+data/processed/reviewer_monthly_activity_v04.parquet
 ```
 
 데이터와 모델은 `.gitignore` 대상이다. 새 환경에서는 팀의 v04 산출물
 묶음을 별도로 전달받아 동일 경로에 배치한다.
+
+권역·월별 활동 파일은 원본 리뷰와 음식점 Parquet을 준비한 뒤 생성한다.
+
+```powershell
+.\.venv\Scripts\python.exe pipeline\v04\derived_reviewer_activity.py
+```
 
 ## 2. DBeaver에서 개발 DB 생성
 
@@ -75,6 +83,8 @@ DB 패키지를 설치하지 않아도 프로젝트의 pandas·pyarrow 환경에
 - Test 유지·약화·중단 분포
 - Top 20% 1,307명
 - 평가 CSV와 metadata 일치
+- 리뷰어 권역 6,533행과 코호트 참조 무결성
+- 월별 활동의 관찰 구간 제한과 프로필 리뷰 수 합계 일치
 
 ## 5. 최초 스키마 생성과 실데이터 적재
 
@@ -102,6 +112,9 @@ DBeaver에서 다음 파일을 전체 스크립트로 실행한다.
 database/validation/validate_v04.sql
 ```
 
+검증 파일은 특정 DB를 강제로 선택하지 않는다. 실행 전에 DBeaver에서 대상
+DB를 선택하고 `SELECT DATABASE()` 결과가 의도한 이름인지 확인한다.
+
 주요 기대값:
 
 | 항목 | 값 |
@@ -110,6 +123,7 @@ database/validation/validate_v04.sql
 | reviewer_features | 37,953 |
 | validation_outcomes | 37,953 |
 | model_predictions | 6,533 |
+| reviewer_region | 6,533 |
 | CRM 대상 | 1,307 |
 | 유지·약화·중단 | 2,584 / 3,065 / 884 |
 | 비교 활동 없음 | 1,692 |
@@ -122,6 +136,9 @@ database/validation/validate_v04.sql
 `vw_reviewer_validation`은 사후 검증이 필요할 때만 사용한다.
 
 `vw_model_top20_summary`는 실제 Top 20% 포착 인원을 집계한다.
+
+`vw_regional_risk_summary`는 리뷰어 단위 권역과 모델 예측을 결합해
+권역별 유지·약화·중단, 고위험 비율, CRM 대상 수와 대표 도시를 집계한다.
 
 ## 8. 모델 파일
 

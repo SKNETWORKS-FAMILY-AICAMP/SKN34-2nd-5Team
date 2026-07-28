@@ -5,7 +5,11 @@ import unittest
 from pathlib import Path
 
 
-APP_DIR = Path(__file__).resolve().parents[1] / "app"
+APP_DIR = (
+    Path(__file__).resolve().parents[1]
+    / "archive"
+    / "app_streamlit_v04"
+)
 sys.path.insert(0, str(APP_DIR))
 
 from core.demo_data import build_demo_data  # noqa: E402
