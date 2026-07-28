@@ -349,6 +349,7 @@ SKN34-2nd-5Team/
 | [PROJECT_REQUIREMENTS](docs/PROJECT_REQUIREMENTS.md) | 제품·분석 요구사항 |
 | [BUSINESS_SCENARIOS](docs/BUSINESS_SCENARIOS.md) | 운영 시나리오 |
 | [STREAMLIT_DATA_CONTRACT](docs/STREAMLIT_DATA_CONTRACT.md) | 화면 데이터 계약 |
+| [REACT_DATA_SOURCES_v04](docs/REACT_DATA_SOURCES_v04.md) | React가 v04 산출물을 읽고 파생하는 방식 |
 | [DATABASE](database/README.md) | v04 MySQL ERD·DDL·실데이터 적재·검증 |
 | [STREAMLIT_REDESIGN_BRIEF](docs/ui/STREAMLIT_REDESIGN_BRIEF.md) | UI 설계 원칙 |
 | [DEC-008](docs/decisions/DEC-008_retention_state_definition.md) | 유지·약화·중단 정의 |

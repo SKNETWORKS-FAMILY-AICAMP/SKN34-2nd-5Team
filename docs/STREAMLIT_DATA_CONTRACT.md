@@ -3,6 +3,9 @@
 Reviewer Retention Console이 읽는 v04 데이터 산출물과 운영 화면의 노출
 범위를 정의한다.
 
+React(`app/`)가 이 산출물을 어떻게 읽고 파생하는지는
+[`REACT_DATA_SOURCES_v04.md`](REACT_DATA_SOURCES_v04.md) 참고.
+
 ## 1. v04 핵심 산출물 묶음
 
 아래 다섯 파일은 동일한 모델 버전 묶음으로 로드한다.
