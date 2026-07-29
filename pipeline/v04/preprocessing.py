@@ -6,7 +6,7 @@ import gc
 import duckdb
 
 '''
-설정 로드
+환경 설정 및 설정값 로드
 '''
 current_path = Path.cwd().resolve()
 PROJECT_ROOT = next(
@@ -426,15 +426,6 @@ def create_modeling_dataset_with_config():
     # =========================================================================
     # 1. 산출물 경로 변수화
     # =========================================================================
-    current_path = Path.cwd().resolve()
-    PROJECT_ROOT = next(
-        (path for path in [current_path, *current_path.parents] if (path / "data" / "interim").exists()),
-        None
-    )
-    
-    if PROJECT_ROOT is None:
-        raise FileNotFoundError("data/interim 폴더를 찾을 수 없습니다. 프로젝트 최상위 경로에서 실행해주세요.")
-    
     try:
         COHORT_PATH = PROJECT_ROOT / cohort_output
         MODELING_OUTPUT_PATH = PROJECT_ROOT / modeling_dataset_output
@@ -640,9 +631,13 @@ def create_modeling_dataset_with_config():
     print(f"- 데이터 크기: {modeling_df.shape}")
     print(f"- 저장 경로: {MODELING_OUTPUT_PATH}")
 
-# 데이터 통합 전처리 파이프라인 실행    
-if __name__ == "__main__":
+# 전체 파이프라인 실행 함수
+def run_preprocessing():
     process_business_data()
     extract_reviews()
     create_cohort_master()
     create_modeling_dataset_with_config()
+
+# 데이터 통합 전처리 파이프라인 실행    
+if __name__ == "__main__":
+    run_preprocessing()
