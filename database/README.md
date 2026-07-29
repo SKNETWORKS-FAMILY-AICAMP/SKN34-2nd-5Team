@@ -78,7 +78,7 @@ DB 패키지를 설치하지 않아도 프로젝트의 pandas·pyarrow 환경에
 있다.
 
 ```bat
-python database\load\load_v04.py --dry-run
+python database\load\load_yelp_data.py --dry-run
 ```
 
 검증 항목:
@@ -94,45 +94,54 @@ python database\load\load_v04.py --dry-run
 - 평가 CSV와 metadata 일치
 - 리뷰어 권역 6,533행과 코호트 참조 무결성
 - 월별 활동의 관찰 구간 제한과 프로필 리뷰 수 합계 일치
+- v03 Trust Center 비교 지표 계약
+- v02 Trust Center 비교 지표 계약
+- 리텐션 플레이북 4개와 위험 유형별 세부 전략 6개
+- 전체 적재 후 확인할 테이블·모델 버전별 예상 행 수
 
 ## 5. 최초 스키마 생성과 실데이터 적재
 
-아래 명령은 연결된 DB 이름이 확인값과 정확히 일치할 때만 실행된다.
+아래 통합 로더는 연결된 DB 이름이 `yelp_data`와 정확히 일치하고, 관리 대상
+테이블이 모두 비어 있을 때만 실행된다. 스키마를 적용한 뒤 v04, v03, v02,
+플레이북 기준정보를 순서대로 적재한다.
 
 ```bat
-python database\load\load_v04.py ^
-  --apply-schema ^
+python database\load\load_yelp_data.py ^
   --confirm-database yelp_data
 ```
 
 안전 원칙:
 
 - `DROP`, `TRUNCATE`, 자동 삭제를 실행하지 않는다.
-- 대상 DB 이름이 다르면 중단한다.
-- 동일한 `v04` 데이터가 이미 있으면 덮어쓰지 않고 중단한다.
-- 데이터 적재는 하나의 트랜잭션으로 처리한다.
+- 대상 DB 이름이 `yelp_data`가 아니면 중단한다.
+- v02, v03, v04 또는 플레이북 데이터가 일부라도 있으면 기존 데이터와 섞지 않고
+  중단한다.
+- 모든 원본 계약을 DB 연결 전에 먼저 검증한다.
+- v04, v03, v02와 플레이북 데이터 적재 및 적재 후 행 수 검증은 하나의
+  트랜잭션으로 처리한다.
+- `model_versions`가 정확히 v02·v03·v04 각 1행인지 확인한다.
+- 모든 적재 테이블을 모델 버전별 예상 행 수와 다시 대조하고, 한 행이라도
+  누락되면 전체 데이터 적재를 롤백한다.
 - DDL은 최초 실행을 전제로 한다.
 
-## 5-1. 리텐션 플레이북 기준 데이터 적재
+기존의 불완전한 개발용 `yelp_data`를 다시 구성할 때는 사용자가 대상 DB를
+확인한 후 수동으로 초기화하고 `database/ddl/000_create_database.sql`을 실행한다.
+통합 로더에는 삭제 기능이 없다.
 
-플레이북은 모델 버전과 무관한 정적 운영 기준 데이터이므로 v04 로더와 분리해서
-적재한다. 먼저 코드 상수의 4개 플레이북과 6개 위험 유형별 세부 전략 계약을
-검증한다.
+전체 적재 범위와 실패·롤백 계약은
+`database/docs/YELP_DATA_COMPLETE_LOAD_CONTRACT.md`에 기록한다.
 
-```bat
-python database\load\seed_reference_data.py --dry-run
-```
+## 5-1. 통합 적재 범위
 
-검증에 성공하면 같은 DB에 적재한다. 이 명령은 다시 실행해도 같은 기준 데이터를
-갱신하도록 설계되어 있다.
-
-```bat
-python database\load\seed_reference_data.py ^
-  --confirm-database yelp_data
-```
+| 범위 | 적재 내용 |
+|---|---|
+| v04 | 코호트, 43개 피처, 검증 결과, 예측, 평가 지표, 권역, 월별 활동 |
+| v03 | Trust Center 다중분류 비교 지표와 피처 중요도 |
+| v02 | Trust Center 이진분류 비교 지표와 피처 중요도 |
+| 운영 기준정보 | 플레이북 4개와 위험 유형별 세부 전략 6개 |
 
 현재 React와 보관된 Streamlit 앱은 계속 `DECISION_PLAYBOOKS` 코드 상수를 읽는다.
-이 적재는 향후 API 연결을 위한 DB 기준 데이터를 완성하는 범위이며
+플레이북 적재는 향후 API 연결을 위한 DB 기준 데이터를 완성하는 범위이며
 `operator_decisions` 운영 이력 저장을 활성화하지 않는다.
 
 ## 6. 적재 후 검증
@@ -141,6 +150,7 @@ DBeaver에서 다음 파일을 전체 스크립트로 실행한다.
 
 ```text
 database/validation/validate_v04.sql
+database/validation/validate_historical_metrics.sql
 database/validation/validate_reference_data.sql
 ```
 
@@ -156,6 +166,17 @@ DB를 선택하고 `SELECT DATABASE()` 결과가 의도한 이름인지 확인�
 | validation_outcomes | 37,953 |
 | model_predictions | 6,533 |
 | reviewer_region | 6,533 |
+| reviewer_monthly_activity | 67,814 |
+| model_versions | v02 / v03 / v04 각 1 |
+| model_validation_metrics | 18 |
+| model_topk_metrics | 96 |
+| model_binary_validation_metrics | 2 |
+| model_binary_topk_metrics | 16 |
+| model_confusion_matrix | 134 |
+| feature_importance | 129 |
+| feature_group_importance | 9 |
+| retention_playbooks | 4 |
+| retention_playbook_risk_actions | 6 |
 | CRM 대상 | 1,307 |
 | 유지·약화·중단 | 2,584 / 3,065 / 884 |
 | 비교 활동 없음 | 1,692 |
@@ -172,29 +193,19 @@ DB를 선택하고 `SELECT DATABASE()` 결과가 의도한 이름인지 확인�
 `vw_regional_risk_summary`는 리뷰어 단위 권역과 모델 예측을 결합해
 권역별 유지·약화·중단, 고위험 비율, CRM 대상 수와 대표 도시를 집계한다.
 
-## 8. v02·v03 Trust Center 비교 지표 적재
+## 8. 버전별 개별 로더
 
-먼저 DB 변경 없이 두 리포트 묶음의 계약을 검증한다.
+최초 `yelp_data` 구성에는 반드시 `load_yelp_data.py`를 사용한다. 아래 개별
+로더는 버전별 원본 계약 점검이나 별도 유지보수가 필요할 때만 사용한다.
 
 ```bat
+python database\load\load_v04.py --dry-run
 python database\load\load_v03.py --dry-run
 python database\load\load_v02.py --dry-run
+python database\load\seed_reference_data.py --dry-run
 ```
 
-v04가 들어 있는 동일 개발 DB에 버전별로 이어서 적재할 수 있다.
-
-```bat
-python database\load\load_v03.py ^
-  --apply-schema ^
-  --confirm-database yelp_data
-
-python database\load\load_v02.py ^
-  --apply-schema ^
-  --confirm-database yelp_data
-```
-
-적재 후 `database/validation/validate_historical_metrics.sql`을 실행한다.
-세부 정규화 규칙은
+v02·v03 세부 정규화 규칙은
 `database/docs/HISTORICAL_MODEL_METRICS_CONTRACT.md`에 기록한다.
 
 v03 다중분류 지표는 기존 평가 테이블을 재사용한다. v02 이진 검증과
