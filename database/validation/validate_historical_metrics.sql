@@ -1,5 +1,5 @@
 -- DBeaver에서 검증할 DB를 명시적으로 선택한 뒤 실행한다.
--- 예: USE yelp_retention_v04_derived_dev;
+-- 예: USE yelp_data;
 SELECT DATABASE() AS validation_database;
 
 -- 1. 비교 버전 계약: v02/v03 각 1행, 리포트 전용이라 model_sha256은 NULL

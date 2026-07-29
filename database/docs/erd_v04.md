@@ -31,6 +31,10 @@ reports/tables/*_v03.csv
 reports/tables/*_v02.csv
     ├─ 이진분류 평가 전용 테이블
     └─ 공용 혼동행렬·피처 중요도 테이블
+
+archive/app_streamlit_v04/core/insights.py
+    ├─ retention_playbooks
+    └─ retention_playbook_risk_actions
 ```
 
 ## 관계
@@ -53,6 +57,7 @@ erDiagram
     COHORT_SAMPLES ||--o{ REVIEWER_MONTHLY_ACTIVITY : records_activity_month
     MODEL_PREDICTIONS ||--o{ OPERATOR_DECISIONS : reviewed_by
     RETENTION_PLAYBOOKS ||--o{ OPERATOR_DECISIONS : references
+    RETENTION_PLAYBOOKS ||--o{ RETENTION_PLAYBOOK_RISK_ACTIONS : branches_by_risk
 ```
 
 ## 키
@@ -60,6 +65,8 @@ erDiagram
 - 모델: `model_version`
 - 사용자-연도 표본: `model_version + sample_id`
 - 관리자 판단: `decision_id`
+- 플레이북: `playbook_id`
+- 플레이북 세부 전략: `playbook_id + risk_type`
 - `user_id`는 동일 사용자의 연도별 표본이 존재하므로 단독 PK가 아니다.
 - Yelp ID는 대소문자를 구분하도록 `ascii_bin` collation을 사용한다.
 

@@ -31,8 +31,8 @@ data/processed/reviewer_monthly_activity_v04.parquet
 
 권역·월별 활동 파일은 원본 리뷰와 음식점 Parquet을 준비한 뒤 생성한다.
 
-```powershell
-.\.venv\Scripts\python.exe pipeline\v04\derived_reviewer_activity.py
+```bat
+venv\Scripts\python.exe pipeline\v04\derived_reviewer_activity.py
 ```
 
 ## 2. DBeaver에서 개발 DB 생성
@@ -40,7 +40,7 @@ data/processed/reviewer_monthly_activity_v04.parquet
 `database/ddl/000_create_database.sql`을 DBeaver SQL Editor에서 실행한다.
 
 ```sql
-CREATE DATABASE IF NOT EXISTS yelp_retention_v04_dev
+CREATE DATABASE IF NOT EXISTS yelp_data
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 ```
@@ -51,8 +51,13 @@ CREATE DATABASE IF NOT EXISTS yelp_retention_v04_dev
 
 프로젝트 가상환경에서 DB 전용 의존성을 설치한다.
 
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r database\requirements-db.txt
+프로젝트 루트에서 가상환경을 만들고 활성화한다. 이미 정상적인 `venv`가 있다면
+첫 번째 명령은 생략한다.
+
+```bat
+python -m venv venv
+venv\Scripts\activate
+python -m pip install -r database\requirements-db.txt
 ```
 
 `.env.example`을 `.env`로 복사하고 로컬 접속정보를 입력한다.
@@ -61,7 +66,7 @@ CREATE DATABASE IF NOT EXISTS yelp_retention_v04_dev
 ```text
 DB_HOST=localhost
 DB_PORT=3306
-DB_NAME=yelp_retention_v04_dev
+DB_NAME=yelp_data
 DB_USER=root
 DB_PASSWORD=개인_로컬_비밀번호
 DB_CHARSET=utf8mb4
@@ -72,8 +77,8 @@ DB_CHARSET=utf8mb4
 DB 패키지를 설치하지 않아도 프로젝트의 pandas·pyarrow 환경에서 실행할 수
 있다.
 
-```powershell
-.\.venv\Scripts\python.exe database\load\load_v04.py --dry-run
+```bat
+python database\load\load_v04.py --dry-run
 ```
 
 검증 항목:
@@ -94,10 +99,10 @@ DB 패키지를 설치하지 않아도 프로젝트의 pandas·pyarrow 환경에
 
 아래 명령은 연결된 DB 이름이 확인값과 정확히 일치할 때만 실행된다.
 
-```powershell
-.\.venv\Scripts\python.exe database\load\load_v04.py `
-  --apply-schema `
-  --confirm-database yelp_retention_v04_dev
+```bat
+python database\load\load_v04.py ^
+  --apply-schema ^
+  --confirm-database yelp_data
 ```
 
 안전 원칙:
@@ -108,12 +113,35 @@ DB 패키지를 설치하지 않아도 프로젝트의 pandas·pyarrow 환경에
 - 데이터 적재는 하나의 트랜잭션으로 처리한다.
 - DDL은 최초 실행을 전제로 한다.
 
+## 5-1. 리텐션 플레이북 기준 데이터 적재
+
+플레이북은 모델 버전과 무관한 정적 운영 기준 데이터이므로 v04 로더와 분리해서
+적재한다. 먼저 코드 상수의 4개 플레이북과 6개 위험 유형별 세부 전략 계약을
+검증한다.
+
+```bat
+python database\load\seed_reference_data.py --dry-run
+```
+
+검증에 성공하면 같은 DB에 적재한다. 이 명령은 다시 실행해도 같은 기준 데이터를
+갱신하도록 설계되어 있다.
+
+```bat
+python database\load\seed_reference_data.py ^
+  --confirm-database yelp_data
+```
+
+현재 React와 보관된 Streamlit 앱은 계속 `DECISION_PLAYBOOKS` 코드 상수를 읽는다.
+이 적재는 향후 API 연결을 위한 DB 기준 데이터를 완성하는 범위이며
+`operator_decisions` 운영 이력 저장을 활성화하지 않는다.
+
 ## 6. 적재 후 검증
 
 DBeaver에서 다음 파일을 전체 스크립트로 실행한다.
 
 ```text
 database/validation/validate_v04.sql
+database/validation/validate_reference_data.sql
 ```
 
 검증 파일은 특정 DB를 강제로 선택하지 않는다. 실행 전에 DBeaver에서 대상
@@ -148,21 +176,21 @@ DB를 선택하고 `SELECT DATABASE()` 결과가 의도한 이름인지 확인�
 
 먼저 DB 변경 없이 두 리포트 묶음의 계약을 검증한다.
 
-```powershell
-.\.venv\Scripts\python.exe database\load\load_v03.py --dry-run
-.\.venv\Scripts\python.exe database\load\load_v02.py --dry-run
+```bat
+python database\load\load_v03.py --dry-run
+python database\load\load_v02.py --dry-run
 ```
 
 v04가 들어 있는 동일 개발 DB에 버전별로 이어서 적재할 수 있다.
 
-```powershell
-.\.venv\Scripts\python.exe database\load\load_v03.py `
-  --apply-schema `
-  --confirm-database yelp_retention_v04_derived_dev
+```bat
+python database\load\load_v03.py ^
+  --apply-schema ^
+  --confirm-database yelp_data
 
-.\.venv\Scripts\python.exe database\load\load_v02.py `
-  --apply-schema `
-  --confirm-database yelp_retention_v04_derived_dev
+python database\load\load_v02.py ^
+  --apply-schema ^
+  --confirm-database yelp_data
 ```
 
 적재 후 `database/validation/validate_historical_metrics.sql`을 실행한다.
