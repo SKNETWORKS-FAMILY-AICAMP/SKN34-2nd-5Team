@@ -4,10 +4,12 @@ import { Link } from "react-router";
 import DataModeBadge from "../components/DataModeBadge";
 import PolicyPanel from "../components/operations/PolicyPanel";
 import PriorityQueue from "../components/operations/PriorityQueue";
-import { operationsSummary, reviewers } from "../data";
+import { useOperationsSummary, useReviewers } from "../context/OperationsContext";
 import { getDecisionsForModel } from "../services/decisionStorage";
 
 function OperationsPage() {
+  const operationsSummary = useOperationsSummary();
+  const reviewers = useReviewers();
   const decisions = getDecisionsForModel(operationsSummary.modelVersion);
 
   const reviewersWithDecisions = reviewers.map((reviewer) => ({

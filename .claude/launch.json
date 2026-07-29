@@ -8,6 +8,12 @@
       "port": 5173
     },
     {
+      "name": "api",
+      "runtimeExecutable": "venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "api.main:app", "--port", "8000"],
+      "port": 8000
+    },
+    {
       "name": "streamlit",
       "runtimeExecutable": "venv\\Scripts\\streamlit.exe",
       "runtimeArgs": ["run", "archive/app_streamlit_v04/streamlit_app.py", "--server.port", "8501", "--server.headless", "true"],

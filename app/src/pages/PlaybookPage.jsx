@@ -1,14 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import DataModeBadge from "../components/DataModeBadge";
 import {
-  formatTopPercent,
-  operationsSummary,
-  playbooks,
-  reviewers,
-  riskTypes,
-} from "../data";
+  useOperationsSummary,
+  useReviewers,
+  useRiskTypes,
+} from "../context/OperationsContext";
+import { formatTopPercent, loadPlaybooks } from "../data";
 import { getDecisionsForModel } from "../services/decisionStorage";
 
 // Which playbook a reviewer falls into before anyone has judged them.
@@ -34,6 +33,9 @@ const campaignCapabilities = [
 ];
 
 function PlaybookPage() {
+  const operationsSummary = useOperationsSummary();
+  const reviewers = useReviewers();
+  const riskTypes = useRiskTypes();
   const [searchParams] = useSearchParams();
   const contextUserId = searchParams.get("reviewer");
 
@@ -41,6 +43,33 @@ function PlaybookPage() {
   const [decisions] = useState(() =>
     getDecisionsForModel(operationsSummary.modelVersion),
   );
+
+  // playbooks 기본값은 []로 둬서, 로딩 중에도 아래 useMemo들이 안전하게
+  // 돈다. 실제 로딩/에러 표시는 훅 순서 끝(visiblePlaybooks 뒤)에서 가드.
+  const [playbooks, setPlaybooks] = useState([]);
+  const [loadStatus, setLoadStatus] = useState("loading");
+  const [loadError, setLoadError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    loadPlaybooks()
+      .then((data) => {
+        if (cancelled) return;
+        setPlaybooks(data);
+        setLoadStatus("ready");
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setLoadError(error.message);
+          setLoadStatus("error");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const reviewersWithDecisions = useMemo(
     () =>
@@ -128,7 +157,21 @@ function PlaybookPage() {
       const secondMatch = second.decision === contextReviewer.effectiveDecision;
       return Number(secondMatch) - Number(firstMatch);
     });
-  }, [contextReviewer]);
+  }, [contextReviewer, playbooks]);
+
+  if (loadStatus === "error") {
+    return (
+      <section className="rounded-xl border border-[#F0D9D4] bg-[#FBF1EF] p-6 text-sm text-[#8A3B2E]">
+        플레이북 데이터를 불러오지 못했습니다: {loadError}
+      </section>
+    );
+  }
+
+  if (loadStatus === "loading") {
+    return (
+      <section className="p-6 text-sm text-[#68736D]">불러오는 중…</section>
+    );
+  }
 
   function matchingReviewers(decision) {
     let pool = reviewersWithDecisions.filter(

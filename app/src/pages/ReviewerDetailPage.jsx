@@ -8,11 +8,10 @@ import EvidenceList from "../components/reviewer-detail/EvidenceList";
 import MonthlyActivityChart from "../components/reviewer-detail/MonthlyActivityChart";
 import ReviewerScoreBars from "../components/reviewer-detail/ReviewerScoreBars";
 import StatusBadge from "../components/reviewers/StatusBadge";
+import { useOperationsSummary, useReviewers } from "../context/OperationsContext";
 import {
   formatTopPercent,
   loadReviewerDetails,
-  operationsSummary,
-  reviewers,
   strategyFor,
 } from "../data";
 import {
@@ -50,6 +49,8 @@ function ReviewerDetailPage() {
 }
 
 function ReviewerDetail({ reviewerId }) {
+  const operationsSummary = useOperationsSummary();
+  const reviewers = useReviewers();
   const orderedReviewers = [...reviewers].sort(
     (first, second) =>
       first.priorityRank - second.priorityRank,

@@ -36,9 +36,26 @@ Yelp 플랫폼 운영팀이 위험 리뷰어를 발견하고
 
 ## 4. 프로젝트 경로
 
-- 현재 운영 서비스(React) 개발 경로는 `app/`이다.
-- 모델·데이터 파생 로직의 기준(source of truth)은 `archive/app_streamlit_v04/`의 Streamlit 앱이다.
-  `app/`(React)은 `scripts/export_frontend_data.py`로 이 로직을 그대로 재사용해 실데이터를 읽는다.
+- 현재 운영 서비스(React) 개발 경로는 `app/`이다. `app/`은 `api/`(FastAPI)를 통해
+  MySQL(`yelp_data`)을 직접 조회한다 — `app/src/data/*.json`은 API가 아직 없던
+  시절의 정적 폴백으로만 남아 있다.
+- 위험유형·근거·전략 판단, 리뷰어 프로필 정규화, React JSON 직렬화 로직의
+  기준(source of truth)은 `shared/retention/`이다. Streamlit
+  (`archive/app_streamlit_v04/`), `api/`, `scripts/export_frontend_data.py`
+  전부 이 모듈만 참조하며, 각자 다시 구현하지 않는다.
+- `archive/app_streamlit_v04/core/`는 Streamlit UI·데이터 로딩(`core/data.py`의
+  `load_app_data` 등)과, 기존 `from core.insights import ...`처럼 이미 있던
+  import 경로를 계속 지원하기 위한 호환 wrapper로 남아 있다. 새 코드는
+  `shared.retention`을 직접 참조하고 이 경로를 거치지 않는다.
+- `scripts/export_frontend_data.py`는 `app/src/data/*.json`(폴백용 정적 JSON)을
+  만드는 스크립트로 유지한다. 모델·프로파일이 갱신되면 재실행한다.
+- 2026-07-30 기준으로 React의 런타임 데이터 경로는 정적 JSON 폴백이 아니라
+  `api/` → MySQL이다. 위 JSON은 API 응답의 정합성 기준값·복구용 export 산출물로
+  보존하며, 현재 React 코드에는 API 실패 시 JSON을 자동으로 다시 읽는 기능이 없다.
+- 전환 전 기록(2026-07-30 DB/API 전환 이전): 모델·데이터 파생 로직의 기준
+  (source of truth)은 `archive/app_streamlit_v04/`의 Streamlit 앱이었고,
+  `app/`(React)은 `scripts/export_frontend_data.py`로 이 로직을 재사용해
+  생성한 정적 JSON을 읽었다. 이 기록은 이전 구조를 이해하기 위해 보존한다.
 - `archive/app_streamlit_v01_prototype/`(과거 분석 프로토타입)은 수정하지 않는다.
 - 분석 설정값은 `configs/analysis_config.yaml`을 우선 확인한다.
 - 프로젝트의 세부 정의와 현재 상태는 `docs/CODEX_HANDOFF.md`를 확인한다.

@@ -3,9 +3,16 @@ import { getDecisionsForModel } from "../services/decisionStorage";
 import DataModeBadge from "../components/DataModeBadge";
 import ReviewerFilters from "../components/reviewers/ReviewerFilters";
 import ReviewerTable from "../components/reviewers/ReviewerTable";
-import { operationsSummary, reviewers, riskTypes } from "../data";
+import {
+  useOperationsSummary,
+  useReviewers,
+  useRiskTypes,
+} from "../context/OperationsContext";
 
 function ReviewerListPage() {
+  const operationsSummary = useOperationsSummary();
+  const reviewers = useReviewers();
+  const riskTypes = useRiskTypes();
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("전체");
   const [judgmentFilters, setJudgmentFilters] = useState([

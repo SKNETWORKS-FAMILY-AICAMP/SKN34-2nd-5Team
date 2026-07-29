@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -13,7 +13,8 @@ import {
 } from "recharts";
 
 import DataModeBadge from "../components/DataModeBadge";
-import { operationsSummary, trustData } from "../data";
+import { useOperationsSummary } from "../context/OperationsContext";
+import { loadTrustData } from "../data";
 
 const tabs = [
   { key: "performance", label: "성능과 Top-K" },
@@ -98,7 +99,40 @@ function percent(value, digits = 1) {
 }
 
 function TrustCenterPage() {
+  const operationsSummary = useOperationsSummary();
   const [activeTab, setActiveTab] = useState("performance");
+  const [trustData, setTrustData] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    loadTrustData()
+      .then((data) => {
+        if (!cancelled) setTrustData(data);
+      })
+      .catch((loadError) => {
+        if (!cancelled) setError(loadError.message);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (error) {
+    return (
+      <section className="rounded-xl border border-[#F0D9D4] bg-[#FBF1EF] p-6 text-sm text-[#8A3B2E]">
+        Trust Center 데이터를 불러오지 못했습니다: {error}
+      </section>
+    );
+  }
+
+  if (!trustData) {
+    return (
+      <section className="p-6 text-sm text-[#68736D]">불러오는 중…</section>
+    );
+  }
 
   const { overall, classPerformance, confusionMatrix, topK } = trustData;
   const v03 = trustData.v03;

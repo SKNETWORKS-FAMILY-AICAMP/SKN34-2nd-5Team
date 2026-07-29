@@ -1,4 +1,4 @@
-import { operationsSummary } from "../data";
+import { useOperationsSummary } from "../context/OperationsContext";
 
 // PROJECT (real data) is the expected, unremarkable state, so it reads as
 // plain text. DEMO/HYBRID (synthetic or mixed data) gets the strong pill
@@ -6,7 +6,7 @@ import { operationsSummary } from "../data";
 // numbers — the distinction that matters is "is this real", not "which
 // state am I in", so only the non-default state needs to stand out.
 function DataModeBadge() {
-  const { dataMode, dataModeLabel } = operationsSummary;
+  const { dataMode, dataModeLabel } = useOperationsSummary();
 
   if (dataMode === "project") {
     return (

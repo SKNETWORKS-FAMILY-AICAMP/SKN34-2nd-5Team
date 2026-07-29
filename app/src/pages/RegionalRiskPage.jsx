@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import DataModeBadge from "../components/DataModeBadge";
 import RegionalRiskChart from "../components/regional/RegionalRiskChart";
 import RegionalRiskTable from "../components/regional/RegionalRiskTable";
-import { operationsSummary, regionalRisk } from "../data";
+import { useOperationsSummary } from "../context/OperationsContext";
+import { loadRegionalRisk } from "../data";
 
 const sortRules = {
   "활동 리뷰어": (first, second) => second.reviewers - first.reviewers,
@@ -38,11 +39,31 @@ const connectedCapabilities = [
 ];
 
 function RegionalRiskPage() {
+  const operationsSummary = useOperationsSummary();
   const [sortRule, setSortRule] = useState("활동 리뷰어");
+  const [regionalRisk, setRegionalRisk] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    loadRegionalRisk()
+      .then((data) => {
+        if (!cancelled) setRegionalRisk(data);
+      })
+      .catch((loadError) => {
+        if (!cancelled) setError(loadError.message);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const regions = useMemo(
-    () => [...regionalRisk.regions].sort(sortRules[sortRule]),
-    [sortRule],
+    () =>
+      regionalRisk ? [...regionalRisk.regions].sort(sortRules[sortRule]) : [],
+    [regionalRisk, sortRule],
   );
 
   const totals = useMemo(() => {
@@ -56,6 +77,20 @@ function RegionalRiskPage() {
       crmTargets: regions.reduce((sum, item) => sum + item.crmTargets, 0),
     };
   }, [regions]);
+
+  if (error) {
+    return (
+      <section className="rounded-xl border border-[#F0D9D4] bg-[#FBF1EF] p-6 text-sm text-[#8A3B2E]">
+        권역 데이터를 불러오지 못했습니다: {error}
+      </section>
+    );
+  }
+
+  if (!regionalRisk) {
+    return (
+      <section className="p-6 text-sm text-[#68736D]">불러오는 중…</section>
+    );
+  }
 
   return (
     <section>

@@ -1,6 +1,6 @@
 import { NavLink } from "react-router";
 
-import { operationsSummary } from "../data";
+import { useOperationsSummary } from "../context/OperationsContext";
 
 const menuItems = [
   {
@@ -26,6 +26,8 @@ const menuItems = [
 ];
 
 function Header() {
+  const operationsSummary = useOperationsSummary();
+
   return (
     <header className="sticky top-0 z-50 border-b border-[#DDE4DF] bg-[#F7F8F5]/95 backdrop-blur">
       <div className="mx-auto flex min-h-16 max-w-[1540px] flex-wrap items-center gap-x-6 gap-y-2 px-6 py-2">

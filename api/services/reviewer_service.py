@@ -1,0 +1,61 @@
+"""리뷰어 관리(reviewers.json) 조회.
+
+vw_reviewer_work_queue에서 운영 데이터를 읽고, build_row()가 기대하는
+스키마(risk_type/core_signal/model_judgment/crm_target_label 등 파생
+컬럼 포함)를 만들기 위해 shared.retention.profile_normalization의
+_normalize_profiles를 거친다. archive/core는 거치지 않는다.
+
+vw_reviewer_work_queue는 operator_decisions를 LEFT JOIN하지만, 그 8개
+컬럼(decision_id, manager_decision, risk_type, model_judgment,
+decision_reason, decision_owner, decided_at, playbook_id, review_due_at)은
+관리자 판단 저장이 v05로 유예된 상태라 아예 SELECT하지 않는다 — React는
+이 값을 localStorage에서 읽으므로, API가 내려주면 화면에서 그 상태를
+덮어써 버리는 사고를 원천 차단한다.
+docs/ui/REACT_V04_DB_INTEGRATION_PLAN.md 6-1절 "이번 작업에서의 주의" 참고.
+
+`risk_type`이라는 이름이 operator_decisions에도 있어 혼동하기 쉬운데,
+아래 쿼리는 그 컬럼을 아예 선택하지 않으므로 enrich_profiles()가 계산하는
+risk_type(리뷰어 위험유형 분류)만 남는다.
+"""
+from __future__ import annotations
+
+import pandas as pd
+from sqlalchemy import text
+from sqlalchemy.engine import Engine
+
+from shared.retention.frontend_serializer import build_row
+from shared.retention.profile_normalization import _normalize_profiles as normalize_profiles
+
+MODEL_VERSION = "v04"
+
+_COLUMNS = """
+    sample_id, user_id, comparison_year, selection_year, target_year,
+    prior_activity_available,
+    retained_score, weakened_score, stopped_score, priority_score,
+    predicted_state, predicted_state_label, priority_rank,
+    priority_top_percent, selected_for_crm,
+    baseline_review_count, recent_review_count, review_count_decline_rate,
+    baseline_active_months, recent_active_months, active_month_decline_rate,
+    baseline_recency_days, recent_recency_days, recency_increase_days,
+    baseline_mean_interval_days, recent_mean_interval_days,
+    mean_interval_increase_days,
+    baseline_unique_business_count, recent_unique_business_count,
+    unique_business_decline_rate
+"""
+
+
+def get_reviewers(engine: Engine) -> list[dict]:
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                f"SELECT {_COLUMNS} FROM vw_reviewer_work_queue "
+                "WHERE model_version = :v"
+            ),
+            {"v": MODEL_VERSION},
+        ).mappings().all()
+
+    frame = pd.DataFrame([dict(row) for row in rows])
+    frame = normalize_profiles(frame, model_version=MODEL_VERSION)
+    frame = frame.sort_values("priority_rank")
+
+    return [build_row(row) for _, row in frame.iterrows()]
