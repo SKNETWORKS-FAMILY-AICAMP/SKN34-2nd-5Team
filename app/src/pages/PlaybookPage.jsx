@@ -6,7 +6,7 @@ import {
   useOperationsSummary,
   useReviewers,
   useRiskTypes,
-} from "../context/OperationsContext";
+} from "../context/operations-context";
 import { formatTopPercent, loadPlaybooks } from "../data";
 import { getDecisionsForModel } from "../services/decisionStorage";
 
@@ -82,7 +82,7 @@ function PlaybookPage() {
           decisions[reviewer.sampleId] ??
           judgmentToDecision[reviewer.modelJudgment],
       })),
-    [decisions],
+    [decisions, reviewers],
   );
 
   const contextReviewer = contextUserId

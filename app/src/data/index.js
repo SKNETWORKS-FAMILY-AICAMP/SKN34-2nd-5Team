@@ -1,26 +1,21 @@
-// Real v04 project data, exported from the Streamlit app's own core modules by
+// Static v04 parity/reference data, exported from shared/retention by
 // scripts/export_frontend_data.py. Regenerate after the model or profiles change:
 //
-//     ./venv/Scripts/python.exe scripts/export_frontend_data.py
+//     ./.venv/Scripts/python.exe scripts/export_frontend_data.py
 //
-// These files stand in for the FastAPI/MySQL layer that is not built yet, so the
-// screens read real reviewer records instead of synthetic ones.
-//
-// 2026-07-30 update: the FastAPI/MySQL integration is complete. The loaders in
-// this module now read from the API at runtime; the static JSON files remain in
-// the repository as parity-reference and recovery artifacts, not as an
-// automatic fallback when an API request fails.
+// Runtime screen data comes from FastAPI/MySQL. The static JSON files remain in
+// the repository as parity-reference and recovery artifacts; API failures do
+// not trigger an automatic JSON fallback.
 import strategiesJson from "./strategies.json";
 
-// FastAPI 읽기 전용 서버 (api/main.py). 화면 단위로 하나씩 이 API로
-// 옮기는 중이며, 아직 안 옮긴 화면은 위 정적 JSON을 계속 쓴다.
+// 모든 운영 화면은 FastAPI 읽기 전용 서버(api/main.py)를 조회한다.
 // docs/ui/REACT_V04_DB_INTEGRATION_PLAN.md 참고.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 // operationsSummary/reviewers/riskTypes는 여러 파일(Header 포함)에서
-// 동기적으로 쓰여 화면별 비동기 로딩이 안 맞는다. App.jsx의
-// OperationsProvider/useOperationsSummary()/useReviewers()/useRiskTypes()로
-// 옮겼다 — 여기서는 더 이상 내보내지 않는다.
+// 동기적으로 쓰여 화면별 비동기 로딩이 안 맞는다. OperationsContext와
+// operations-context의 Provider/hooks로 옮겼다 — 여기서는 더 이상
+// 내보내지 않는다.
 
 // 리텐션 플레이북은 API에서 조회한다(api/routers/playbooks.py,
 // retention_playbooks + retention_playbook_risk_actions).

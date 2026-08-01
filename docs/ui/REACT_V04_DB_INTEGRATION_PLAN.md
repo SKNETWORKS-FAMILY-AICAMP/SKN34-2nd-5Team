@@ -1,4 +1,7 @@
-# React ↔ MySQL(`yelp_data`) 연결 계획 (v04)
+# React ↔ MySQL(`yelp_data`) 연결 계획 및 구현 기록 (v04)
+
+> 상태: 2026-07-30 구현 완료. 현재 React 런타임은 `api/`를 통해 MySQL을 조회하며,
+> 정적 JSON은 정합성 확인·복구용으로만 보존한다.
 
 React가 지금까지 읽던 정적 JSON(`app/src/data/*.json`,
 `app/public/data/reviewer-details.json`)을 서비스 계층을 통한 DB 조회로
@@ -348,7 +351,7 @@ export 스크립트를 그냥 import만 하는 것(API가 하는 일)만으로�
 
 ## 7. 참고
 
-- [`REACT_DATA_SOURCES_v04.md`](../REACT_DATA_SOURCES_v04.md) — 현재 JSON 파이프라인
+- [`REACT_DATA_SOURCES_v04.md`](../REACT_DATA_SOURCES_v04.md) — 현재 데이터 출처와 정적 정합성 export
 - [`database/README.md`](../../database/README.md) — DB 구성·적재 절차
 - [`database/docs/erd_v04.md`](../../database/docs/erd_v04.md) — 테이블 관계와 키 설계
 - [`database/docs/YELP_DATA_COMPLETE_LOAD_CONTRACT.md`](../../database/docs/YELP_DATA_COMPLETE_LOAD_CONTRACT.md) — 전체 적재 계약

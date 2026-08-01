@@ -7,7 +7,7 @@ import {
   useOperationsSummary,
   useReviewers,
   useRiskTypes,
-} from "../context/OperationsContext";
+} from "../context/operations-context";
 
 function ReviewerListPage() {
   const operationsSummary = useOperationsSummary();
@@ -33,7 +33,7 @@ function ReviewerListPage() {
         ...reviewer,
         managerDecision: decisions[reviewer.sampleId] ?? null,
       })),
-    [decisions],
+    [decisions, reviewers],
   );
 
   const completedCount = reviewersWithDecisions.filter(

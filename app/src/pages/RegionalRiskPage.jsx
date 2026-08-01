@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import DataModeBadge from "../components/DataModeBadge";
 import RegionalRiskChart from "../components/regional/RegionalRiskChart";
 import RegionalRiskTable from "../components/regional/RegionalRiskTable";
-import { useOperationsSummary } from "../context/OperationsContext";
+import { useOperationsSummary } from "../context/operations-context";
 import { loadRegionalRisk } from "../data";
 
 const sortRules = {

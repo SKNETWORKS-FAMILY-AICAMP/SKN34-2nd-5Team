@@ -1,4 +1,4 @@
-import { useOperationsSummary } from "../context/OperationsContext";
+import { useOperationsSummary } from "../context/operations-context";
 
 // PROJECT (real data) is the expected, unremarkable state, so it reads as
 // plain text. DEMO/HYBRID (synthetic or mixed data) gets the strong pill

@@ -1,15 +1,15 @@
-# React 데이터 출처 (v04)
+# React 데이터 출처와 정적 정합성 산출물 (v04)
 
-`app/`(React)가 v04 모델 산출물을 어떻게 읽고, 어떤 부분은 그대로 pass-through 하고
-어떤 부분은 파이프라인 산출물에서 파생하는지 정의한다. Streamlit 쪽 데이터 계약은
-[`STREAMLIT_DATA_CONTRACT.md`](STREAMLIT_DATA_CONTRACT.md) 참고 — 이 문서는 그 v04
-산출물을 React가 어떻게 소비하는지 설명하는 짝문서다.
+`app/`(React)가 FastAPI와 MySQL을 통해 v04 모델 산출물을 어떻게 소비하는지,
+정합성 확인·복구용 정적 JSON은 어떤 원천에서 만들어지는지 정의한다. Streamlit 쪽
+데이터 계약은 [`STREAMLIT_DATA_CONTRACT.md`](STREAMLIT_DATA_CONTRACT.md) 참고 —
+이 문서는 같은 v04 산출물의 React/API 데이터 경로를 설명하는 짝문서다.
 
-React는 자체 백엔드/API가 없다. `scripts/export_frontend_data.py`가 Streamlit의
-`archive/app_streamlit_v04/core` 모듈을 그대로 불러와서, 화면별로 필요한 값을 JSON으로
-내보내면(`app/src/data/*.json`, `app/public/data/reviewer-details.json`) React는 그걸
-정적 파일로 읽기만 한다. 권역·월별 활동 계산은 export 스크립트가 원본 리뷰를 직접
-읽지 않고 `pipeline/v04/derived_reviewer_activity.py`가 생성한 Parquet을 소비한다.
+현재 런타임 경로는 `app/` → `api/` → MySQL `yelp_data`다. React는 화면 데이터를
+정적 JSON에서 자동으로 읽지 않는다. `scripts/export_frontend_data.py`는
+`shared/retention`의 공용 로직을 사용해 `app/src/data/*.json`을 만들며, 이 파일들은
+API 응답 정합성 확인과 복구를 위한 산출물로 보존한다. 권역·월별 활동의 원천은
+`pipeline/v04/derived_reviewer_activity.py`가 생성한 Parquet이며 DB에도 적재된다.
 
 ```powershell
 .\.venv\Scripts\python.exe pipeline\v04\derived_reviewer_activity.py
@@ -18,15 +18,19 @@ React는 자체 백엔드/API가 없다. `scripts/export_frontend_data.py`가 St
 
 ---
 
-## 1. 데이터 소비 방식 두 가지
+## 1. 정적 정합성 산출 방식 두 가지
 
-| 방식 | 의미 | 해당 화면 |
+아래 구분은 정적 JSON을 재생성할 때의 데이터 출처다. 실제 화면은 같은 값을 FastAPI
+서비스와 DB 테이블·뷰에서 조회한다.
+
+| 방식 | 의미 | 대응 화면 |
 |---|---|---|
 | **pass-through** | 모델 프로파일(`final_test_retention_profiles_v04.parquet`)이나 리포트 CSV의 컬럼을 그대로, 혹은 단순 포맷팅만 거쳐 JSON으로 옮김 | 운영 홈, 리뷰어 관리, 리뷰어 상세의 활동 변화/작성 주기/사후 검증 탭, 플레이북, Trust Center의 v04 기본 지표 |
 | **파생(derived)** | 원천 리뷰에서 파이프라인이 만든 리뷰어 단위 Parquet 또는 별도 리포트 파일을 JSON으로 변환 | 콘텐츠 위험(권역 집계), 리뷰어 상세의 월별 타임라인, Trust Center의 v02/v03 이전 모델 비교 |
 
-이 문서는 **파생** 쪽만 다룬다 — pass-through는 컬럼명만 다를 뿐 별도 로직이 없어서
-문서화할 게 없다.
+이 문서는 **파생** 쪽을 중심으로 다룬다 — pass-through는 컬럼명만 다를 뿐 별도
+로직이 없다. API 필드 조달 계약은
+[`REACT_V04_DB_INTEGRATION_PLAN.md`](ui/REACT_V04_DB_INTEGRATION_PLAN.md)를 따른다.
 
 ---
 
@@ -34,7 +38,8 @@ React는 자체 백엔드/API가 없다. `scripts/export_frontend_data.py`가 St
 
 화면: `/regional` ([RegionalRiskPage.jsx](../app/src/pages/RegionalRiskPage.jsx))
 파이프라인: [`derived_reviewer_activity.py`](../pipeline/v04/derived_reviewer_activity.py)
-내보내기 함수: [`export_regional()`](../scripts/export_frontend_data.py)
+- 런타임: [`regional_service.py`](../api/services/regional_service.py) + `vw_regional_risk_summary`
+- 정적 정합성 export: [`export_regional()`](../scripts/export_frontend_data.py)
 
 ### 2-1. 원천 데이터
 
@@ -116,7 +121,8 @@ React는 자체 백엔드/API가 없다. `scripts/export_frontend_data.py`가 St
 화면: `/reviewers/:reviewerId`의 "월별 타임라인" 탭
 ([ReviewerDetailPage.jsx](../app/src/pages/ReviewerDetailPage.jsx),
 [MonthlyActivityChart.jsx](../app/src/components/reviewer-detail/MonthlyActivityChart.jsx))
-내보내기 함수: [`export_monthly_activity()`](../scripts/export_frontend_data.py) (`scripts/export_frontend_data.py:649`)
+- 런타임: [`reviewer_detail_service.py`](../api/services/reviewer_detail_service.py) + `reviewer_monthly_activity`
+- 정적 정합성 export: [`export_monthly_activity()`](../scripts/export_frontend_data.py)
 
 ### 4-1. 원천 데이터
 
@@ -129,8 +135,9 @@ React는 자체 백엔드/API가 없다. `scripts/export_frontend_data.py`가 St
 별도 계약 파일을 기다리다가, 그 파일이 저장소에 없어서 빈 상태로 두고 있던 자리다
 ([`app/views/reviewer_360.py:278-294`](../archive/app_streamlit_v04/views/reviewer_360.py)).
 그 계약을 v04 `sample_id` 단위로 정식 구현한 파일이
-`reviewer_monthly_activity_v04.parquet`이다. React는 이 파일을 JSON으로 변환해
-사용한다. Streamlit 화면 연결은 이번 범위에 포함하지 않는다.
+`reviewer_monthly_activity_v04.parquet`이다. 현재 React는 API가 DB에 적재된 월별
+활동을 직렬화한 응답을 사용하고, export 스크립트는 같은 계약의 정적 기준값을 만든다.
+Streamlit 화면 연결은 이 문서의 범위에 포함하지 않는다.
 
 ### 4-2. 처리 단계
 
@@ -158,7 +165,8 @@ React는 자체 백엔드/API가 없다. `scripts/export_frontend_data.py`가 St
 
 화면: `/trust`의 "성능과 Top-K", "피처 근거" 탭 안 접기(expander) 섹션
 ([TrustCenterPage.jsx](../app/src/pages/TrustCenterPage.jsx))
-내보내기 함수: [`export_trust()`](../scripts/export_frontend_data.py) (`scripts/export_frontend_data.py:526`),
+- 런타임: [`trust_service.py`](../api/services/trust_service.py) + 모델 평가 테이블
+- 정적 정합성 export: [`export_trust()`](../scripts/export_frontend_data.py),
 `_multiclass_trust_block()`, `_v02_block()`, `_v03_top20()`
 
 ### 5-1. 원천 데이터
@@ -202,7 +210,8 @@ v02 PR-AUC 0.426·Recall 71.3% 등 브라우저에서 렌더링된 값이 CSV �
 ## 6. 재생성 방법
 
 원천 리뷰·음식점 데이터가 바뀌면 파생 Parquet을 먼저 재생성한다. 이후 모델
-프로파일, 파생 Parquet, 리포트 CSV 중 하나라도 바뀌면 React JSON을 갱신한다.
+프로파일, 파생 Parquet, 리포트 CSV 중 하나라도 바뀌면 DB를 다시 적재·검증하고
+정합성·복구용 JSON도 갱신한다.
 
 ```powershell
 .\.venv\Scripts\python.exe pipeline\v04\derived_reviewer_activity.py
@@ -210,4 +219,5 @@ v02 PR-AUC 0.426·Recall 71.3% 등 브라우저에서 렌더링된 값이 CSV �
 ```
 
 파생 파일의 경로나 컬럼이 바뀌면 데이터 계약, 파이프라인, DB 로더,
-`scripts/export_frontend_data.py`를 함께 갱신해야 한다.
+`shared/retention`, API 서비스, `scripts/export_frontend_data.py`를 함께 검토해야 한다.
+정적 JSON 갱신만으로 React 런타임 데이터는 바뀌지 않는다.

@@ -4,7 +4,7 @@ DB: MySQL yelp_data (database/.env). 여기서는 SELECT만 실행한다.
 database/ 아래 DDL·로더는 참조하지 않고 건드리지 않는다.
 
 실행:
-    ./venv/Scripts/python.exe -m uvicorn api.main:app --reload --port 8000
+    ./.venv/Scripts/python.exe -m uvicorn api.main:app --reload --port 8000
 """
 from __future__ import annotations
 

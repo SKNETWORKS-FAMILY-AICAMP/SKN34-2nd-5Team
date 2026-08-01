@@ -1,4 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
+
+import { OperationsContext } from "./operations-context";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -7,8 +9,6 @@ const dataModeLabels = {
   hybrid: "HYBRID",
   demo: "DEMO",
 };
-
-const OperationsContext = createContext(null);
 
 // operationsSummary and reviewers are both read synchronously across many
 // files (Header, OperationsPage, PlaybookPage, ReviewerListPage,
@@ -75,31 +75,6 @@ export function OperationsProvider({ children }) {
       {children}
     </OperationsContext.Provider>
   );
-}
-
-function useReadyData(hookName) {
-  const context = useContext(OperationsContext);
-  if (!context) {
-    throw new Error(`${hookName} must be used within OperationsProvider`);
-  }
-  if (context.status !== "ready") {
-    throw new Error(`${hookName} called before data was ready`);
-  }
-  return context.data;
-}
-
-// Only call these from a component rendered below <OperationsGate>
-// (see App.jsx) — that gate is what guarantees status === "ready" here.
-export function useOperationsSummary() {
-  return useReadyData("useOperationsSummary").operations;
-}
-
-export function useReviewers() {
-  return useReadyData("useReviewers").reviewers;
-}
-
-export function useRiskTypes() {
-  return useReadyData("useRiskTypes").riskTypes;
 }
 
 // Renders the loading/error state itself, so screens below it never have

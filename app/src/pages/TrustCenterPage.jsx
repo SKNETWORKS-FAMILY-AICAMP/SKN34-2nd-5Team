@@ -13,7 +13,7 @@ import {
 } from "recharts";
 
 import DataModeBadge from "../components/DataModeBadge";
-import { useOperationsSummary } from "../context/OperationsContext";
+import { useOperationsSummary } from "../context/operations-context";
 import { loadTrustData } from "../data";
 
 const tabs = [

@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import DataModeBadge from "../components/DataModeBadge";
 import PolicyPanel from "../components/operations/PolicyPanel";
 import PriorityQueue from "../components/operations/PriorityQueue";
-import { useOperationsSummary, useReviewers } from "../context/OperationsContext";
+import { useOperationsSummary, useReviewers } from "../context/operations-context";
 import { getDecisionsForModel } from "../services/decisionStorage";
 
 function OperationsPage() {

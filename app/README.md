@@ -2,9 +2,9 @@
 
 Yelp 파워 리뷰어의 활동 감소와 이탈 위험을 확인하기 위한 React 기반 프론트엔드입니다.
 
-현재 단계에서는 실제 서버 및 데이터베이스와 연결하지 않고, 데모 데이터를 사용하여 화면과 기능을 구현하고 있습니다.
-
-향후 FastAPI 및 MySQL과 연결하여 실제 데이터 기반 서비스로 확장할 예정입니다.
+현재 React 운영 화면은 `api/`의 읽기 전용 FastAPI를 통해 MySQL `yelp_data`의
+실제 v04 데이터와 모델 결과를 조회합니다. `app/src/data/*.json`은 정합성 확인과
+복구를 위한 정적 산출물이며 API 실패 시 자동으로 사용하는 폴백은 아닙니다.
 
 ---
 
@@ -36,11 +36,12 @@ Yelp 파워 리뷰어의 활동 감소와 이탈 위험을 확인하기 위한 R
 - React Router
 - Recharts
 
-### 향후 연결 예정
+### Backend / Data
 
-- FastAPI
-- MySQL
-- 머신러닝 모델 API
+- FastAPI 읽기 전용 API
+- MySQL (`yelp_data`)
+- SQLAlchemy / PyMySQL
+- `shared/retention` 공용 판단·직렬화 로직
 
 ---
 
@@ -52,6 +53,7 @@ React 프론트엔드는 프로젝트 최상위의 `app` 폴더에 있습니다(
 
 ```text
 SKN34-2ND-5TEAM/
+├─ api/                                    # React가 조회하는 FastAPI 읽기 전용 API
 ├─ app/                                    # React 프론트엔드(현재 운영 서비스)
 │  ├─ public/
 │  ├─ src/
@@ -59,8 +61,11 @@ SKN34-2ND-5TEAM/
 │  ├─ package-lock.json
 │  ├─ vite.config.js
 │  └─ README.md
+├─ shared/retention/                       # 위험 판단·정규화·직렬화 기준 구현
+├─ database/                               # MySQL DDL·적재·검증
+├─ scripts/                                # 정적 JSON 정합성·복구용 export
 ├─ archive/
-│  ├─ app_streamlit_v04/                   # 기존 Streamlit 애플리케이션(모델·데이터 로직 기준)
+│  ├─ app_streamlit_v04/                   # 기존 Streamlit UI와 호환 wrapper
 │  └─ app_streamlit_v01_prototype/         # 과거 분석 프로토타입 · 수정 금지
 ├─ docs/
 ├─ notebooks/
@@ -169,27 +174,33 @@ http://localhost:5173
 처음 실행하는 팀원은 아래 순서대로 진행합니다.
 
 ```text
-1. Node.js LTS 설치
+1. Python 3.12와 Node.js LTS 설치
 2. GitHub 프로젝트 Clone 또는 Pull
-3. 프로젝트 최상위 폴더에서 app 폴더로 이동
-4. npm install 실행
-5. npm run dev 실행
-6. http://localhost:5173 접속
+3. `database/.env`에 MySQL 연결 정보 준비
+4. Python 환경에 `requirements.txt`와 `api/requirements.txt` 설치
+5. 프로젝트 최상위에서 FastAPI 실행
+6. 새 터미널의 `app` 폴더에서 React 실행
+7. http://localhost:5173 접속
 ```
 
 실제 명령어는 다음과 같습니다.
 
-```bash
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt -r api\requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn api.main:app --reload --port 8000
+```
+
+새 터미널에서는 다음 명령을 실행합니다.
+
+```powershell
 cd app
 npm install
 npm run dev
 ```
 
-Node.js는 컴퓨터마다 최초 한 번만 설치하면 됩니다.
-
-`npm install`은 프로젝트를 처음 받았거나 `package.json`이 변경되었을 때 실행하면 됩니다.
-
-`npm run dev`는 React 화면을 실행할 때마다 사용합니다.
+로컬 기본 API 주소는 `http://localhost:8000`입니다. 다른 API를 사용할 때는
+React 빌드 또는 실행 전에 `VITE_API_BASE_URL`을 해당 주소로 설정합니다.
 
 ---
 
@@ -345,29 +356,26 @@ http://localhost:5173/trust
 
 ## 11. 데이터 사용 방식
 
-현재 React 화면은 실제 API가 아닌 데모 데이터를 사용합니다.
-
-데모 데이터는 일반적으로 다음 위치에서 관리합니다.
-
-```text
-app/src/data/
-```
-
-또는 각 페이지 및 컴포넌트 내부에서 임시 데이터로 사용할 수 있습니다.
-
-현재 데이터는 화면 구현과 사용자 흐름 확인을 위한 예시 데이터입니다.
-
-실제 Yelp 데이터나 머신러닝 예측 결과와 연결된 상태가 아닐 수 있습니다.
-
-향후에는 다음 구조로 연결할 예정입니다.
+현재 React 운영 화면은 다음 런타임 경로를 사용합니다.
 
 ```text
 React
   ↓ HTTP 요청
-FastAPI
-  ↓
-MySQL / 머신러닝 모델
+FastAPI (api/)
+  ↓ SELECT
+MySQL yelp_data
 ```
+
+위험 유형·근거·전략 판단, 프로필 정규화, React 직렬화의 기준 구현은
+`shared/retention/`입니다. API와 정적 export 스크립트는 이 모듈을 재사용합니다.
+
+```text
+app/src/data/*.json
+└─ API 응답 정합성 확인 및 복구용 export 산출물
+```
+
+정적 JSON은 런타임 자동 폴백이 아니므로 API가 중단되면 화면에 데이터 로딩
+오류가 표시됩니다. 합성·데모 데이터를 추가할 경우 화면에서 명확히 구분해야 합니다.
 
 ---
 
@@ -382,15 +390,28 @@ MySQL / 머신러닝 모델
 - 브라우저 데이터를 삭제하면 함께 삭제될 수 있습니다.
 - 실제 데이터베이스에 저장되는 기능은 아닙니다.
 
-향후 FastAPI 및 MySQL 연결 후 서버 저장 방식으로 변경할 예정입니다.
+현재 FastAPI/MySQL 연동은 읽기 전용입니다. 관리자 판단의 서버 저장과 다중 운영자
+이력 관리는 별도 고도화 범위입니다.
 
 ---
 
-## 13. Streamlit과 React 실행
+## 13. FastAPI와 React 실행
 
-현재 프로젝트에는 기존 Streamlit 애플리케이션과 React 프론트엔드가 함께 존재합니다.
+현재 운영 서비스는 FastAPI와 React를 서로 다른 터미널에서 실행합니다.
 
-두 프로그램은 서로 다른 터미널에서 각각 실행할 수 있습니다.
+### FastAPI 실행
+
+프로젝트 최상위에서 다음 명령을 실행합니다.
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn api.main:app --reload --port 8000
+```
+
+상태 확인 주소:
+
+```text
+http://localhost:8000/health
+```
 
 ### React 실행
 
@@ -408,60 +429,50 @@ React 기본 접속 주소:
 http://localhost:5173
 ```
 
-### Streamlit 실행
+다른 API 주소를 사용할 때는 `VITE_API_BASE_URL`을 설정한 뒤 React를 실행하거나
+프로덕션 빌드를 생성해야 합니다.
 
-새로운 터미널을 열고 프로젝트 최상위 폴더에서 실행합니다.
+기존 Streamlit 앱은 `archive/app_streamlit_v04`에 보존되어 있으며 현재 React의
+런타임 데이터 경로가 아닙니다. 필요하면 다음과 같이 별도로 실행할 수 있습니다.
 
-```bash
-python -m streamlit run archive/app_streamlit_v04/streamlit_app.py
-```
-
-Windows 환경에서 `python` 명령이 작동하지 않는 경우 다음 명령을 사용할 수 있습니다.
-
-```bash
-py -m streamlit run archive/app_streamlit_v04/streamlit_app.py
-```
-
-Streamlit 기본 접속 주소:
-
-```text
-http://localhost:8501
+```powershell
+.\.venv\Scripts\python.exe -m streamlit run archive\app_streamlit_v04\streamlit_app.py
 ```
 
 ---
 
 ## 14. Python 가상환경 실행
 
-Streamlit을 실행하려면 프로젝트의 Python 가상환경을 활성화해야 할 수 있습니다.
+FastAPI와 기존 Streamlit 앱을 실행하려면 Python 가상환경을 사용합니다.
 
 가상환경 폴더명은 다음과 같습니다.
 
 ```text
-venv
+.venv
 ```
 
 ### PowerShell
 
 ```powershell
-.\venv\Scripts\Activate.ps1
+.\.venv\Scripts\Activate.ps1
 ```
 
 ### Windows CMD
 
 ```cmd
-venv\Scripts\activate
+.venv\Scripts\activate
 ```
 
 ### Git Bash
 
 ```bash
-source venv/Scripts/activate
+source .venv/Scripts/activate
 ```
 
 가상환경을 활성화한 후 필요한 Python 패키지를 설치합니다.
 
 ```bash
-python -m pip install -r requirements.txt -r requirements-streamlit.txt
+python -m pip install -r requirements.txt -r api/requirements.txt
 ```
 
 ---
@@ -736,18 +747,17 @@ VS Code에서 프로젝트를 열 때 반드시 올바른 폴더를 선택합니
 - 리텐션 플레이북 구현
 - 지역 분석 화면 구현
 - Trust Center 구현
-- 데모 데이터 적용
+- FastAPI 읽기 전용 API 연결
+- MySQL `yelp_data` 실제 v04 데이터 연결
+- `shared/retention` 공용 로직 분리
+- 정적 JSON을 정합성·복구용 산출물로 보존
 - 관리자 판단 로컬 저장 기능 구현
 
 향후 진행 예정:
 
-- FastAPI 서버 연결
-- MySQL 데이터베이스 연결
-- 실제 Yelp 데이터 연결
-- 머신러닝 예측 결과 연결
 - 사용자 인증 기능
 - 관리자 판단 서버 저장
-- 배포 환경 구성
+- AWS 배포 주소·환경변수·운영 절차 문서화
 - 반응형 화면 개선
 - 테스트 코드 추가
 
