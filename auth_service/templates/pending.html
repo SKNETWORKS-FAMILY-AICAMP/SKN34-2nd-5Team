@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block page_id %}pending{% endblock %}
+{% block content %}
+<section class="status-card" aria-labelledby="pending-title">
+  <div class="status-icon" aria-hidden="true">✓</div>
+  <p class="eyebrow">신청 접수 완료</p>
+  <h1 id="pending-title">관리자 승인을 기다리고 있습니다</h1>
+  <p class="lead"><strong id="pending-email">신청한 계정</strong>의 가입 요청이 안전하게 저장되었습니다.</p>
+  <div class="timeline">
+    <div class="timeline-item done"><span>1</span><div><strong>가입 신청</strong><small>완료</small></div></div>
+    <div class="timeline-item active"><span>2</span><div><strong>관리자 확인</strong><small>승인 대기</small></div></div>
+    <div class="timeline-item"><span>3</span><div><strong>서비스 로그인</strong><small>승인 후 가능</small></div></div>
+  </div>
+  <a class="primary-button button-link" href="/auth/login">로그인 화면으로</a>
+</section>
+{% endblock %}
