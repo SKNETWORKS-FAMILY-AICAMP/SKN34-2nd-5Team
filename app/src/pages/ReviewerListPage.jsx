@@ -11,7 +11,7 @@ import {
   useOperationsSummary,
   useReviewers,
   useRiskTypes,
-} from "../context/OperationsContext";
+} from "../context/operations-context";
 import { useDecisions } from "../context/DecisionContext";
 
 const DEFAULT_JUDGMENT = ["약화 우세", "중단 우세"];

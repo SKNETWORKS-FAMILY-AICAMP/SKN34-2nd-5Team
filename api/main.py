@@ -5,7 +5,7 @@ v05 운영 데이터 테이블에만 쓰기를 허용한다. database/ 아래 DD
 참조하지 않고 건드리지 않는다.
 
 실행:
-    ./venv/Scripts/python.exe -m uvicorn api.main:app --reload --port 8000
+    ./.venv/Scripts/python.exe -m uvicorn api.main:app --reload --port 8000
 """
 from __future__ import annotations
 

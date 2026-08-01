@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block page_id %}profile{% endblock %}
+{% block content %}
+<section class="auth-card auth-card-compact" aria-labelledby="profile-title">
+  <p class="eyebrow">승인된 계정</p>
+  <h1 id="profile-title">회원 정보</h1>
+  <dl id="profile-details" class="profile-list">
+    <div><dt>이름</dt><dd data-field="full_name">불러오는 중</dd></div>
+    <div><dt>이메일</dt><dd data-field="email">-</dd></div>
+    <div><dt>소속</dt><dd data-field="organization">-</dd></div>
+    <div><dt>신청 역할</dt><dd data-field="requested_role">-</dd></div>
+    <div><dt>부여 권한</dt><dd data-field="access_role">-</dd></div>
+    <div><dt>상태</dt><dd><span class="status-pill approved">승인 완료</span></dd></div>
+  </dl>
+  <div id="form-message" class="message" role="alert" hidden></div>
+  <button class="secondary-button" type="button" data-action="logout">로그아웃</button>
+</section>
+{% endblock %}

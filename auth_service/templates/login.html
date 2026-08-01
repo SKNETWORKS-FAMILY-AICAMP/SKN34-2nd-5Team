@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block page_id %}login{% endblock %}
+{% block content %}
+<section class="auth-card auth-card-compact" aria-labelledby="login-title">
+  <p class="eyebrow">승인된 운영 계정</p>
+  <h1 id="login-title">로그인</h1>
+  <p class="lead">관리자 승인이 완료된 계정만 접속할 수 있습니다.</p>
+  <form id="login-form" class="form-stack">
+    <label>
+      이메일 또는 아이디
+      <input name="identifier" autocomplete="username" required />
+    </label>
+    <label>
+      비밀번호
+      <input name="password" type="password" autocomplete="current-password" maxlength="128" required />
+    </label>
+    <div id="form-message" class="message" role="alert" hidden></div>
+    <button class="primary-button" type="submit">로그인</button>
+  </form>
+  <p class="card-footer">계정이 없나요? <a href="/auth/signup">회원가입 신청</a></p>
+</section>
+{% endblock %}

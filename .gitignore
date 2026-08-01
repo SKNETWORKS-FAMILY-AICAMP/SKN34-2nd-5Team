@@ -65,6 +65,7 @@ htmlcov/
 .env
 .env.*
 !.env.example
+auth_service/*.db
 
 # ==========================================
 # 로그 및 임시 파일

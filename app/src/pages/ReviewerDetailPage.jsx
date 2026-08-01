@@ -12,7 +12,7 @@ import EvidenceList from "../components/reviewer-detail/EvidenceList";
 import MonthlyActivityChart from "../components/reviewer-detail/MonthlyActivityChart";
 import ReviewerScoreBars from "../components/reviewer-detail/ReviewerScoreBars";
 import StatusBadge from "../components/reviewers/StatusBadge";
-import { useOperationsSummary, useReviewers } from "../context/OperationsContext";
+import { useOperationsSummary, useReviewers } from "../context/operations-context";
 import { useDecisions } from "../context/DecisionContext";
 import {
   formatTopPercent,

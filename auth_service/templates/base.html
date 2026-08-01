@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title }} | Reviewer Retention</title>
+    <link rel="stylesheet" href="/auth/static/styles.css" />
+    <script src="/auth/static/auth.js" defer></script>
+  </head>
+  <body data-page="{% block page_id %}{% endblock %}">
+    <header class="site-header">
+      <a id="auth-home-link" class="brand" href="/auth/login">
+        <span class="brand-mark">RR</span>
+        <span>
+          <strong>Reviewer Retention</strong>
+          <small>운영 서비스 계정</small>
+        </span>
+      </a>
+      <nav id="auth-navigation" aria-label="인증 메뉴">
+        <span class="nav-group" data-nav-state="guest" hidden>
+          <a href="/auth/signup">회원가입</a>
+          <a href="/auth/login">로그인</a>
+        </span>
+        <span class="nav-group" data-nav-state="member" hidden>
+          <button class="nav-logout" type="button" data-action="logout">로그아웃</button>
+        </span>
+      </nav>
+    </header>
+    <main class="page-shell">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

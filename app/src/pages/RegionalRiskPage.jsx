@@ -8,7 +8,7 @@ import ErrorState from "../components/common/ErrorState";
 import RegionalBubbleMap from "../components/regional/RegionalBubbleMap";
 import RegionalRiskTable from "../components/regional/RegionalRiskTable";
 import RegionalTravelRange from "../components/regional/RegionalTravelRange";
-import { useOperationsSummary } from "../context/OperationsContext";
+import { useOperationsSummary } from "../context/operations-context";
 import { loadRegionalDerivedContext, loadRegionalRisk } from "../data";
 
 const sortRules = {

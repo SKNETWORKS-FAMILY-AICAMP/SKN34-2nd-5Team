@@ -1,6 +1,6 @@
 import { NavLink } from "react-router";
 
-import { useOperationsSummary } from "../context/OperationsContext";
+import { useOperationsSummary } from "../context/operations-context";
 
 const menuItems = [
   {

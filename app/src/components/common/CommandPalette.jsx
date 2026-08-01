@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
-import { useReviewers } from "../../context/OperationsContext";
+import { useReviewers } from "../../context/operations-context";
 
 const PAGES = [
   { label: "운영 홈", path: "/" },

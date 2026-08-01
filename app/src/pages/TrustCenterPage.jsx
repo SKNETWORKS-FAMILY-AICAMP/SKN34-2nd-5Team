@@ -17,7 +17,7 @@ import PageHeader from "../components/common/PageHeader";
 import Skeleton from "../components/common/Skeleton";
 import ErrorState from "../components/common/ErrorState";
 import ReviewCapacityDial from "../components/trust/ReviewCapacityDial";
-import { useOperationsSummary } from "../context/OperationsContext";
+import { useOperationsSummary } from "../context/operations-context";
 import { loadTrustData } from "../data";
 
 const tabs = [

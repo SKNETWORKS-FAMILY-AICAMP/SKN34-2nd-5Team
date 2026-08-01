@@ -9,7 +9,7 @@ import {
   useOperationsSummary,
   useReviewers,
   useRiskTypes,
-} from "../context/OperationsContext";
+} from "../context/operations-context";
 import { useDecisions } from "../context/DecisionContext";
 import {
   formatTopPercent,

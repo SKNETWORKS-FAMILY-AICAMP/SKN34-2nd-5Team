@@ -6,7 +6,7 @@ import PageHeader from "../components/common/PageHeader";
 import PolicyPanel from "../components/operations/PolicyPanel";
 import PriorityQueue from "../components/operations/PriorityQueue";
 import SignalAtlas from "../components/operations/SignalAtlas";
-import { useOperationsSummary, useReviewers } from "../context/OperationsContext";
+import { useOperationsSummary, useReviewers } from "../context/operations-context";
 import { useDecisions } from "../context/DecisionContext";
 
 function OperationsPage() {
@@ -14,10 +14,14 @@ function OperationsPage() {
   const reviewers = useReviewers();
   const { decisions } = useDecisions();
 
-  const reviewersWithDecisions = reviewers.map((reviewer) => ({
-    ...reviewer,
-    managerDecision: decisions[reviewer.userId]?.decision ?? null,
-  }));
+  const reviewersWithDecisions = useMemo(
+    () =>
+      reviewers.map((reviewer) => ({
+        ...reviewer,
+        managerDecision: decisions[reviewer.userId]?.decision ?? null,
+      })),
+    [decisions, reviewers],
+  );
 
   const completedCount = reviewersWithDecisions.filter(
     (reviewer) => reviewer.managerDecision,
@@ -47,8 +51,7 @@ function OperationsPage() {
           changeText: reviewer.coreChange,
           action: reviewer.recommendedReview,
         })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [decisions],
+    [reviewersWithDecisions],
   );
 
   return (

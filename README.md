@@ -10,19 +10,20 @@ Yelp 음식 리뷰 활동을 기반으로 다음 연도의
 <br>
 
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.60-FF4B4B?style=flat-square&logo=streamlit&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
+![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-1.4-F7931E?style=flat-square&logo=scikitlearn&logoColor=white)
 ![Pandas](https://img.shields.io/badge/Pandas-2.2-150458?style=flat-square&logo=pandas&logoColor=white)
 ![DuckDB](https://img.shields.io/badge/DuckDB-Data-FCC52D?style=flat-square&logo=duckdb&logoColor=black)
 ![Plotly](https://img.shields.io/badge/Plotly-5.24-3F4F75?style=flat-square&logo=plotly&logoColor=white)
-![MySQL](https://img.shields.io/badge/MySQL-Design-4479A1?style=flat-square&logo=mysql&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-yelp__data-4479A1?style=flat-square&logo=mysql&logoColor=white)
 ![DBeaver](https://img.shields.io/badge/DBeaver-Client-382923?style=flat-square&logo=dbeaver&logoColor=white)
 
 <br>
 
 ![Model](https://img.shields.io/badge/Model-v04%20검증%20완료-138A65?style=for-the-badge)
-![UI](https://img.shields.io/badge/Streamlit-v04%20연결(DEC--010%20승인)-138A65?style=for-the-badge)
-![Next](https://img.shields.io/badge/Next-v04%20화면%20재설계-5667E9?style=for-the-badge)
+![UI](https://img.shields.io/badge/React-FastAPI%20%2B%20MySQL-138A65?style=for-the-badge)
+![Next](https://img.shields.io/badge/Next-CRM%20운영%20연동-5667E9?style=for-the-badge)
 
 </div>
 
@@ -159,8 +160,8 @@ Reviewer 360
 └─ 검토 결과에 따라 무엇을 할 것인가
 ```
 
-> 현재 Streamlit은 v04 데이터에 연결되어 있다(DEC-010·DEC-011 팀 승인, 2026-07-27).<br>
-> v03 데이터 계약·산출물은 삭제하지 않고 비교 기준으로 보존한다. 남은 작업은 화면 레이아웃 재설계다.<br>
+> 현재 운영 화면은 React이며 FastAPI를 통해 MySQL `yelp_data`를 조회한다.<br>
+> v03 데이터 계약·산출물과 기존 Streamlit 앱은 비교·호환 목적으로 보존한다.<br>
 
 ## 🧠 v04 모델 설계
 
@@ -213,7 +214,9 @@ AND
 | Language | Python |
 | Data | Pandas, NumPy, PyArrow, DuckDB |
 | Model | scikit-learn, Joblib |
-| Service | Streamlit, Plotly |
+| Frontend | React, Vite, Tailwind CSS, Recharts |
+| API | FastAPI, SQLAlchemy, PyMySQL |
+| Shared logic | `shared/retention` |
 | Database | MySQL |
 | DB Client | DBeaver |
 | Test | Pytest |
@@ -226,19 +229,19 @@ AND
 ### 1. 가상환경과 패키지
 
 ```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+python -m pip install -r requirements.txt -r api\requirements.txt
 ```
 
-### 2. Streamlit
+### 2. FastAPI
 
 ```powershell
-.\venv\Scripts\python.exe -m streamlit run archive\app_streamlit_v04\streamlit_app.py
+.\.venv\Scripts\python.exe -m uvicorn api.main:app --reload --port 8000
 ```
 
-브라우저에서 `http://localhost:8501`로 접속한다.
+`http://localhost:8000/health`에서 상태를 확인한다. DB 연결 정보는 `database/.env`에서 읽는다.
 
 ### 3. React
 
@@ -248,13 +251,22 @@ npm install
 npm run dev
 ```
 
-브라우저에서 `http://localhost:5173`로 접속한다. 자세한 실행 방법은 [app/README.md](app/README.md) 참고.
+브라우저에서 `http://localhost:5173`로 접속한다. 다른 API를 사용할 때는 빌드 또는
+실행 전에 `VITE_API_BASE_URL`을 설정한다. 자세한 방법은 [app/README.md](app/README.md) 참고.
 
-### 3. 빠른 검증
+### 4. 기존 Streamlit 앱(선택)
 
 ```powershell
-.\venv\Scripts\python.exe -m pytest tests
-.\venv\Scripts\python.exe -m compileall app
+.\.venv\Scripts\python.exe -m streamlit run archive\app_streamlit_v04\streamlit_app.py
+```
+
+### 5. 빠른 검증
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest tests
+cd app
+npm run lint
+npm run build
 ```
 
 <br>
@@ -310,9 +322,12 @@ reports/
 
 ```text
 SKN34-2nd-5Team/
+├─ api/                                  # FastAPI 읽기 전용 API
 ├─ app/                                  # React 운영 서비스(현재 메인 앱)
+├─ shared/retention/                     # 판단·정규화·직렬화 기준 구현
+├─ database/                             # MySQL DDL·적재·검증
 ├─ archive/
-│  ├─ app_streamlit_v04/                 # 기존 Streamlit 앱 · 모델·데이터 로직 기준
+│  ├─ app_streamlit_v04/                 # 기존 Streamlit UI · 호환 wrapper
 │  └─ app_streamlit_v01_prototype/       # 과거 분석 프로토타입 · 수정 금지
 ├─ configs/                # 분석·코호트 설정
 ├─ data/                   # raw · interim · processed
@@ -320,7 +335,7 @@ SKN34-2nd-5Team/
 ├─ models/                 # 모델·메타데이터
 ├─ notebooks/              # 데이터·피처·모델 재현
 ├─ reports/                # 모델 보고서·평가표
-├─ scripts/                # Streamlit 로직을 재사용해 React용 JSON을 내보내는 유틸리티
+├─ scripts/                # shared 로직으로 정합성·복구용 JSON을 내보내는 유틸리티
 ├─ tests/                  # 데이터·UI 계약 테스트
 └─ requirements.txt
 ```
@@ -333,9 +348,10 @@ SKN34-2nd-5Team/
 |---|---|---|
 | v04 코호트·피처 | ✅ 완료 | 2018 파워리뷰어 전체와 Core 43 |
 | v04 모델 검증 | ✅ 완료 | 5-Fold, Test, 혼동행렬, Top-K |
-| v04 데이터 계약·기본 연결 승인 | ✅ 완료 | DEC-010·DEC-011 팀 승인(2026-07-27), Streamlit 기본 연결 v04로 전환 |
-| Streamlit 화면 재설계 | 🔄 다음 단계 | 데이터는 v04, 레이아웃·인터랙션 재설계 진행 |
-| MySQL 운영 적재 | 🟡 구현 완료·로컬 적재 대기 | v04 ERD, DDL, 실데이터 로더, 검증 SQL |
+| v04 데이터 계약·기본 연결 승인 | ✅ 완료 | DEC-010·DEC-011 팀 승인(2026-07-27) |
+| React 운영 화면 | ✅ 완료 | 운영 6개 화면과 Reviewer 360 구현 |
+| FastAPI·MySQL 연결 | ✅ 완료 | React 런타임 데이터를 `api/` → `yelp_data`로 전환 |
+| 공용 파생 로직 | ✅ 완료 | `shared/retention/`을 단일 기준 구현으로 사용 |
 | CRM 실행 연동 | 🟣 외부 연동 필요 | 채널, 동의, 캠페인 결과 |
 | 개입 효과 검증 | 🟣 데이터 필요 | 재참여·성과 데이터 축적 |
 
@@ -349,7 +365,8 @@ SKN34-2nd-5Team/
 | [PROJECT_REQUIREMENTS](docs/PROJECT_REQUIREMENTS.md) | 제품·분석 요구사항 |
 | [BUSINESS_SCENARIOS](docs/BUSINESS_SCENARIOS.md) | 운영 시나리오 |
 | [STREAMLIT_DATA_CONTRACT](docs/STREAMLIT_DATA_CONTRACT.md) | 화면 데이터 계약 |
-| [REACT_DATA_SOURCES_v04](docs/REACT_DATA_SOURCES_v04.md) | React가 v04 산출물을 읽고 파생하는 방식 |
+| [REACT_DATA_SOURCES_v04](docs/REACT_DATA_SOURCES_v04.md) | React/API 데이터 출처와 정적 정합성 export |
+| [REACT_V04_DB_INTEGRATION_PLAN](docs/ui/REACT_V04_DB_INTEGRATION_PLAN.md) | React·FastAPI·MySQL 전환 구조와 검증 계획 |
 | [DATABASE](database/README.md) | v04 MySQL ERD·DDL·실데이터 적재·검증 |
 | [STREAMLIT_REDESIGN_BRIEF](docs/ui/STREAMLIT_REDESIGN_BRIEF.md) | UI 설계 원칙 |
 | [DEC-008](docs/decisions/DEC-008_retention_state_definition.md) | 유지·약화·중단 정의 |
