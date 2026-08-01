@@ -17,7 +17,7 @@ function ActivitySummaryChart({ data }) {
           활동 변화 요약
         </h3>
 
-        <p className="mt-2 text-sm text-[#68736D]">
+        <p className="mt-2 text-sm text-[#626D67]">
           비교 연도와 선정·피처 마감 연도의 활동량을 비교합니다.
         </p>
       </div>
@@ -44,7 +44,7 @@ function ActivitySummaryChart({ data }) {
               axisLine={false}
               tickLine={false}
               tick={{
-                fill: "#68736D",
+                fill: "#626D67",
                 fontSize: 12,
               }}
             />
@@ -55,7 +55,7 @@ function ActivitySummaryChart({ data }) {
               tickLine={false}
               width={40}
               tick={{
-                fill: "#68736D",
+                fill: "#626D67",
                 fontSize: 12,
               }}
             />
@@ -81,7 +81,7 @@ function ActivitySummaryChart({ data }) {
         </ResponsiveContainer>
       </div>
 
-      <p className="mt-3 text-xs leading-5 text-[#68736D]">
+      <p className="mt-3 text-xs leading-5 text-[#626D67]">
         선정·피처 마감 연도의 값이 비교 연도보다 낮을수록 활동이 줄어든
         것입니다.
       </p>

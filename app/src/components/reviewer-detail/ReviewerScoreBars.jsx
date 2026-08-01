@@ -28,7 +28,7 @@ function ReviewerScoreBars({ scores }) {
             key={item.key}
             className="grid grid-cols-[55px_1fr_55px] items-center gap-3 text-sm"
           >
-            <span className="text-[#68736D]">
+            <span className="text-[#626D67]">
               {item.label}
             </span>
 
@@ -46,7 +46,7 @@ function ReviewerScoreBars({ scores }) {
         );
       })}
 
-      <p className="text-xs leading-5 text-[#68736D]">
+      <p className="text-xs leading-5 text-[#626D67]">
         클래스 점수는 보정된 이탈 확률이 아니라 모델 간 상대
         비교를 위한 점수입니다.
       </p>

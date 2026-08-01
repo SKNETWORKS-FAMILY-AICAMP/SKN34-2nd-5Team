@@ -38,50 +38,46 @@ _COLUMNS = """
 """
 
 
-def get_reviewer_details(engine: Engine) -> dict[str, dict]:
+def get_reviewer_detail(engine: Engine, user_id: str) -> dict | None:
     with engine.connect() as conn:
         rows = conn.execute(
             text(
                 f"SELECT {_COLUMNS} FROM vw_reviewer_validation "
-                "WHERE model_version = :v"
+                "WHERE model_version = :v AND user_id = :user_id"
             ),
-            {"v": MODEL_VERSION},
+            {"v": MODEL_VERSION, "user_id": user_id},
         ).mappings().all()
+
+        if not rows:
+            return None
 
         monthly_rows = conn.execute(
             text(
                 """
-                SELECT c.user_id, m.year_month, m.review_count,
-                       m.unique_business_count
+                SELECT m.year_month, m.review_count, m.unique_business_count
                 FROM reviewer_monthly_activity AS m
                 JOIN cohort_samples AS c
                   ON c.model_version = m.model_version
                  AND c.sample_id = m.sample_id
-                WHERE m.model_version = :v
-                ORDER BY c.user_id, m.year_month
+                WHERE m.model_version = :v AND c.user_id = :user_id
+                ORDER BY m.year_month
                 """
             ),
-            {"v": MODEL_VERSION},
+            {"v": MODEL_VERSION, "user_id": user_id},
         ).all()
 
-    monthly_by_user: dict[str, list[dict]] = {}
-    for user_id, year_month, review_count, unique_business_count in monthly_rows:
-        monthly_by_user.setdefault(user_id, []).append(
-            {
-                "month": year_month,
-                "reviewCount": int(review_count),
-                "uniqueBusinessCount": int(unique_business_count),
-            }
-        )
+    monthly_activity = [
+        {
+            "month": year_month,
+            "reviewCount": int(review_count),
+            "uniqueBusinessCount": int(unique_business_count),
+        }
+        for year_month, review_count, unique_business_count in monthly_rows
+    ]
 
     frame = pd.DataFrame([dict(row) for row in rows])
     frame = normalize_profiles(frame, model_version=MODEL_VERSION)
 
-    details: dict[str, dict] = {}
-    for _, row in frame.iterrows():
-        user_id = str(row["user_id"])
-        detail = build_detail(row)
-        detail["monthlyActivity"] = monthly_by_user.get(user_id, [])
-        details[user_id] = detail
-
-    return details
+    detail = build_detail(frame.iloc[0])
+    detail["monthlyActivity"] = monthly_activity
+    return detail

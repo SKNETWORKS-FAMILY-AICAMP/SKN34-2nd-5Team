@@ -44,7 +44,7 @@ function MonthlyActivityChart({ data, comparisonYear, selectionYear }) {
           월별 리뷰 활동 추이
         </h3>
 
-        <p className="mt-2 text-sm text-[#68736D]">
+        <p className="mt-2 text-sm text-[#626D67]">
           {comparisonYear}년 ~ {selectionYear}년(비교~선정·피처 마감 구간)
           동안 월별 리뷰 수와 방문 음식점 수의 변화를 표시합니다.
         </p>
@@ -60,7 +60,7 @@ function MonthlyActivityChart({ data, comparisonYear, selectionYear }) {
               axisLine={false}
               tickLine={false}
               interval={1}
-              tick={{ fill: "#68736D", fontSize: 11 }}
+              tick={{ fill: "#626D67", fontSize: 11 }}
             />
 
             <YAxis
@@ -68,7 +68,7 @@ function MonthlyActivityChart({ data, comparisonYear, selectionYear }) {
               axisLine={false}
               tickLine={false}
               width={35}
-              tick={{ fill: "#68736D", fontSize: 12 }}
+              tick={{ fill: "#626D67", fontSize: 12 }}
             />
 
             <Tooltip
@@ -97,7 +97,7 @@ function MonthlyActivityChart({ data, comparisonYear, selectionYear }) {
         </ResponsiveContainer>
       </div>
 
-      <p className="mt-3 text-xs leading-5 text-[#68736D]">
+      <p className="mt-3 text-xs leading-5 text-[#626D67]">
         파이프라인이 생성한 reviewer_monthly_activity_v04.parquet을 사용하며,
         타깃·검증 연도는 제외하고 비교 연도부터 선정 연도까지만 표시합니다.
       </p>

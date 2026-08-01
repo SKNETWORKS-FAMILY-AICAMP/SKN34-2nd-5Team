@@ -58,7 +58,7 @@ export function loadTrustData() {
 
 // 콘텐츠 위험(권역) 화면은 API에서 조회한다(api/routers/regional.py,
 // vw_regional_risk_summary). 다른 정적 JSON과 달리 비동기라 캐시된
-// promise로 노출하고, 화면은 loadReviewerDetails()와 같은 방식으로 쓴다.
+// promise로 노출하고, 화면은 loadReviewerDetail()과 같은 방식으로 쓴다.
 let regionalPromise = null;
 
 export function loadRegionalRisk() {
@@ -74,23 +74,74 @@ export function loadRegionalRisk() {
   return regionalPromise;
 }
 
-// Per-reviewer detail is far larger than the worklist rows, so it's fetched
-// once, lazily, the first time a Reviewer 360 screen opens rather than
-// bundled — now from the API (api/routers/reviewer_details.py,
-// vw_reviewer_validation) instead of the static public/ JSON.
-let detailPromise = null;
+export function loadRegionalDerivedContext(selectionYear = 2018) {
+  return fetch(
+    `${API_BASE_URL}/api/regional/derived-context?selection_year=${selectionYear}`,
+  ).then((response) => {
+    if (!response.ok) {
+      throw new Error(`권역 파생 데이터를 불러오지 못했습니다 (${response.status})`);
+    }
+    return response.json();
+  });
+}
 
-export function loadReviewerDetails() {
-  if (!detailPromise) {
-    detailPromise = fetch(`${API_BASE_URL}/api/reviewer-details`).then((response) => {
-      if (!response.ok) {
-        throw new Error(`상세 데이터를 불러오지 못했습니다 (${response.status})`);
-      }
-      return response.json();
-    });
+const recommendationPromises = new Map();
+
+export function loadReviewerRecommendations(userId) {
+  if (!recommendationPromises.has(userId)) {
+    recommendationPromises.set(
+      userId,
+      fetch(
+        `${API_BASE_URL}/api/reviewer-details/${encodeURIComponent(userId)}/recommendations`,
+      ).then((response) => {
+        if (!response.ok) {
+          throw new Error(`추천 음식점을 불러오지 못했습니다 (${response.status})`);
+        }
+        return response.json();
+      }),
+    );
+  }
+  return recommendationPromises.get(userId);
+}
+
+// Per-reviewer detail is far larger than the worklist rows, so each reviewer
+// is fetched individually (api/routers/reviewer_details.py,
+// vw_reviewer_validation) the first time their Reviewer 360 screen opens,
+// not as one bulk payload for all reviewers (H-1).
+const detailPromises = new Map();
+
+// Resolved alongside each promise so pages that remount on reviewerId change
+// (ReviewerDetailPage is keyed by it) can read a synchronous snapshot as
+// their useState initializer instead of always starting from null — that's
+// what was causing the "불러오는 중" flash on every reviewer switch even
+// though a given reviewer's detail is only ever fetched once (B-11).
+const resolvedDetails = new Map();
+
+export function loadReviewerDetail(userId) {
+  if (!detailPromises.has(userId)) {
+    detailPromises.set(
+      userId,
+      fetch(`${API_BASE_URL}/api/reviewer-details/${encodeURIComponent(userId)}`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`상세 데이터를 불러오지 못했습니다 (${response.status})`);
+          }
+          return response.json();
+        })
+        .then((detail) => {
+          resolvedDetails.set(userId, detail);
+          return detail;
+        }),
+    );
   }
 
-  return detailPromise;
+  return detailPromises.get(userId);
+}
+
+// Synchronous best-effort read — null until loadReviewerDetail(userId) has
+// resolved for this reviewer. Never triggers a fetch itself.
+export function getCachedReviewerDetail(userId) {
+  return resolvedDetails.get(userId) ?? null;
 }
 
 // Mirrors core.insights.strategy_for: title/summary from the predicted state,

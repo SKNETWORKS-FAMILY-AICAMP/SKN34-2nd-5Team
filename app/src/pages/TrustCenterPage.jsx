@@ -13,6 +13,10 @@ import {
 } from "recharts";
 
 import DataModeBadge from "../components/DataModeBadge";
+import PageHeader from "../components/common/PageHeader";
+import Skeleton from "../components/common/Skeleton";
+import ErrorState from "../components/common/ErrorState";
+import ReviewCapacityDial from "../components/trust/ReviewCapacityDial";
 import { useOperationsSummary } from "../context/OperationsContext";
 import { loadTrustData } from "../data";
 
@@ -20,7 +24,7 @@ const tabs = [
   { key: "performance", label: "성능과 Top-K" },
   { key: "split", label: "시간 분할·누수 방지" },
   { key: "features", label: "피처 근거" },
-  { key: "roadmap", label: "제품 상태·로드맵" },
+  { key: "scope", label: "적용 범위" },
 ];
 
 // Streamlit's "누수 방지 원칙" capability grid (views/trust_center.py).
@@ -47,44 +51,38 @@ const leakagePrinciples = [
   },
 ];
 
-// Product capability roadmap — what the product offers its users, which is what
-// the Streamlit roadmap tracks (not the React/FastAPI migration schedule).
-const productRoadmap = [
+// What the product covers and where its boundary is — a spec, not a
+// to-do list. Each entry states what IS true today; "제공하지 않는 것"
+// entries explain the boundary rather than promising a future date.
+const scopeProvided = [
   {
     title: "운영 홈 · 검토 큐",
-    need: "v04 예측 프로파일",
-    value: "매 세션 우선 검토 대상 확인",
-    status: "현재 사용 가능",
+    description: "Signal Atlas로 오늘 먼저 볼 대상을 발견하고 큐로 이동합니다.",
+  },
+  {
+    title: "리뷰어 검토",
+    description: "근거 확인부터 판단 저장까지 목록을 떠나지 않고 처리합니다.",
   },
   {
     title: "위험 유형 플레이북",
-    need: "규칙 기반 위험 유형 분류",
-    value: "판단별 대응 전략 참고",
-    status: "규칙 기반 프로토타입",
-  },
-  {
-    title: "월별 활동 타임라인",
-    need: "원천 리뷰 데이터 직접 집계 (comparison~selection 구간)",
-    value: "활동 감소 시작점과 회복 확인",
-    status: "현재 사용 가능 · React 단독",
+    description: "규칙 기반 위험 유형별 대응 전략과 대상 명단 저장을 제공합니다.",
   },
   {
     title: "지역 콘텐츠 위험",
-    need: "지역 집계 파일 · 최소 표본 기준",
-    value: "지역 단위 공급 위험 비교",
-    status: "정의·데이터 필요",
+    description: "권역 단위 공급 위험 비교와 도시 위치 모식도를 제공합니다.",
   },
+];
+
+const scopeNotProvided = [
   {
-    title: "캠페인 성과 추적",
-    need: "개입 이력 · 채널 · 결과",
-    value: "개입 효과 검증",
-    status: "고도화 예정",
+    title: "캠페인 발송·복귀 성과 추적",
+    description:
+      "실제 개입이 일어난 적이 없어 만들 수 없습니다. 대상 명단 저장까지가 이 서비스의 범위입니다.",
   },
   {
     title: "개인별 SHAP · 보정 확률",
-    need: "설명 모델 · 확률 보정",
-    value: "개인 단위 근거와 실제 확률 제시",
-    status: "고도화 예정",
+    description:
+      "관찰된 활동 변화와 규칙 기반 근거는 제공하지만, 개별 예측의 피처 기여도나 실제 확률로 보정된 점수는 제공하지 않습니다.",
   },
 ];
 
@@ -121,17 +119,11 @@ function TrustCenterPage() {
   }, []);
 
   if (error) {
-    return (
-      <section className="rounded-xl border border-[#F0D9D4] bg-[#FBF1EF] p-6 text-sm text-[#8A3B2E]">
-        Trust Center 데이터를 불러오지 못했습니다: {error}
-      </section>
-    );
+    return <ErrorState message={error} />;
   }
 
   if (!trustData) {
-    return (
-      <section className="p-6 text-sm text-[#68736D]">불러오는 중…</section>
-    );
+    return <Skeleton rows={4} columns={4} />;
   }
 
   const { overall, classPerformance, confusionMatrix, topK } = trustData;
@@ -140,56 +132,27 @@ function TrustCenterPage() {
 
   return (
     <section>
-      <div className="flex flex-col justify-between gap-5 border-b border-[#DDE4DF] pb-7 lg:flex-row">
-        <div>
-          <p className="text-xs font-bold tracking-[0.15em] text-[#4C987C]">
-            TRUST CENTER
-          </p>
+      <PageHeader
+        title="모델 신뢰"
+        description="성능 지표와 검증 구조를 공개하고, 모델이 무엇에 대해 검증됐는지 적용 범위를 함께 밝힙니다."
+        meta={
+          <>
+            <DataModeBadge />
+            <p className="mt-2 text-xs text-[#626D67]">
+              {trustData.validationPeriod} 검증 기준
+            </p>
+          </>
+        }
+      />
 
-          <h1 className="mt-3 text-4xl font-bold tracking-[-0.04em] text-[#17211D] md:text-5xl">
-            모델 신뢰와 로드맵
-          </h1>
-
-          <p className="mt-4 max-w-3xl leading-7 text-[#68736D]">
-            성능 지표와 검증 구조를 공개하고, 아직 지원하지 않는 기능은
-            상태를 함께 표시합니다.
-          </p>
-        </div>
-
-        <div className="lg:text-right">
-          <DataModeBadge />
-
-          <p className="mt-2 text-xs text-[#68736D]">
-            {trustData.validationPeriod} 검증 기준
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          label="검토 대상"
-          value={`${operationsSummary.targetUsers.toLocaleString()}명`}
-          note={`전체 ${operationsSummary.totalReviewers.toLocaleString()}명 중 상위 20%`}
-        />
-        <MetricCard
-          label="정밀도"
-          value={percent(operationsSummary.precision)}
-          note={`${operationsSummary.capturedUsers.toLocaleString()}명 상태 상실 포착 · 상위 20% 검토 대상 기준`}
-          good
-        />
-        <MetricCard
-          label="재현율"
-          value={percent(operationsSummary.recall)}
-          note={`최대 ${percent(operationsSummary.recallCeiling)}까지 가능`}
-        />
-        <MetricCard
-          label="Lift"
-          value={`${operationsSummary.lift.toFixed(2)}배`}
-          note="무작위 선택 대비"
+      <div className="mt-4">
+        <ReviewCapacityDial
+          topK={topK}
+          currentTargetRate={operationsSummary.targetUsers / operationsSummary.totalReviewers}
         />
       </div>
 
-      <div className="mt-9 flex overflow-x-auto border-b border-[#DDE4DF]">
+      <div className="mt-7 flex overflow-x-auto border-b border-[#DDE4DF]">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -199,7 +162,7 @@ function TrustCenterPage() {
               "min-w-40 whitespace-nowrap border-b-2 px-5 py-3 text-sm font-bold transition",
               activeTab === tab.key
                 ? "border-[#137A5A] text-[#137A5A]"
-                : "border-transparent text-[#68736D]",
+                : "border-transparent text-[#626D67]",
             ].join(" ")}
           >
             {tab.label}
@@ -401,7 +364,7 @@ function TrustCenterPage() {
                     <p className="mt-2 font-bold text-[#17211D]">
                       {item.title}
                     </p>
-                    <p className="mt-1 text-sm text-[#68736D]">
+                    <p className="mt-1 text-sm text-[#626D67]">
                       {item.detail}
                     </p>
                   </div>
@@ -468,69 +431,55 @@ function TrustCenterPage() {
 
             <Panel
               title="개인별 설명 범위"
-              description="어디까지 개인 단위로 설명할 수 있는지 표시합니다."
+              description="관찰된 활동 변화와 규칙 기반 근거를 개인 단위로 제시합니다. 개별 예측에 대한 피처 기여도(SHAP)나 보정 확률은 제공하지 않습니다."
             >
-              <div className="grid gap-4 sm:grid-cols-2">
-                <StatusCard
-                  title="행동 변화 비교"
-                  description="비교 연도와 선정 연도의 활동량 차이"
-                  status="현재 사용 가능"
-                />
-                <StatusCard
-                  title="규칙 기반 근거"
-                  description="관찰 가능한 신호를 심각도 순으로 제시"
-                  status="규칙 기반 프로토타입"
-                />
-                <StatusCard
-                  title="개인별 SHAP"
-                  description="개별 예측에 대한 피처 기여도"
-                  status="고도화 예정"
-                />
-                <StatusCard
-                  title="보정 확률"
-                  description="클래스 점수를 실제 확률로 변환"
-                  status="고도화 예정"
-                />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <ScopeCard title="행동 변화 비교" description="비교 연도와 선정 연도의 활동량 차이" covered />
+                <ScopeCard title="규칙 기반 근거" description="관찰 가능한 신호를 심각도 순으로 제시" covered />
               </div>
             </Panel>
           </div>
         )}
 
-        {activeTab === "roadmap" && (
-          <Panel
-            title="제품 상태와 로드맵"
-            description="화면이 제공하는 기능과, 아직 데이터가 필요한 기능을 함께 표시합니다."
-          >
-            <div className="grid gap-4 sm:grid-cols-2">
-              {productRoadmap.map((item) => (
-                <div
-                  key={item.title}
-                  className="rounded-xl border border-[#DDE4DF] bg-white p-5"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="font-bold text-[#17211D]">{item.title}</p>
-                    <span className="whitespace-nowrap rounded bg-[#F1F4F1] px-2 py-1 text-xs text-[#68736D]">
-                      {item.status}
-                    </span>
-                  </div>
+        {activeTab === "scope" && (
+          <div className="grid gap-6">
+            <Panel
+              title="제공하는 것"
+              description="현재 화면에서 실제로 동작하는 기능입니다."
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                {scopeProvided.map((item) => (
+                  <ScopeCard key={item.title} {...item} covered />
+                ))}
+              </div>
+            </Panel>
 
-                  <p className="mt-3 text-sm text-[#68736D]">
-                    <span className="text-[#17211D]">필요 데이터 · </span>
-                    {item.need}
-                  </p>
+            <Panel
+              title="제공하지 않는 것"
+              description="약속이 아니라 경계입니다 — 왜 안 되는지를 함께 적습니다."
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                {scopeNotProvided.map((item) => (
+                  <ScopeCard key={item.title} {...item} />
+                ))}
+              </div>
+            </Panel>
 
-                  <p className="mt-1 text-sm text-[#68736D]">
-                    <span className="text-[#17211D]">운영 가치 · </span>
-                    {item.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </Panel>
+            <Panel
+              title="데이터 커버리지"
+              description="Yelp Open Dataset이 실제로 포함하는 지역입니다."
+            >
+              <p className="text-sm leading-6 text-[#626D67]">
+                14개 권역(필라델피아·탬파·내슈빌 등 특정 대도시권)에서 활동한
+                파워 리뷰어를 대상으로 학습·검증했습니다. 다른 지역 리뷰어에
+                대한 일반화는 검증되지 않았습니다.
+              </p>
+            </Panel>
+          </div>
         )}
       </div>
 
-      <footer className="mt-12 border-t border-[#DDE4DF] pt-5 text-xs text-[#68736D]">
+      <footer className="mt-12 border-t border-[#DDE4DF] pt-5 text-xs text-[#626D67]">
         Reviewer Retention · {operationsSummary.dataModeLabel} data ·{" "}
         {trustData.modelVersion} 최종 테스트 결과 기준
       </footer>
@@ -549,7 +498,7 @@ function ConfusionMatrix({ rows }) {
     <div className="overflow-x-auto">
       <table className="min-w-[520px] text-sm">
         <thead>
-          <tr className="text-xs text-[#68736D]">
+          <tr className="text-xs text-[#626D67]">
             <th className="py-2 pr-4 text-left">실제 \ 예측</th>
             {order.map((key) => (
               <th key={key} className="py-2 pr-4 text-left">
@@ -577,7 +526,7 @@ function ConfusionMatrix({ rows }) {
                         "inline-flex min-w-16 justify-center rounded px-2 py-1",
                         isDiagonal
                           ? "font-bold text-[#137A5A]"
-                          : "text-[#68736D]",
+                          : "text-[#626D67]",
                       ].join(" ")}
                       style={{
                         backgroundColor: isDiagonal
@@ -610,14 +559,14 @@ function ClassPerformanceChart({ data }) {
             dataKey="className"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "#68736D", fontSize: 12 }}
+            tick={{ fill: "#626D67", fontSize: 12 }}
           />
           <YAxis
             domain={[0, 1]}
             axisLine={false}
             tickLine={false}
             width={40}
-            tick={{ fill: "#68736D", fontSize: 12 }}
+            tick={{ fill: "#626D67", fontSize: 12 }}
           />
           <Tooltip formatter={(value) => Number(value).toFixed(3)} />
           <Legend />
@@ -635,7 +584,7 @@ function ClassPerformanceTable({ data }) {
     <div className="mt-4 overflow-x-auto">
       <table className="min-w-[560px] text-sm">
         <thead>
-          <tr className="text-left text-xs text-[#68736D]">
+          <tr className="text-left text-xs text-[#626D67]">
             <th className="py-2 pr-4">상태</th>
             <th className="py-2 pr-4">정밀도</th>
             <th className="py-2 pr-4">재현율</th>
@@ -675,14 +624,14 @@ function MulticlassTopKChart({ data }) {
             dataKey="label"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "#68736D", fontSize: 12 }}
+            tick={{ fill: "#626D67", fontSize: 12 }}
           />
           <YAxis
             domain={[0, 1]}
             axisLine={false}
             tickLine={false}
             width={40}
-            tick={{ fill: "#68736D", fontSize: 12 }}
+            tick={{ fill: "#626D67", fontSize: 12 }}
           />
           <Tooltip formatter={(value) => percent(Number(value))} />
           <Legend />
@@ -721,18 +670,18 @@ function ModelComparisonChart({ data }) {
             dataKey="metric"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "#68736D", fontSize: 12 }}
+            tick={{ fill: "#626D67", fontSize: 12 }}
           />
           <YAxis
             domain={[0, 1]}
             axisLine={false}
             tickLine={false}
             width={40}
-            tick={{ fill: "#68736D", fontSize: 12 }}
+            tick={{ fill: "#626D67", fontSize: 12 }}
           />
           <Tooltip formatter={(value) => Number(value).toFixed(3)} />
           <Legend />
-          <Bar dataKey="Validation" fill="#D9A441" radius={[5, 5, 0, 0]} />
+          <Bar dataKey="Validation" fill="#A66A18" radius={[5, 5, 0, 0]} />
           <Bar dataKey="Test" fill="#137A5A" radius={[5, 5, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
@@ -753,14 +702,14 @@ function BinaryTopKChart({ data }) {
             unit="%"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "#68736D", fontSize: 12 }}
+            tick={{ fill: "#626D67", fontSize: 12 }}
           />
           <YAxis
             domain={[0, 1]}
             axisLine={false}
             tickLine={false}
             width={40}
-            tick={{ fill: "#68736D", fontSize: 12 }}
+            tick={{ fill: "#626D67", fontSize: 12 }}
           />
           <Tooltip formatter={(value) => percent(Number(value))} />
           <Legend />
@@ -777,7 +726,7 @@ function BinaryTopKTable({ data }) {
     <div className="overflow-x-auto">
       <table className="min-w-[620px] text-sm">
         <thead>
-          <tr className="text-left text-xs text-[#68736D]">
+          <tr className="text-left text-xs text-[#626D67]">
             <th className="py-2 pr-4">검토 비율</th>
             <th className="py-2 pr-4">검토 인원</th>
             <th className="py-2 pr-4">포착 이탈자</th>
@@ -818,7 +767,7 @@ function GroupImportanceChart({ data }) {
             type="number"
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "#68736D", fontSize: 12 }}
+            tick={{ fill: "#626D67", fontSize: 12 }}
           />
           <YAxis
             type="category"
@@ -826,7 +775,7 @@ function GroupImportanceChart({ data }) {
             width={90}
             axisLine={false}
             tickLine={false}
-            tick={{ fill: "#68736D", fontSize: 12 }}
+            tick={{ fill: "#626D67", fontSize: 12 }}
           />
           <Tooltip formatter={(value) => Number(value).toFixed(4)} />
           <Bar dataKey="importance" name="중요도" fill="#137A5A" radius={[0, 5, 5, 0]} />
@@ -841,7 +790,7 @@ function FeatureImportanceTable({ data }) {
     <div className="overflow-x-auto">
       <table className="min-w-[620px] text-sm">
         <thead>
-          <tr className="text-left text-xs text-[#68736D]">
+          <tr className="text-left text-xs text-[#626D67]">
             <th className="py-2 pr-4">순위</th>
             <th className="py-2 pr-4">피처</th>
             <th className="py-2 pr-4">그룹</th>
@@ -852,11 +801,11 @@ function FeatureImportanceTable({ data }) {
         <tbody>
           {data.map((item) => (
             <tr key={item.feature} className="border-t border-[#DDE4DF]">
-              <td className="py-2 pr-4 text-[#68736D]">{item.rank}</td>
+              <td className="py-2 pr-4 text-[#626D67]">{item.rank}</td>
               <td className="py-2 pr-4 font-mono text-xs text-[#17211D]">
                 {item.feature}
               </td>
-              <td className="py-2 pr-4 text-[#68736D]">{item.group}</td>
+              <td className="py-2 pr-4 text-[#626D67]">{item.group}</td>
               <td className="py-2 pr-4">{item.importance.toFixed(4)}</td>
               <td className="py-2">{item.sharePercent.toFixed(1)}%</td>
             </tr>
@@ -875,17 +824,17 @@ function Expander({ title, caption, children }) {
     <details className="group rounded-xl border border-[#DDE4DF] bg-white">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 font-bold text-[#17211D]">
         <span className="flex items-center gap-2">
-          <span className="text-[#68736D]">🕘</span>
+          <span className="text-[#626D67]">🕘</span>
           {title}
         </span>
-        <span className="text-xs font-normal text-[#68736D] transition group-open:rotate-180">
+        <span className="text-xs font-normal text-[#626D67] transition group-open:rotate-180">
           ▾
         </span>
       </summary>
 
       <div className="border-t border-[#DDE4DF] p-6">
         {caption && (
-          <p className="mb-5 text-xs leading-5 text-[#68736D]">{caption}</p>
+          <p className="mb-5 text-xs leading-5 text-[#626D67]">{caption}</p>
         )}
         {children}
       </div>
@@ -897,8 +846,30 @@ function Panel({ title, description, children }) {
   return (
     <div className="rounded-xl border border-[#DDE4DF] bg-white p-6">
       <h2 className="text-lg font-bold text-[#17211D]">{title}</h2>
-      <p className="mt-2 text-sm text-[#68736D]">{description}</p>
+      <p className="mt-2 text-sm text-[#626D67]">{description}</p>
       <div className="mt-5">{children}</div>
+    </div>
+  );
+}
+
+// Scope boundary indicator — a checkmark/dash pair, not a status badge that
+// reads as a promised delivery date. "covered" cards say what works;
+// uncovered cards explain the boundary in the description itself.
+function ScopeCard({ title, description, covered = false }) {
+  return (
+    <div className="rounded-lg border border-[#DDE4DF] bg-white p-4">
+      <div className="flex items-start gap-2">
+        <span
+          className={covered ? "text-[#137A5A]" : "text-[#B3BBB6]"}
+          aria-hidden="true"
+        >
+          {covered ? "✓" : "—"}
+        </span>
+        <p className="text-sm font-medium text-[#17211D]">{title}</p>
+      </div>
+      <p className="mt-1.5 pl-5 text-xs leading-5 text-[#626D67]">
+        {description}
+      </p>
     </div>
   );
 }
@@ -908,11 +879,11 @@ function StatusCard({ title, description, status }) {
     <div className="rounded-xl bg-[#F7F8F5] p-5">
       <div className="flex items-start justify-between gap-3">
         <p className="font-bold text-[#17211D]">{title}</p>
-        <span className="whitespace-nowrap rounded bg-white px-2 py-1 text-xs text-[#68736D]">
+        <span className="whitespace-nowrap rounded bg-white px-2 py-1 text-xs text-[#626D67]">
           {status}
         </span>
       </div>
-      <p className="mt-2 text-sm text-[#68736D]">{description}</p>
+      <p className="mt-2 text-sm text-[#626D67]">{description}</p>
     </div>
   );
 }
@@ -920,7 +891,7 @@ function StatusCard({ title, description, status }) {
 function MetricCard({ label, value, note, good = false }) {
   return (
     <div className="rounded-xl border border-[#DDE4DF] bg-white px-5 py-4">
-      <p className="text-sm text-[#68736D]">{label}</p>
+      <p className="text-sm text-[#626D67]">{label}</p>
 
       <p
         className={[
@@ -931,7 +902,7 @@ function MetricCard({ label, value, note, good = false }) {
         {value}
       </p>
 
-      {note && <p className="mt-1 text-xs text-[#68736D]">{note}</p>}
+      {note && <p className="mt-1 text-xs text-[#626D67]">{note}</p>}
     </div>
   );
 }

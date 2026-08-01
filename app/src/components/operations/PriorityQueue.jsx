@@ -4,7 +4,7 @@ function getJudgmentStyle(modelJudgment) {
   if (modelJudgment.includes("중단")) {
     return {
       rank: "bg-[#E15D47]",
-      badge: "bg-[#F7E8E5] text-[#E15D47]",
+      badge: "bg-[#F7E8E5] text-[#BF3620]",
     };
   }
 
@@ -45,7 +45,10 @@ function PriorityQueue({ reviewers }) {
               {reviewer.rank}
             </span>
 
-            <span className="truncate text-sm font-semibold text-[#17211D]">
+            <span
+              className="truncate text-sm font-semibold text-[#17211D]"
+              title={reviewer.userId}
+            >
               {reviewer.userId}
             </span>
 
@@ -55,7 +58,7 @@ function PriorityQueue({ reviewers }) {
               {reviewer.modelJudgment}
             </span>
 
-            <span className="text-sm text-[#68736D]">
+            <span className="text-sm text-[#626D67]">
               {reviewer.changeText}
             </span>
 

@@ -2,10 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import DataModeBadge from "../components/DataModeBadge";
-import RegionalRiskChart from "../components/regional/RegionalRiskChart";
+import PageHeader from "../components/common/PageHeader";
+import Skeleton from "../components/common/Skeleton";
+import ErrorState from "../components/common/ErrorState";
+import RegionalBubbleMap from "../components/regional/RegionalBubbleMap";
 import RegionalRiskTable from "../components/regional/RegionalRiskTable";
+import RegionalTravelRange from "../components/regional/RegionalTravelRange";
 import { useOperationsSummary } from "../context/OperationsContext";
-import { loadRegionalRisk } from "../data";
+import { loadRegionalDerivedContext, loadRegionalRisk } from "../data";
 
 const sortRules = {
   "활동 리뷰어": (first, second) => second.reviewers - first.reviewers,
@@ -13,36 +17,14 @@ const sortRules = {
   "고위험 리뷰어": (first, second) => second.highRisk - first.highRisk,
 };
 
-// Kept from the pre-data version so the screen still explains what it will do
-// once campaign and supply history land.
-const connectedCapabilities = [
-  {
-    title: "지역 우선순위",
-    description: "위험 리뷰어 규모와 비율을 함께 비교",
-    status: "현재 사용 가능",
-  },
-  {
-    title: "신규 리뷰어 유입",
-    description: "지역별 콘텐츠 생산 기반 관찰",
-    status: "데이터 연결 필요",
-  },
-  {
-    title: "리뷰 공급 변화",
-    description: "음식점 리뷰 감소 지역 탐지 · 코호트 정의상 항상 증가로 나와 지표 재설계 필요",
-    status: "데이터 연결 필요",
-  },
-  {
-    title: "탐방 미션 후보",
-    description: "운영 검토 후 지역 미션 설계",
-    status: "규칙 기반 프로토타입",
-  },
-];
-
 function RegionalRiskPage() {
   const operationsSummary = useOperationsSummary();
-  const [sortRule, setSortRule] = useState("활동 리뷰어");
+  const [sortRule, setSortRule] = useState("고위험 비율");
   const [regionalRisk, setRegionalRisk] = useState(null);
   const [error, setError] = useState(null);
+  const [hoveredRegion, setHoveredRegion] = useState(null);
+  const [viewMode, setViewMode] = useState("priority");
+  const [derivedContext, setDerivedContext] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,6 +37,20 @@ function RegionalRiskPage() {
         if (!cancelled) setError(loadError.message);
       });
 
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadRegionalDerivedContext()
+      .then((data) => {
+        if (!cancelled && data.available) setDerivedContext(data);
+      })
+      .catch(() => {
+        // Optional v05 data must not block the existing regional screen.
+      });
     return () => {
       cancelled = true;
     };
@@ -80,158 +76,145 @@ function RegionalRiskPage() {
 
   if (error) {
     return (
-      <section className="rounded-xl border border-[#F0D9D4] bg-[#FBF1EF] p-6 text-sm text-[#8A3B2E]">
-        권역 데이터를 불러오지 못했습니다: {error}
-      </section>
+      <ErrorState message={error} />
     );
   }
 
   if (!regionalRisk) {
-    return (
-      <section className="p-6 text-sm text-[#68736D]">불러오는 중…</section>
-    );
+    return <Skeleton rows={5} columns={5} />;
   }
 
   return (
     <section>
-      <div className="flex flex-col justify-between gap-5 border-b border-[#DDE4DF] pb-7 lg:flex-row">
-        <div>
-          <p className="text-xs font-bold tracking-[0.15em] text-[#4C987C]">
-            REGIONAL CONTENT RISK
-          </p>
-
-          <h1 className="mt-3 text-4xl font-bold tracking-[-0.04em] text-[#17211D] md:text-5xl">
-            콘텐츠 공급 위험을 권역 단위로 봅니다
-          </h1>
-
-          <p className="mt-4 max-w-3xl leading-7 text-[#68736D]">
-            거주지가 아닌 음식점 리뷰 활동 지역을 기준으로 권역별 콘텐츠 공급
-            위험을 비교합니다.
-          </p>
+      <PageHeader
+        title="콘텐츠 공급 위험"
+        description="거주지가 아닌 음식점 리뷰 활동 지역을 기준으로 권역별 콘텐츠 공급 위험을 비교합니다."
+        meta={
+          <>
+            <DataModeBadge />
+            <p className="mt-2 text-xs text-[#626D67]">{regions.length}개 권역</p>
+          </>
+        }
+      >
+        <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-[#626D67]">
+          <span>활동 리뷰어 {totals.reviewers.toLocaleString()}</span>
+          <span>·</span>
+          <span className="text-[#BF3620]">
+            고위험 {totals.highRisk.toLocaleString()} ({(totals.highRiskRate * 100).toFixed(1)}%)
+          </span>
+          <span>·</span>
+          <span className="text-[#137A5A]">
+            검토 대상 {totals.crmTargets.toLocaleString()}
+          </span>
         </div>
+      </PageHeader>
 
-        <div className="lg:text-right">
-          <DataModeBadge />
-
-          <p className="mt-3 text-sm text-[#68736D]">전체 권역</p>
-
-          <p className="mt-1 text-2xl font-bold text-[#137A5A]">
-            {regions.length}개
-          </p>
-        </div>
-      </div>
-
-      <p className="mt-5 rounded-lg bg-[#E6EFF1] px-4 py-3 text-xs leading-5 text-[#356A78]">
+      <p className="mt-4 rounded-lg bg-[#E6EFF1] px-4 py-2.5 text-xs leading-5 text-[#356A78]">
         권역은 리뷰어가 {regionalRisk.comparisonYear}~{regionalRisk.selectionYear}년
         관찰 구간에 가장 많이 리뷰한 지역(state)입니다. 거주지, 직장, 실제 생활
         반경을 추론하지 않습니다.
       </p>
 
-      <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <SummaryCard
-          label="활동 리뷰어"
-          value={`${totals.reviewers.toLocaleString()}명`}
-          note={`전체 ${regionalRisk.totalReviewers.toLocaleString()}명 중 ${(
-            (regionalRisk.coveredReviewers / regionalRisk.totalReviewers) *
-            100
-          ).toFixed(1)}% 권역 확인`}
-        />
-
-        <SummaryCard
-          label="고위험 리뷰어"
-          value={`${totals.highRisk.toLocaleString()}명`}
-          tone="critical"
-          note="약화 우세 + 중단 우세"
-        />
-
-        <SummaryCard
-          label="고위험 비율"
-          value={`${(totals.highRiskRate * 100).toFixed(1)}%`}
-          tone="warning"
-        />
-
-        <SummaryCard
-          label="통합 검토 대상"
-          value={`${totals.crmTargets.toLocaleString()}명`}
-          tone="good"
-          note="통합 우선순위 상위 20%"
-        />
-      </div>
-
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold text-[#68736D]">정렬</span>
-
-        {Object.keys(sortRules).map((rule) => (
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex gap-1.5">
           <button
-            key={rule}
             type="button"
-            onClick={() => setSortRule(rule)}
+            onClick={() => setViewMode("priority")}
             className={[
-              "rounded-full border px-3 py-1 text-xs font-bold transition",
-              sortRule === rule
+              "min-h-8 rounded-lg border px-3 text-xs font-medium transition",
+              viewMode === "priority"
                 ? "border-[#137A5A] bg-[#E3F1EA] text-[#137A5A]"
-                : "border-[#DDE4DF] text-[#68736D] hover:border-[#137A5A]",
+                : "border-[#DDE4DF] text-[#626D67] hover:border-[#137A5A]",
             ].join(" ")}
           >
-            {rule}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-6">
-        <RegionalRiskChart regions={regions} />
-      </div>
-
-      <div className="mt-8">
-        <div className="mb-4">
-          <h2 className="text-xl font-bold text-[#17211D]">
             권역 우선순위
-          </h2>
-
-          <p className="mt-2 text-sm text-[#68736D]">
-            표본 {regionalRisk.minimumReviewers}명 미만 권역은 비율이 흔들릴 수
-            있어 별도로 표시합니다.
-          </p>
-        </div>
-
-        <RegionalRiskTable
-          regions={regions}
-          minimumReviewers={regionalRisk.minimumReviewers}
-        />
-      </div>
-
-      <div className="mt-10">
-        <h2 className="text-xl font-bold text-[#17211D]">연결 후 운영 기능</h2>
-
-        <p className="mt-2 text-sm text-[#68736D]">
-          권역 집계가 연결되면서 일부 기능이 활성화됐고, 나머지는 추가 데이터가
-          필요합니다.
-        </p>
-
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          {connectedCapabilities.map((item) => (
-            <div
-              key={item.title}
-              className="rounded-xl border border-[#DDE4DF] bg-white p-5"
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("travel")}
+            className={[
+              "min-h-8 rounded-lg border px-3 text-xs font-medium transition",
+              viewMode === "travel"
+                ? "border-[#137A5A] bg-[#E3F1EA] text-[#137A5A]"
+                : "border-[#DDE4DF] text-[#626D67] hover:border-[#137A5A]",
+            ].join(" ")}
+          >
+            탐방 범위
+          </button>
+          {derivedContext && (
+            <button
+              type="button"
+              onClick={() => setViewMode("supply")}
+              className={[
+                "min-h-8 rounded-lg border px-3 text-xs font-medium transition",
+                viewMode === "supply"
+                  ? "border-[#137A5A] bg-[#E3F1EA] text-[#137A5A]"
+                  : "border-[#DDE4DF] text-[#626D67] hover:border-[#137A5A]",
+              ].join(" ")}
             >
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-bold text-[#17211D]">{item.title}</p>
-
-                <span className="whitespace-nowrap rounded bg-[#F1F4F1] px-2 py-1 text-xs text-[#68736D]">
-                  {item.status}
-                </span>
-              </div>
-
-              <p className="mt-2 text-sm text-[#68736D]">{item.description}</p>
-            </div>
-          ))}
+              리뷰 공급 변화
+            </button>
+          )}
         </div>
+
+        {viewMode === "priority" && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-[#626D67]">정렬</span>
+            {Object.keys(sortRules).map((rule) => (
+              <button
+                key={rule}
+                type="button"
+                onClick={() => setSortRule(rule)}
+                className={[
+                  "min-h-8 rounded-full border px-3 text-xs font-medium transition",
+                  sortRule === rule
+                    ? "border-[#137A5A] bg-[#E3F1EA] text-[#137A5A]"
+                    : "border-[#DDE4DF] text-[#626D67] hover:border-[#137A5A]",
+                ].join(" ")}
+              >
+                {rule}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {viewMode === "priority" ? (
+        <>
+          <div className="mt-4">
+            <RegionalBubbleMap
+              regions={regions}
+              hoveredRegion={hoveredRegion}
+              onHoverRegion={setHoveredRegion}
+            />
+          </div>
+
+          <div className="mt-6">
+            <p className="mb-2 text-xs text-[#626D67]">
+              표본 {regionalRisk.minimumReviewers}명 미만 권역은 비율이 흔들릴 수
+              있어 별도로 표시합니다. 지도와 표는 서로 연동됩니다.
+            </p>
+
+            <RegionalRiskTable
+              regions={regions}
+              minimumReviewers={regionalRisk.minimumReviewers}
+              hoveredRegion={hoveredRegion}
+              onHoverRegion={setHoveredRegion}
+            />
+          </div>
+        </>
+      ) : viewMode === "travel" ? (
+        <div className="mt-4">
+          <RegionalTravelRange />
+        </div>
+      ) : (
+        <RegionalSupplyContext data={derivedContext} />
+      )}
 
       <div className="mt-10 rounded-xl border border-[#DDE4DF] bg-white p-6">
         <h2 className="text-lg font-bold text-[#17211D]">운영 연결</h2>
 
-        <p className="mt-3 text-sm leading-7 text-[#68736D]">
+        <p className="mt-3 text-sm leading-7 text-[#626D67]">
           위험 권역을 확인한 뒤 리뷰어 워크리스트에서 개별 활동 변화와 개입
           필요성을 검토합니다.
         </p>
@@ -244,7 +227,7 @@ function RegionalRiskPage() {
         </Link>
       </div>
 
-      <footer className="mt-12 border-t border-[#DDE4DF] pt-5 text-xs leading-5 text-[#68736D]">
+      <footer className="mt-12 border-t border-[#DDE4DF] pt-5 text-xs leading-5 text-[#626D67]">
         Reviewer Retention · {operationsSummary.dataModeLabel} data · 고위험
         비율은 운영 검토 우선순위이며 실제 콘텐츠 소멸 확률이 아닙니다.
       </footer>
@@ -252,23 +235,61 @@ function RegionalRiskPage() {
   );
 }
 
-function SummaryCard({ label, value, note, tone = "default" }) {
-  const valueStyle = {
-    default: "text-[#17211D]",
-    warning: "text-[#A66A18]",
-    critical: "text-[#E15D47]",
-    good: "text-[#137A5A]",
-  };
+function RegionalSupplyContext({ data }) {
+  const regions = [...data.regions].sort(
+    (first, second) => second.reviewSupplyChangeRate - first.reviewSupplyChangeRate,
+  );
+  const totalReviews = regions.reduce((sum, region) => sum + region.reviewCount, 0);
+  const previousReviews = regions.reduce(
+    (sum, region) => sum + (region.previousYearReviewCount ?? 0),
+    0,
+  );
+  const totalChangeRate = previousReviews > 0
+    ? (totalReviews - previousReviews) / previousReviews
+    : 0;
+  const newcomers = regions.reduce((sum, region) => sum + region.newPowerReviewers, 0);
 
   return (
-    <div className="rounded-xl border border-[#DDE4DF] bg-white px-5 py-4">
-      <p className="text-sm text-[#68736D]">{label}</p>
-
-      <p className={["mt-2 text-2xl font-bold", valueStyle[tone]].join(" ")}>
-        {value}
+    <div className="mt-4 rounded-xl border border-[#DDE4DF] bg-white p-5">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SupplyMetric label={`${data.selectionYear}년 전체 음식점 리뷰`} value={totalReviews.toLocaleString()} />
+        <SupplyMetric label="전년 대비 리뷰 공급" value={`${totalChangeRate >= 0 ? "+" : ""}${(totalChangeRate * 100).toFixed(1)}%`} />
+        <SupplyMetric label="신규 파워 리뷰어" value={`${newcomers.toLocaleString()}명`} />
+      </div>
+      <p className="mt-4 text-xs leading-5 text-[#626D67]">
+        전체 음식점 리뷰 기준으로 재계산해 파워 리뷰어 코호트 선정 편향을 제거했습니다. 신규 유입은 최초 코호트 진입 연도에 한 번만 집계합니다.
       </p>
+      <div className="mt-4 overflow-x-auto">
+        <table className="min-w-[640px] w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#DDE4DF] text-left text-xs text-[#626D67]">
+              <th className="py-2">권역</th><th className="py-2 text-right">리뷰 공급</th><th className="py-2 text-right">전년 대비</th><th className="py-2 text-right">활동 리뷰어</th><th className="py-2 text-right">신규 파워 리뷰어</th>
+            </tr>
+          </thead>
+          <tbody>
+            {regions.map((region) => (
+              <tr key={region.region} className="border-b border-[#F1F4F1] last:border-0">
+                <td className="py-2 font-bold text-[#17211D]">{region.region}</td>
+                <td className="py-2 text-right">{region.reviewCount.toLocaleString()}</td>
+                <td className={`py-2 text-right font-medium ${region.reviewSupplyChangeRate < 0 ? "text-[#BF3620]" : "text-[#137A5A]"}`}>
+                  {region.reviewSupplyChangeRate >= 0 ? "+" : ""}{(region.reviewSupplyChangeRate * 100).toFixed(1)}%
+                </td>
+                <td className="py-2 text-right text-[#626D67]">{region.activeReviewers.toLocaleString()}</td>
+                <td className="py-2 text-right text-[#626D67]">{region.newPowerReviewers.toLocaleString()}명</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
-      {note && <p className="mt-1 text-xs text-[#68736D]">{note}</p>}
+function SupplyMetric({ label, value }) {
+  return (
+    <div className="rounded-lg bg-[#F7F8F5] p-4">
+      <p className="text-xs text-[#626D67]">{label}</p>
+      <p className="mt-1 text-xl font-bold text-[#17211D]">{value}</p>
     </div>
   );
 }

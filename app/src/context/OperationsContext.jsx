@@ -112,7 +112,7 @@ export function OperationsGate({ children }) {
 
   if (context.status === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-[#68736D]">
+      <div className="flex min-h-screen items-center justify-center text-sm text-[#626D67]">
         불러오는 중…
       </div>
     );

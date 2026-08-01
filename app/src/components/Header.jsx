@@ -20,7 +20,7 @@ const menuItems = [
     path: "/regional",
   },
   {
-    label: "모델 신뢰·로드맵",
+    label: "모델 신뢰",
     path: "/trust",
   },
 ];
@@ -46,7 +46,7 @@ function Header() {
                   "whitespace-nowrap border-b-2 px-3 py-5 text-sm font-semibold transition",
                   isActive
                     ? "border-[#137A5A] text-[#137A5A]"
-                    : "border-transparent text-[#68736D] hover:text-[#137A5A]",
+                    : "border-transparent text-[#626D67] hover:text-[#137A5A]",
                 ].join(" ")
               }
             >
@@ -57,19 +57,13 @@ function Header() {
 
         {/* The single place model version + data provenance show — every
             page eyebrow and the old header title used to repeat this. */}
-        <div className="flex shrink-0 items-center gap-2 text-xs text-[#68736D]">
+        <div className="flex shrink-0 items-center gap-2 text-xs text-[#626D67]">
           <span
             className="rounded-full bg-[#17211D] px-2 py-1 font-bold text-white"
             title="화면에 표시되는 값의 출처와 모델 버전 — 실데이터 vs 데모"
           >
             {operationsSummary.dataModeLabel} DATA ·{" "}
             {operationsSummary.modelVersion.toUpperCase()}
-          </span>
-          <span
-            className="hidden sm:inline"
-            title="제품(React 화면) 자체의 완성도 단계"
-          >
-            React 전환 검증 중
           </span>
         </div>
       </div>

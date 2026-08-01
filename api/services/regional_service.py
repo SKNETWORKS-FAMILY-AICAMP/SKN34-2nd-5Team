@@ -7,6 +7,8 @@ model_version='v04' 로 고정한다.
 """
 from __future__ import annotations
 
+import numpy as np
+
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
@@ -93,5 +95,56 @@ def get_regional_summary(engine: Engine) -> dict:
         "selectionYear": int(cohort_row.selection_year),
         "coveredReviewers": int(covered_reviewers),
         "totalReviewers": int(total_reviewers),
+        "regions": regions,
+    }
+
+
+# 권역별 탐방 반경 분포 (work-spec A-7 / G-3). MySQL 8에는 내장
+# PERCENTILE_CONT가 없어서, 권역별 원시 p90_radius_km 값을 그대로 가져와
+# 사분위는 Python에서 계산한다 — vw_regional_risk_summary가 highRiskRate
+# 정밀도를 여기서 다시 계산하는 것과 같은 이유(주석 참고).
+#
+# 반경은 위험 지표가 아니라 캠페인 범위 근거로만 쓴다 — 05_feature_
+# validation_report.md §7에서 위험 예측 피처로 채택되지 않았다. 여기서
+# retained/stopped 코호트 중앙값(14.29km/10.31km)을 다시 계산하지 않는
+# 것도 같은 이유다 — 그건 실제 사후 상태 기준 검증 리포트 수치이고,
+# predicted_state로 재계산하면 예측과 실제 결과를 섞는 것이 된다. 프런트는
+# 그 두 수치를 검증 리포트 원문 값으로 고정 표시한다.
+def get_regional_radius(engine: Engine) -> dict:
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(
+                "SELECT state, p90_radius_km FROM vw_reviewer_regional_radius "
+                "WHERE model_version = :v"
+            ),
+            {"v": MODEL_VERSION},
+        ).all()
+
+    by_state: dict[str, list[float]] = {}
+    for state, radius_km in rows:
+        by_state.setdefault(state, []).append(float(radius_km))
+
+    regions = []
+    for state, values in by_state.items():
+        n = len(values)
+        # Match the continuous percentile policy used by the DuckDB pipeline.
+        q1, median, q3 = np.quantile(values, [0.25, 0.50, 0.75], method="linear")
+        regions.append(
+            {
+                "region": state,
+                "reviewers": n,
+                "medianP90RadiusKm": round(median, 1),
+                "q1P90RadiusKm": round(q1, 1),
+                "q3P90RadiusKm": round(q3, 1),
+                "belowMinimum": n < MINIMUM_REVIEWERS,
+            }
+        )
+
+    regions.sort(key=lambda item: item["medianP90RadiusKm"])
+    return {
+        "available": bool(regions),
+        "minimumReviewers": MINIMUM_REVIEWERS,
+        "totalReviewers": sum(item["reviewers"] for item in regions),
+        "excludedReviewers": 0,
         "regions": regions,
     }

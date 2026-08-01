@@ -10,7 +10,7 @@ function DataModeBadge() {
 
   if (dataMode === "project") {
     return (
-      <span className="text-xs font-bold text-[#68736D]">
+      <span className="text-xs font-bold text-[#626D67]">
         {dataModeLabel}
       </span>
     );

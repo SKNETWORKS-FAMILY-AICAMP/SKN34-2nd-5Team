@@ -1,24 +1,35 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import ActivitySummaryChart from "../components/reviewer-detail/ActivitySummaryChart";
+import ActivityStoryStage from "../components/reviewer-detail/ActivityStoryStage";
+import DecisionRail from "../components/reviewer-detail/DecisionRail";
+import ReviewActivityRadius from "../components/reviewer-detail/ReviewActivityRadius";
 import ReviewIntervalChart from "../components/reviewer-detail/ReviewIntervalChart";
-import ActivityChangeGrid from "../components/reviewer-detail/ActivityChangeGrid";
 import DecisionPanel from "../components/reviewer-detail/DecisionPanel";
+import ErrorState from "../components/common/ErrorState";
+import Skeleton from "../components/common/Skeleton";
 import EvidenceList from "../components/reviewer-detail/EvidenceList";
 import MonthlyActivityChart from "../components/reviewer-detail/MonthlyActivityChart";
 import ReviewerScoreBars from "../components/reviewer-detail/ReviewerScoreBars";
 import StatusBadge from "../components/reviewers/StatusBadge";
 import { useOperationsSummary, useReviewers } from "../context/OperationsContext";
+import { useDecisions } from "../context/DecisionContext";
 import {
   formatTopPercent,
-  loadReviewerDetails,
+  getCachedReviewerDetail,
+  loadReviewerDetail,
   strategyFor,
 } from "../data";
-import {
-  getDecision,
-  removeDecision,
-  saveDecision,
-} from "../services/decisionStorage";
+
+// Links EvidenceList's `group` field (shared/retention/insights.py's
+// classify_risk_type: 활동량 / 작성 간격 / 탐색 활동) to the change rows
+// it's actually derived from, so hovering an evidence item highlights the
+// specific metrics behind it instead of a guessed text match (B-5).
+const GROUP_TO_CHANGE_LABELS = {
+  활동량: ["리뷰 수", "활동 월"],
+  "작성 간격": ["리뷰 공백"],
+  "탐색 활동": ["고유 음식점"],
+};
 
 const detailTabs = [
   {
@@ -51,6 +62,7 @@ function ReviewerDetailPage() {
 function ReviewerDetail({ reviewerId }) {
   const operationsSummary = useOperationsSummary();
   const reviewers = useReviewers();
+  const { decisions, saveForReviewer, removeForReviewer } = useDecisions();
   const orderedReviewers = [...reviewers].sort(
     (first, second) =>
       first.priorityRank - second.priorityRank,
@@ -78,24 +90,25 @@ function ReviewerDetail({ reviewerId }) {
 
   const [detailView, setDetailView] = useState("activity");
   const [validationMode, setValidationMode] = useState(false);
-  const [savedDecision, setSavedDecision] = useState(() =>
-    reviewer
-      ? getDecision(operationsSummary.modelVersion, reviewer.sampleId)
-      : null,
-  );
+  const [hoveredGroup, setHoveredGroup] = useState(null);
+  const savedRecord = reviewer ? decisions[reviewer.userId] ?? null : null;
 
-  // Detail lives in a separate file that is fetched once and reused for every
-  // reviewer opened afterwards.
-  const [details, setDetails] = useState(null);
+  // Detail is fetched per reviewer and cached by userId. This page remounts
+  // on every reviewerId change (see the wrapper below), so starting from the
+  // module-level cache instead of null avoids re-showing a loading state on
+  // a reviewer that was already opened this session (B-11).
+  const [loadedDetail, setLoadedDetail] = useState(() =>
+    getCachedReviewerDetail(reviewerId),
+  );
   const [detailError, setDetailError] = useState(null);
 
   useEffect(() => {
     let active = true;
 
-    loadReviewerDetails()
+    loadReviewerDetail(reviewerId)
       .then((loaded) => {
         if (active) {
-          setDetails(loaded);
+          setLoadedDetail(loaded);
         }
       })
       .catch((error) => {
@@ -107,7 +120,7 @@ function ReviewerDetail({ reviewerId }) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [reviewerId]);
 
   if (!reviewer) {
     return (
@@ -126,8 +139,6 @@ function ReviewerDetail({ reviewerId }) {
     );
   }
 
-  const loadedDetail = details?.[reviewer.userId] ?? null;
-
   const detail = {
     // Empty collections keep the charts and lists renderable during the fetch.
     activitySummary: [],
@@ -144,14 +155,12 @@ function ReviewerDetail({ reviewerId }) {
 
   const recommendedDecision = reviewer.recommendedDecision;
 
-  function handleSaveDecision(decision) {
-    saveDecision(operationsSummary.modelVersion, reviewer.sampleId, decision);
-    setSavedDecision(decision);
+  function handleSaveDecision(changes) {
+    return saveForReviewer(reviewer, changes);
   }
 
   function handleCancelDecision() {
-    removeDecision(operationsSummary.modelVersion, reviewer.sampleId);
-    setSavedDecision(null);
+    return removeForReviewer(reviewer.userId);
   }
 
   return (
@@ -164,7 +173,7 @@ function ReviewerDetail({ reviewerId }) {
           ← 리뷰어 관리
         </Link>
 
-        <label className="flex items-center gap-2 text-sm text-[#68736D]">
+        <label className="flex items-center gap-2 text-sm text-[#626D67]">
           <input
             type="checkbox"
             checked={validationMode}
@@ -194,7 +203,7 @@ function ReviewerDetail({ reviewerId }) {
           )}
         </div>
 
-        <p className="text-center text-sm text-[#68736D]">
+        <p className="text-center text-sm text-[#626D67]">
           워크리스트 순서 기준 · {currentIndex + 1} /{" "}
           {orderedReviewers.length}
         </p>
@@ -223,7 +232,10 @@ function ReviewerDetail({ reviewerId }) {
             </h1>
 
             <div className="mt-3 flex flex-wrap gap-2">
-              <span className="rounded-full bg-[#F1F4F1] px-3 py-1 text-xs text-[#68736D]">
+              <span
+                className="rounded-full bg-[#F1F4F1] px-3 py-1 text-xs text-[#626D67]"
+                title="통합 우선순위 기준 순위입니다 — 중단·약화 점수를 합친 상대 검토 순위이며 보정된 이탈 확률이 아닙니다."
+              >
                 전체 {detail.totalReviewers.toLocaleString()}명 중{" "}
                 {detail.priorityRank}위 · 상위{" "}
                 {formatTopPercent(detail.priorityTopPercent)}
@@ -233,17 +245,17 @@ function ReviewerDetail({ reviewerId }) {
                 judgment={detail.modelJudgment}
               />
 
-              <span className="rounded-full bg-[#F1F4F1] px-3 py-1 text-xs text-[#68736D]">
+              <span className="rounded-full bg-[#F1F4F1] px-3 py-1 text-xs text-[#626D67]">
                 {detail.riskType}
               </span>
 
-              <span className="rounded-full bg-[#F1F4F1] px-3 py-1 text-xs text-[#68736D]">
+              <span className="rounded-full bg-[#F1F4F1] px-3 py-1 text-xs text-[#626D67]">
                 {detail.crmTargetLabel}
               </span>
             </div>
           </div>
 
-          <div className="text-sm text-[#68736D] md:text-right">
+          <div className="text-sm text-[#626D67] md:text-right">
             <p>
               비교 {detail.comparisonYear} · 선정{" "}
               {detail.selectionYear} · 검증 {detail.targetYear}
@@ -258,28 +270,28 @@ function ReviewerDetail({ reviewerId }) {
         <ReviewerScoreBars scores={detail.scores} />
       </div>
 
-      <div className="mt-8">
-        <div className="mb-4">
-          <h2 className="text-2xl font-bold text-[#17211D]">
-            활동이 이렇게 변했습니다
-          </h2>
+      <div className="mt-6">
+        <DecisionRail
+          coreChange={detail.coreChange}
+          modelJudgment={detail.modelJudgment}
+          riskType={detail.riskType}
+          savedDecision={savedRecord?.decision ?? null}
+          reviewerId={detail.userId}
+        />
+      </div>
 
-          <p className="mt-2 text-sm text-[#68736D]">
-            선정 기간과 최근 관찰 기간을 같은 기준으로
-            비교했습니다.
-          </p>
-        </div>
-
+      <div className="mt-6">
         {detailError ? (
-          <p className="rounded-xl bg-[#F7E8E5] px-5 py-4 text-sm text-[#E15D47]">
-            {detailError}
-          </p>
+          <ErrorState message={detailError} />
         ) : loadedDetail ? (
-          <ActivityChangeGrid changes={detail.changes} />
+          <ActivityStoryStage
+            changes={detail.changes}
+            comparisonYear={detail.comparisonYear}
+            selectionYear={detail.selectionYear}
+            highlightedLabels={GROUP_TO_CHANGE_LABELS[hoveredGroup] ?? []}
+          />
         ) : (
-          <p className="rounded-xl bg-[#F1F4F1] px-5 py-4 text-sm text-[#68736D]">
-            활동 상세를 불러오는 중입니다.
-          </p>
+          <Skeleton rows={4} columns={3} />
         )}
       </div>
 
@@ -289,16 +301,24 @@ function ReviewerDetail({ reviewerId }) {
             왜 우선 검토 대상인가
           </h2>
 
-          <p className="mt-2 text-sm text-[#68736D]">
+          <p className="mt-2 text-sm text-[#626D67]">
             관찰 가능한 근거를 강한 순서로 정리했습니다.
           </p>
 
           <div className="mt-4">
-            <EvidenceList evidence={detail.evidence} />
+            <EvidenceList
+              evidence={detail.evidence}
+              hoveredGroup={hoveredGroup}
+              onHoverGroup={setHoveredGroup}
+            />
+          </div>
+
+          <div className="mt-6">
+            <ReviewActivityRadius userId={detail.userId} />
           </div>
 
           <div className="mt-8 rounded-xl border border-[#DDE4DF] bg-white p-5">
-            <p className="text-xs font-bold tracking-widest text-[#4C987C]">
+            <p className="text-xs font-bold tracking-widest text-[#357259]">
               RECOMMENDED PLAYBOOK
             </p>
 
@@ -306,7 +326,7 @@ function ReviewerDetail({ reviewerId }) {
               {detail.strategy.title}
             </h2>
 
-            <p className="mt-3 text-sm leading-6 text-[#68736D]">
+            <p className="mt-3 text-sm leading-6 text-[#626D67]">
               {detail.strategy.description}
             </p>
 
@@ -337,7 +357,9 @@ function ReviewerDetail({ reviewerId }) {
         </div>
 
         <DecisionPanel
-          savedDecision={savedDecision}
+          reviewer={reviewer}
+          modelVersion={operationsSummary.modelVersion}
+          savedRecord={savedRecord}
           recommendedDecision={recommendedDecision}
           onSave={handleSaveDecision}
           onCancel={handleCancelDecision}
@@ -357,7 +379,7 @@ function ReviewerDetail({ reviewerId }) {
                 "min-w-32 border-b-2 px-5 py-3 text-sm font-bold transition",
                 detailView === tab.key
                   ? "border-[#137A5A] text-[#137A5A]"
-                  : "border-transparent text-[#68736D]",
+                  : "border-transparent text-[#626D67]",
               ].join(" ")}
             >
               {tab.label}
@@ -380,7 +402,7 @@ function ReviewerDetail({ reviewerId }) {
 
           {detailView === "timeline" &&
             (detailError ? (
-              <p className="rounded-xl bg-[#F7E8E5] px-5 py-4 text-sm text-[#E15D47]">
+              <p className="rounded-xl bg-[#F7E8E5] px-5 py-4 text-sm text-[#BF3620]">
                 {detailError}
               </p>
             ) : loadedDetail ? (
@@ -390,7 +412,7 @@ function ReviewerDetail({ reviewerId }) {
                 selectionYear={detail.selectionYear}
               />
             ) : (
-              <p className="rounded-xl bg-[#F1F4F1] px-5 py-4 text-sm text-[#68736D]">
+              <p className="rounded-xl bg-[#F1F4F1] px-5 py-4 text-sm text-[#626D67]">
                 월별 활동 데이터를 불러오는 중입니다.
               </p>
             ))}
@@ -402,7 +424,7 @@ function ReviewerDetail({ reviewerId }) {
                   사후 검증 결과가 숨겨져 있습니다
                 </h3>
 
-                <p className="mt-2 text-sm text-[#68736D]">
+                <p className="mt-2 text-sm text-[#626D67]">
                   화면 상단의 검증 정답 표시를 켜야 실제 결과를
                   확인할 수 있습니다.
                 </p>
@@ -438,7 +460,7 @@ function ReviewerDetail({ reviewerId }) {
         </div>
       </div>
 
-      <footer className="mt-12 border-t border-[#DDE4DF] pt-5 text-xs text-[#68736D]">
+      <footer className="mt-12 border-t border-[#DDE4DF] pt-5 text-xs text-[#626D67]">
         Reviewer Retention · {operationsSummary.dataModeLabel} data · 클래스
         점수는 보정 확률이 아니며 통합 점수는 운영 우선순위에 사용합니다.
       </footer>
@@ -449,7 +471,7 @@ function ReviewerDetail({ reviewerId }) {
 function StrategyRow({ label, value }) {
   return (
     <div className="flex justify-between gap-5 border-b border-[#DDE4DF] pb-3 last:border-b-0">
-      <span className="text-[#68736D]">
+      <span className="text-[#626D67]">
         {label}
       </span>
 
@@ -463,7 +485,7 @@ function StrategyRow({ label, value }) {
 function ValidationCard({ label, value }) {
   return (
     <div className="rounded-xl border border-[#DDE4DF] bg-white p-5">
-      <p className="text-sm text-[#68736D]">
+      <p className="text-sm text-[#626D67]">
         {label}
       </p>
 

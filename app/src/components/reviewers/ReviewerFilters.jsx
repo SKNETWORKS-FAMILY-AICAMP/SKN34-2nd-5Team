@@ -67,6 +67,7 @@ function ReviewerFilters({
           value={crmRangeFilter}
           onChange={(event) => onCrmRangeChange(event.target.value)}
           className={fieldClassName}
+          title="통합 검토 범위: 중단·약화 점수를 합친 통합 우선순위 기준 상위 20% 여부입니다. 개별 확률이 아닙니다."
         >
           <option value="전체">통합 검토 범위 전체</option>
           <option value="상위 20%">통합 상위 20%</option>
@@ -77,6 +78,7 @@ function ReviewerFilters({
           value={sortRule}
           onChange={(event) => onSortChange(event.target.value)}
           className={fieldClassName}
+          title="통합 우선순위: 중단·약화 점수를 합친 통합 점수로 정렬합니다. 보정된 이탈 확률이 아닙니다."
         >
           <option value="우선순위">통합 우선순위</option>
           <option value="중단 점수">중단 점수 높은 순</option>
@@ -87,7 +89,7 @@ function ReviewerFilters({
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold text-[#68736D]">
+        <span className="text-xs font-semibold text-[#626D67]">
           모델 판단
         </span>
 
@@ -103,7 +105,7 @@ function ReviewerFilters({
                 "rounded-full border px-3 py-1 text-xs font-bold transition",
                 isActive
                   ? "border-[#137A5A] bg-[#E3F1EA] text-[#137A5A]"
-                  : "border-[#DDE4DF] text-[#68736D] hover:border-[#137A5A]",
+                  : "border-[#DDE4DF] text-[#626D67] hover:border-[#137A5A]",
               ].join(" ")}
             >
               {option}

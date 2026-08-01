@@ -17,7 +17,7 @@ function ReviewIntervalChart({ data }) {
           리뷰 작성 간격 비교
         </h3>
 
-        <p className="mt-2 text-sm text-[#68736D]">
+        <p className="mt-2 text-sm text-[#626D67]">
           이전 기간과 최근 기간의 작성 간격 및 리뷰 공백을
           비교합니다.
         </p>
@@ -45,7 +45,7 @@ function ReviewIntervalChart({ data }) {
               axisLine={false}
               tickLine={false}
               tick={{
-                fill: "#68736D",
+                fill: "#626D67",
                 fontSize: 12,
               }}
             />
@@ -56,7 +56,7 @@ function ReviewIntervalChart({ data }) {
               tickLine={false}
               width={40}
               tick={{
-                fill: "#68736D",
+                fill: "#626D67",
                 fontSize: 12,
               }}
             />
@@ -87,7 +87,7 @@ function ReviewIntervalChart({ data }) {
         </ResponsiveContainer>
       </div>
 
-      <p className="mt-3 text-xs leading-5 text-[#68736D]">
+      <p className="mt-3 text-xs leading-5 text-[#626D67]">
         값이 커질수록 리뷰 작성 주기가 길어졌거나 마지막 리뷰
         이후 공백이 증가했다는 의미입니다.
       </p>

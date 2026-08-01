@@ -5,7 +5,7 @@ function formatPercent(value) {
 function PolicyRow({ label, value, good = false }) {
   return (
     <div className="flex items-baseline justify-between border-t border-[#DDE4DF] py-3">
-      <span className="text-sm text-[#68736D]">
+      <span className="text-sm text-[#626D67]">
         {label}
       </span>
 
@@ -33,7 +33,7 @@ function PolicyPanel({ summary }) {
         이 큐는 왜 우선인가
       </h2>
 
-      <p className="mt-2 text-sm leading-6 text-[#68736D]">
+      <p className="mt-2 text-sm leading-6 text-[#626D67]">
         사후 Test 검증 결과이며, 무작위로 대상을 선택하는 것보다
         실제 활동 저하 대상을 더 많이 포함합니다.
       </p>
@@ -60,7 +60,7 @@ function PolicyPanel({ summary }) {
           value={formatPercent(summary.recall)}
         />
 
-        <p className="mt-1 text-xs leading-5 text-[#68736D]">
+        <p className="mt-1 text-xs leading-5 text-[#626D67]">
           한 번에 20%만 볼 수 있어 최대로 잡아도 {recallCeiling.toFixed(1)}%까지가
           한계입니다
         </p>
@@ -68,7 +68,7 @@ function PolicyPanel({ summary }) {
 
       <div className="border-t border-[#DDE4DF] py-4">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-[#68736D]">
+          <span className="text-[#626D67]">
             무작위로 뽑을 때보다
           </span>
 
@@ -87,7 +87,7 @@ function PolicyPanel({ summary }) {
         </div>
       </div>
 
-      <div className="flex justify-between border-t border-[#DDE4DF] pt-4 text-sm text-[#68736D]">
+      <div className="flex justify-between border-t border-[#DDE4DF] pt-4 text-sm text-[#626D67]">
         <span>
           약화 우세 {summary.weakenedUsers.toLocaleString()}명
         </span>
@@ -97,7 +97,7 @@ function PolicyPanel({ summary }) {
         </span>
       </div>
 
-      <p className="mt-5 rounded-lg bg-[#F1F4F1] px-4 py-3 text-xs leading-5 text-[#68736D]">
+      <p className="mt-5 rounded-lg bg-[#F1F4F1] px-4 py-3 text-xs leading-5 text-[#626D67]">
         현재 점수는 이탈 확률이 아니라 누구부터 검토할지를 정하는
         상대적 우선순위 점수입니다.
       </p>
