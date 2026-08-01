@@ -4,6 +4,14 @@
 
 이 문서는 기존 React 운영 화면 `app/`과 독립 인증 서비스 `auth_service/`를 연결하기 위한 인수인계 문서다. 현재까지 `app/`은 수정하지 않았으며, 인증 화면과 백엔드는 `auth_service/` 안에만 구현되어 있다.
 
+**2026-08-01 갱신**: 아래 8절에서 권장한 최소 연동 구조를 `app/`에 적용했다.
+`app/src/features/auth/`(`authApi.js`, `AuthProvider.jsx`, `auth-context.js`,
+`ProtectedRoute.jsx`, `rolePolicy.js`)를 추가하고 `App.jsx`를
+`AuthProvider` + `ProtectedRoute`로 감쌌다. `vite.config.js`에 `/auth`
+프록시(9절)도 추가했다. 로그인→React 이동, 로그아웃→`/auth/login` 복귀,
+관리자 로그인→`/auth/admin` 이동까지 로컬에서 실제로 확인했다. 이 화면
+자체(Jinja 템플릿)는 변경하지 않았다 — React 쪽 연동만 추가한 것이다.
+
 ## 1. 현재 구현 상태
 
 구현 완료:
@@ -21,10 +29,17 @@
 - 로그인 상태에 따른 상단 메뉴 변경
 - 로그인 사용자의 로그인·회원가입 화면 재접근 방지
 
+- React `app/` 내부 라우터·상태 관리와 연결(§8 최소 구조: `AuthProvider`,
+  `ProtectedRoute`, Vite `/auth` 프록시)
+
 아직 하지 않은 작업:
 
-- React `app/` 내부 라우터·상태 관리와 연결
-- 기존 React 화면 및 분석 API의 실제 접근 차단
+- 역할별(VIEWER/OPERATOR/ADMIN) 화면 내 버튼·액션 숨김 — `rolePolicy.js`에
+  `canMutate()` 헬퍼만 추가했고, 개별 화면(판단 저장, 대상 명단 추가 등)에
+  아직 연결하지 않았다
+- 기존 React 화면 및 분석 API의 실제 접근 차단(Nginx `/auth/api/verify`
+  서브리퀘스트 또는 `api/` 자체 인증 검사) — 지금은 React 라우팅만
+  보호되고, `/api`를 직접 호출하면 그대로 응답한다
 - AWS 회원 DB 연결
 - AWS 인증 서비스 배포
 - 도메인·HTTPS 적용

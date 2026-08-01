@@ -1,6 +1,8 @@
 import { NavLink } from "react-router";
 
 import { useOperationsSummary } from "../context/operations-context";
+import { useAuth } from "../features/auth/auth-context";
+import { roleLabel } from "../features/auth/rolePolicy";
 
 const menuItems = [
   {
@@ -27,6 +29,7 @@ const menuItems = [
 
 function Header() {
   const operationsSummary = useOperationsSummary();
+  const { user, logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 border-b border-[#DDE4DF] bg-[#F7F8F5]/95 backdrop-blur">
@@ -65,6 +68,32 @@ function Header() {
             {operationsSummary.dataModeLabel} DATA ·{" "}
             {operationsSummary.modelVersion.toUpperCase()}
           </span>
+
+          {user && (
+            <>
+              <span className="hidden sm:inline">
+                {user.full_name || user.username}
+                {user.access_role && ` · ${roleLabel(user.access_role)}`}
+              </span>
+
+              {user.is_admin && (
+                <a
+                  href="/auth/admin"
+                  className="font-semibold text-[#137A5A] hover:underline"
+                >
+                  회원 관리
+                </a>
+              )}
+
+              <button
+                type="button"
+                onClick={logout}
+                className="font-semibold text-[#626D67] hover:text-[#137A5A]"
+              >
+                로그아웃
+              </button>
+            </>
+          )}
         </div>
       </div>
     </header>
