@@ -13,11 +13,13 @@ ENV/
 data/raw/*
 data/interim/*
 data/processed/*
+data/photos/*
 
 # 빈 폴더 유지를 위한 파일은 Git 추적 허용
 !data/raw/.gitkeep
 !data/interim/.gitkeep
 !data/processed/.gitkeep
+!data/photos/.gitkeep
 
 # sample 데이터는 Git 추적 가능
 # 단, 용량과 개인정보성 컬럼을 확인한 후 업로드
@@ -106,3 +108,6 @@ desktop.ini
 *.7z
 *.tar
 *.tar.gz
+
+
+.pnpm-store/
