@@ -74,6 +74,7 @@ ssh-keyscan -H <AWS 고정 IP>
 | 이름 | 현재 기본값 |
 |---|---|
 | `AWS_DEPLOY_PATH` | `/srv/reviewer-retention` |
+| `AWS_FRONTEND_ROOT` | `/var/www/reviewer-retention` |
 | `AWS_API_SERVICE` | `reviewer-retention.service` |
 | `AWS_AUTH_SERVICE` | `reviewer-retention-auth.service` |
 | `VITE_API_BASE_URL` | `http://52.78.194.110:8000` |

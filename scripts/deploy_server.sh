@@ -9,6 +9,7 @@ EXPECTED_SHA="${EXPECTED_SHA:-}"
 API_SERVICE="${API_SERVICE:-}"
 AUTH_SERVICE="${AUTH_SERVICE:-}"
 VITE_API_BASE_URL="${VITE_API_BASE_URL:-}"
+FRONTEND_ROOT="${FRONTEND_ROOT:-}"
 
 log() {
   printf '[deploy] %s\n' "$*"
@@ -46,12 +47,15 @@ wait_for_http() {
 [[ "$API_SERVICE" =~ ^[A-Za-z0-9_.@-]+$ ]] || fail 'API_SERVICE is missing or invalid.'
 [[ "$AUTH_SERVICE" =~ ^[A-Za-z0-9_.@-]+$ ]] || fail 'AUTH_SERVICE is missing or invalid.'
 [[ "$VITE_API_BASE_URL" =~ ^https?://[^[:space:]]+$ ]] || fail 'VITE_API_BASE_URL is missing or invalid.'
+[[ "$FRONTEND_ROOT" =~ ^/var/www/[A-Za-z0-9._/-]+$ ]] || fail 'FRONTEND_ROOT must be a path below /var/www/.'
+[[ "$FRONTEND_ROOT" != *'..'* ]] || fail 'FRONTEND_ROOT must not contain parent-directory traversal.'
 
 require_command git
 require_command node
 require_command npm
 require_command curl
 require_command flock
+require_command readlink
 require_command sudo
 require_command systemctl
 
@@ -73,6 +77,8 @@ PROJECT_ROOT="$(pwd -P)"
 [[ "$PROJECT_ROOT" != '/' ]] || fail 'Refusing to deploy from the filesystem root.'
 [[ -d "$PROJECT_ROOT/.git" ]] || fail "Not a Git checkout: $PROJECT_ROOT"
 [[ -f "$PROJECT_ROOT/app/package-lock.json" ]] || fail 'app/package-lock.json was not found.'
+[[ "$(readlink -m -- "$FRONTEND_ROOT")" == "$FRONTEND_ROOT" ]] || fail 'FRONTEND_ROOT must be an absolute canonical path.'
+[[ "$FRONTEND_ROOT" != '/var/www' ]] || fail 'Refusing to replace /var/www itself.'
 
 exec 9>"$PROJECT_ROOT/.deploy.lock"
 flock -n 9 || fail 'Another deployment is already running.'
@@ -122,11 +128,12 @@ cd "$PROJECT_ROOT/app"
 npm ci
 
 NEXT_DIST="$PROJECT_ROOT/app/dist.next"
-CURRENT_DIST="$PROJECT_ROOT/app/dist"
-PREVIOUS_DIST="$PROJECT_ROOT/app/dist.previous"
+CURRENT_DIST="$FRONTEND_ROOT"
+PREVIOUS_DIST="${FRONTEND_ROOT}.previous"
 
 [[ "$NEXT_DIST" == "$PROJECT_ROOT/app/dist.next" ]] || fail 'Unexpected staging path.'
-[[ "$PREVIOUS_DIST" == "$PROJECT_ROOT/app/dist.previous" ]] || fail 'Unexpected backup path.'
+[[ "$CURRENT_DIST" == /var/www/* ]] || fail 'Unexpected frontend publish path.'
+[[ "$PREVIOUS_DIST" == /var/www/*.previous ]] || fail 'Unexpected frontend backup path.'
 rm -rf -- "$NEXT_DIST"
 VITE_API_BASE_URL="$VITE_API_BASE_URL" npm run build -- --outDir "$NEXT_DIST" --emptyOutDir
 [[ -f "$NEXT_DIST/index.html" ]] || fail 'React build did not create dist.next/index.html.'
@@ -137,25 +144,25 @@ fi
 log 'Checking Nginx configuration before publishing...'
 sudo nginx -t
 nginx_config="$(sudo nginx -T 2>&1)"
-if [[ "$nginx_config" != *"$CURRENT_DIST"* ]]; then
+if [[ "$nginx_config" != *"root $CURRENT_DIST;"* ]]; then
   fail "Nginx does not serve the React build directory: $CURRENT_DIST"
 fi
-
-rm -rf -- "$PREVIOUS_DIST"
-if [[ -d "$CURRENT_DIST" ]]; then
-  mv -- "$CURRENT_DIST" "$PREVIOUS_DIST"
-fi
-mv -- "$NEXT_DIST" "$CURRENT_DIST"
 
 restore_previous_frontend() {
   if [[ -d "$PREVIOUS_DIST" ]]; then
     log 'Restoring the previous React build after a failed health check...'
-    rm -rf -- "$CURRENT_DIST"
-    mv -- "$PREVIOUS_DIST" "$CURRENT_DIST"
+    sudo rm -rf -- "$CURRENT_DIST"
+    sudo mv -- "$PREVIOUS_DIST" "$CURRENT_DIST"
   fi
 }
 
 trap restore_previous_frontend ERR
+
+sudo rm -rf -- "$PREVIOUS_DIST"
+if [[ -d "$CURRENT_DIST" ]]; then
+  sudo mv -- "$CURRENT_DIST" "$PREVIOUS_DIST"
+fi
+sudo mv -- "$NEXT_DIST" "$CURRENT_DIST"
 
 log "Restarting $API_SERVICE and $AUTH_SERVICE..."
 sudo systemctl restart "$API_SERVICE"
@@ -166,7 +173,7 @@ wait_for_http 'http://127.0.0.1:8100/auth/login' 'Auth API'
 wait_for_http 'http://127.0.0.1/' 'Nginx/React'
 
 trap - ERR
-rm -rf -- "$PREVIOUS_DIST"
+sudo rm -rf -- "$PREVIOUS_DIST"
 
 deployed_sha="$(git rev-parse HEAD)"
 [[ "$deployed_sha" == "$EXPECTED_SHA" ]] || fail "Deployed SHA mismatch: $deployed_sha"
