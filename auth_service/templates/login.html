@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block page_id %}login{% endblock %}
 {% block content %}
+<div class="login-lockup">
+  <img class="login-lockup-word" src="/auth/static/brand/yelp_logo.svg" alt="Yelp" />
+  <p class="login-lockup-caption">MANAGEMENT PANEL</p>
+</div>
 <section class="auth-card auth-card-compact" aria-labelledby="login-title">
   <p class="eyebrow">승인된 운영 계정</p>
   <h1 id="login-title">로그인</h1>
@@ -10,8 +14,11 @@
       이메일 또는 아이디
       <input name="identifier" autocomplete="username" required />
     </label>
-    <label>
-      비밀번호
+    <label class="password-label">
+      <span class="password-label-row">
+        비밀번호
+        <button type="button" class="password-toggle" data-action="toggle-password" aria-pressed="false">보기</button>
+      </span>
       <input name="password" type="password" autocomplete="current-password" maxlength="128" required />
     </label>
     <div id="form-message" class="message" role="alert" hidden></div>

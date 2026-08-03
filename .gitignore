@@ -111,3 +111,5 @@ desktop.ini
 
 
 .pnpm-store/
+# dl 산출자료
+pipeline/v05_04_dl/*.pt 

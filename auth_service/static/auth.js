@@ -137,6 +137,16 @@ document.querySelectorAll('[data-action="logout"]').forEach((button) => {
   button.addEventListener("click", logout);
 });
 
+document.querySelectorAll('[data-action="toggle-password"]').forEach((button) => {
+  button.addEventListener("click", () => {
+    const input = button.closest("label").querySelector("input");
+    const revealing = input.type === "password";
+    input.type = revealing ? "text" : "password";
+    button.textContent = revealing ? "숨기기" : "보기";
+    button.setAttribute("aria-pressed", String(revealing));
+  });
+});
+
 if (page === "profile") {
   apiFetch("/auth/api/me")
     .then((user) => {

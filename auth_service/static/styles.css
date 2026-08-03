@@ -96,6 +96,26 @@ td small { margin-top: 4px; color: #78847f; }
 .role-guide strong { color: #27342f; }
 .role-guide b { color: #176b50; }
 
+/* Login page only — Yelp-branded lockup + red primary action, scoped via
+   body[data-page="login"] so signup/pending/profile/admin keep the app's
+   usual green (they're internal management screens, not the public-facing
+   entry point a visitor associates with the Yelp mark). */
+body[data-page="login"] { background: radial-gradient(circle at 50% -10%, rgba(211, 35, 35, .1) 0, transparent 34rem), #fdf7f6; }
+body[data-page="login"] .site-header { display: none; }
+body[data-page="login"] .page-shell { display: flex; flex-direction: column; align-items: center; padding-top: clamp(48px, 10vh, 96px); }
+
+.login-lockup { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-bottom: 40px; }
+.login-lockup-word { height: 44px; width: auto; }
+.login-lockup-caption { margin: 0; color: #9a8f8d; font-size: 12px; font-weight: 800; letter-spacing: .18em; }
+
+body[data-page="login"] .auth-card { width: min(420px, 100%); }
+.password-label-row { display: flex; align-items: center; justify-content: space-between; }
+.password-toggle { border: 0; background: none; padding: 0; color: #71807a; font-size: 12px; font-weight: 700; cursor: pointer; }
+.password-toggle:hover { color: #17211f; text-decoration: underline; }
+body[data-page="login"] .primary-button { width: 100%; padding: 15px 18px; border-radius: 14px; background: linear-gradient(135deg, #e83a2f, #b81616); box-shadow: 0 14px 30px rgba(184, 22, 22, .28); font-size: 15px; }
+body[data-page="login"] .primary-button:hover { background: linear-gradient(135deg, #ef4a3f, #c81c1c); }
+body[data-page="login"] a { color: #b81616; }
+
 @media (max-width: 700px) {
   .site-header { height: auto; padding-block: 16px; }
   .brand small { display: none; }
