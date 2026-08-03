@@ -285,12 +285,18 @@ def _v02_block(conn) -> dict:
 
 def get_trust_data(engine: Engine) -> dict:
     with engine.connect() as conn:
-        version_row = conn.execute(
+        version_rows = conn.execute(
             text(
-                "SELECT test_target_year FROM model_versions "
-                "WHERE model_version = 'v04'"
+                "SELECT model_version, model_name, model_type, problem_type, "
+                "feature_count, test_selection_year, test_target_year, "
+                "test_samples, priority_target_rate, loaded_at "
+                "FROM model_versions "
+                "WHERE model_version IN ('v02', 'v03', 'v04') "
+                "ORDER BY model_version DESC"
             )
-        ).one()
+        ).mappings().all()
+        version_by_id = {row["model_version"]: row for row in version_rows}
+        version_row = version_by_id["v04"]
 
         v04 = _multiclass_block(conn, "v04")
         v03 = _multiclass_block(conn, "v03")
@@ -300,9 +306,31 @@ def get_trust_data(engine: Engine) -> dict:
     baseline_pr_auc = v04.pop("_baseline_pr_auc", 0.0)
     v03.pop("_baseline_pr_auc", None)
 
+    snapshots = []
+    for row in version_rows:
+        version = row["model_version"]
+        snapshots.append(
+            {
+                "modelVersion": version,
+                "modelName": row["model_name"],
+                "modelType": row["model_type"],
+                "problemType": row["problem_type"],
+                "featureCount": int(row["feature_count"]),
+                "comparisonYear": int(row["test_selection_year"]) - 1,
+                "selectionYear": int(row["test_selection_year"]),
+                "validationYear": int(row["test_target_year"]),
+                "validationSamples": int(row["test_samples"]),
+                "priorityTargetRate": float(row["priority_target_rate"]),
+                "status": "operational" if version == "v04" else "archived",
+                "loadedAt": row["loaded_at"].isoformat() if row["loaded_at"] else None,
+            }
+        )
+
     return {
+        "serviceVersion": "v05",
         "modelVersion": "v04",
         "validationPeriod": f"Test {version_row.test_target_year}",
+        "snapshots": snapshots,
         "overall": v04["overall"],
         "classPerformance": v04["classPerformance"],
         "confusionMatrix": v04["confusionMatrix"],

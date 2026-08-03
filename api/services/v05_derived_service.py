@@ -6,12 +6,32 @@ current React application remains deployable during the handoff.
 """
 from __future__ import annotations
 
+from functools import lru_cache
+from pathlib import Path
+from urllib.parse import quote_plus
+
+import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
+
+from api.services.business_attribute_service import get_business_display_attributes
+from api.services.business_photo_service import get_business_photos
 
 
 MODEL_VERSION = "v04"
 SELECTION_YEAR = 2018
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+@lru_cache(maxsize=1)
+def _recommendation_coordinates() -> dict[str, tuple[float, float]]:
+    path = PROJECT_ROOT / "data" / "processed" / "spatial" / "business_locations_v04.parquet"
+    frame = pd.read_parquet(path, columns=["business_id", "latitude", "longitude"])
+    frame = frame.dropna(subset=["business_id", "latitude", "longitude"])
+    return {
+        str(row.business_id): (float(row.latitude), float(row.longitude))
+        for row in frame.itertuples(index=False)
+    }
 
 
 def _tables_available(connection: Connection, table_names: tuple[str, ...]) -> bool:
@@ -60,7 +80,10 @@ def get_reviewer_recommendations(engine: Engine, user_id: str) -> dict | None:
                 SELECT business_id, business_name, city, state, distance_km,
                        matched_categories, primary_category, stars,
                        review_count, recommendation_rank, radius_stage,
-                       search_radius_km, reason
+                       search_radius_km, observed_p90_radius_km,
+                       local_p90_radius_km, travel_outlier_count,
+                       activity_cluster_count, primary_cluster_business_count,
+                       recommendation_version, reason
                 FROM reviewer_restaurant_recommendation
                 WHERE model_version = :model_version AND sample_id = :sample_id
                 ORDER BY recommendation_rank
@@ -69,10 +92,39 @@ def get_reviewer_recommendations(engine: Engine, user_id: str) -> dict | None:
             {"model_version": MODEL_VERSION, "sample_id": sample.sample_id},
         ).mappings().all()
 
+    coordinates = _recommendation_coordinates()
+    display_attributes = get_business_display_attributes(
+        engine, [str(row["business_id"]) for row in rows]
+    )
+    business_photos = get_business_photos(
+        engine, [str(row["business_id"]) for row in rows]
+    )
+    first_row = rows[0] if rows else None
     return {
         "available": bool(rows),
         "reason": None if rows else "no_eligible_candidates",
         "sampleId": sample.sample_id,
+        "radiusContext": (
+            {
+                "observedP90RadiusKm": float(first_row["observed_p90_radius_km"]),
+                "localP90RadiusKm": float(first_row["local_p90_radius_km"]),
+                "primaryClusterP90RadiusKm": float(first_row["local_p90_radius_km"]),
+                "travelOutlierCount": int(first_row["travel_outlier_count"]),
+                "activityClusterCount": int(first_row["activity_cluster_count"]),
+                "remoteRegionCount": max(0, int(first_row["activity_cluster_count"]) - 1),
+                "primaryClusterBusinessCount": int(
+                    first_row["primary_cluster_business_count"]
+                ),
+                "appliedSearchRadiusKm": float(first_row["search_radius_km"]),
+                "radiusCapKm": 50.0,
+                "radiusCapApplied": float(first_row["local_p90_radius_km"]) > 50.0,
+                "multiRegionActivity": int(first_row["activity_cluster_count"]) > 1,
+                "method": "primary_activity_cluster_50km",
+                "recommendationVersion": first_row["recommendation_version"],
+            }
+            if first_row and first_row["local_p90_radius_km"] is not None
+            else None
+        ),
         "recommendations": [
             {
                 "businessId": row["business_id"],
@@ -91,7 +143,18 @@ def get_reviewer_recommendations(engine: Engine, user_id: str) -> dict | None:
                 "rank": int(row["recommendation_rank"]),
                 "radiusStage": row["radius_stage"],
                 "searchRadiusKm": float(row["search_radius_km"]),
+                "distanceBand": (
+                    "core"
+                    if float(row["distance_km"]) <= float(row["local_p90_radius_km"])
+                    else "expanded"
+                ),
                 "reason": row["reason"],
+                "latitude": coordinates.get(str(row["business_id"]), (None, None))[0],
+                "longitude": coordinates.get(str(row["business_id"]), (None, None))[1],
+                "yelpSearchUrl": "https://www.yelp.com/search?find_desc="
+                + quote_plus(f'{row["business_name"]} {row["city"]} {row["state"]}'),
+                "displayAttributes": display_attributes.get(str(row["business_id"])),
+                "photos": business_photos.get(str(row["business_id"]), []),
             }
             for row in rows
         ],

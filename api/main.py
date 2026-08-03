@@ -13,6 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routers import (
+    business_photos,
     operations,
     playbooks,
     regional,
@@ -25,6 +26,7 @@ from api.routers import (
 )
 
 app = FastAPI(title="Yelp Retention API (v05)")
+app.include_router(business_photos.router)
 app.include_router(regional.router)
 app.include_router(operations.router)
 app.include_router(trust.router)

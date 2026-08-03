@@ -6,16 +6,26 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError, OperationalError, ProgrammingError
 
-from api.auth_context import OperatorIdentity, get_current_operator
+from api.auth_context import OperatorIdentity, get_current_identity, get_current_operator
 from api.db import get_engine
 from api.services.retention_operation_service import (
     add_interaction,
     delete_decision,
+    list_all_history,
+    list_all_interactions,
     list_decisions,
+    list_due_reviews,
     list_history,
     list_interactions,
+    list_operator_scopes,
+    list_review_alert_history,
+    list_review_alerts,
+    regions_for_identity,
+    reviewer_ids_for_regions,
+    resolve_review_alert,
     save_decision,
 )
+from api.services.action_plan_service import list_action_plans, save_action_plan
 from api.services.target_list_service import (
     create_target_list,
     delete_target_list,
@@ -64,7 +74,39 @@ class TargetListWrite(BaseModel):
     members: list[TargetListMember] = Field(min_length=1, max_length=5000)
 
 
+class ActionPlanMilestone(BaseModel):
+    day_offset: int = Field(alias="dayOffset")
+    metric_code: str = Field(alias="metricCode", min_length=1, max_length=64)
+    metric_label: str = Field(alias="metricLabel", min_length=1, max_length=128)
+    observation_note: str | None = Field(default=None, alias="observationNote", max_length=500)
+
+
+class ActionPlanWrite(BaseModel):
+    plan_type: str = Field(alias="planType", min_length=1, max_length=16)
+    model_version: str = Field(alias="modelVersion", min_length=1, max_length=16)
+    reviewer_user_id: str | None = Field(default=None, alias="reviewerUserId", max_length=64)
+    sample_id: str | None = Field(default=None, alias="sampleId", max_length=64)
+    region_code: str | None = Field(default=None, alias="regionCode", max_length=32)
+    target_list_id: int | None = Field(default=None, alias="targetListId")
+    manager_decision: str | None = Field(default=None, alias="managerDecision", max_length=64)
+    action_type: str = Field(alias="actionType", min_length=1, max_length=128)
+    message_title: str | None = Field(default=None, alias="messageTitle", max_length=255)
+    message_body: str | None = Field(default=None, alias="messageBody", max_length=5000)
+    status: str = Field(default="draft", max_length=16)
+    channels: list[str] = Field(default_factory=list, max_length=5)
+    business_ids: list[str] = Field(default_factory=list, alias="businessIds", max_length=100)
+    milestones: list[ActionPlanMilestone] = Field(default_factory=list, max_length=20)
+    expected_lock_version: int | None = Field(default=None, alias="expectedLockVersion", ge=1)
+
+
+class ReviewAlertResolutionWrite(BaseModel):
+    status: str = Field(pattern="^(completed|dismissed)$")
+    note: str | None = Field(default=None, max_length=2000)
+
+
 def _service_error(error: Exception) -> HTTPException:
+    if isinstance(error, PermissionError):
+        return HTTPException(status_code=403, detail=str(error))
     if isinstance(error, RuntimeError):
         return HTTPException(status_code=409, detail=str(error))
     if isinstance(error, ValueError):
@@ -182,5 +224,120 @@ def remove_target_list(
 ) -> dict:
     try:
         return {"deleted": delete_target_list(get_engine(), list_id), "listId": list_id}
+    except Exception as error:
+        raise _service_error(error) from error
+
+
+@router.get("/action-plans")
+def action_plans(plan_type: str | None = Query(default=None, max_length=16)) -> dict:
+    try:
+        return {"items": list_action_plans(get_engine(), plan_type)}
+    except Exception as error:
+        raise _service_error(error) from error
+
+
+def _action_payload(body: ActionPlanWrite) -> dict:
+    raw = body.model_dump(by_alias=False)
+    raw["business_ids"] = raw.pop("business_ids")
+    raw["milestones"] = [item.model_dump(by_alias=False) for item in body.milestones]
+    return raw
+
+
+@router.post("/action-plans", status_code=201)
+def post_action_plan(
+    body: ActionPlanWrite,
+    operator: OperatorIdentity = Depends(get_current_operator),
+) -> dict:
+    try:
+        return save_action_plan(get_engine(), _action_payload(body), operator)
+    except Exception as error:
+        raise _service_error(error) from error
+
+
+@router.put("/action-plans/{plan_id}")
+def put_action_plan(
+    plan_id: int,
+    body: ActionPlanWrite,
+    operator: OperatorIdentity = Depends(get_current_operator),
+) -> dict:
+    try:
+        return save_action_plan(get_engine(), _action_payload(body), operator, plan_id)
+    except Exception as error:
+        raise _service_error(error) from error
+
+
+@router.get("/operations-history")
+def operations_history(
+    limit: int = Query(default=200, ge=1, le=500),
+    identity: OperatorIdentity = Depends(get_current_identity),
+) -> dict:
+    try:
+        engine = get_engine()
+        review_alerts = list_review_alerts(engine, identity, limit)
+        due_reviews = list_due_reviews(engine, limit)
+        decision_rows = list_all_history(engine, limit)
+        interaction_rows = list_all_interactions(engine, limit)
+        target_rows = list_target_lists(engine)
+        plan_rows = list_action_plans(engine)
+        allowed_regions = regions_for_identity(engine, identity)
+        if allowed_regions is not None:
+            allowed_reviewers = reviewer_ids_for_regions(engine, allowed_regions)
+            due_reviews = [row for row in due_reviews if row["reviewerUserId"] in allowed_reviewers]
+            decision_rows = [row for row in decision_rows if row["reviewerUserId"] in allowed_reviewers]
+            interaction_rows = [row for row in interaction_rows if row["reviewerUserId"] in allowed_reviewers]
+            scoped_targets = []
+            for row in target_rows:
+                scoped_members = [user_id for user_id in row["memberUserIds"] if user_id in allowed_reviewers]
+                if scoped_members:
+                    scoped_targets.append({**row, "memberUserIds": scoped_members, "memberCount": len(scoped_members)})
+            target_rows = scoped_targets
+            plan_rows = [
+                row for row in plan_rows
+                if (row["planType"] == "regional" and row["regionCode"] in allowed_regions)
+                or (row["planType"] == "individual" and row["reviewerUserId"] in allowed_reviewers)
+            ]
+        return {
+            "dueReviews": due_reviews,
+            "reviewAlerts": review_alerts,
+            "decisionHistory": decision_rows,
+            "interactions": interaction_rows,
+            "targetLists": target_rows,
+            "actionPlans": plan_rows,
+            "operatorScopes": [
+                row for row in list_operator_scopes(engine)
+                if allowed_regions is None or row["region"] in allowed_regions
+            ],
+            "viewer": {
+                "subject": identity.subject,
+                "name": identity.name,
+                "role": identity.access_role,
+                "canWrite": identity.access_role in {"ADMIN", "OPERATOR"},
+            },
+        }
+    except Exception as error:
+        raise _service_error(error) from error
+
+
+@router.get("/review-alerts/{alert_id}/history")
+def review_alert_history(
+    alert_id: int,
+    identity: OperatorIdentity = Depends(get_current_identity),
+) -> dict:
+    try:
+        return {"items": list_review_alert_history(get_engine(), alert_id, identity)}
+    except Exception as error:
+        raise _service_error(error) from error
+
+
+@router.patch("/review-alerts/{alert_id}")
+def patch_review_alert(
+    alert_id: int,
+    body: ReviewAlertResolutionWrite,
+    operator: OperatorIdentity = Depends(get_current_operator),
+) -> dict:
+    try:
+        return resolve_review_alert(
+            get_engine(), alert_id, body.status, body.note, operator
+        )
     except Exception as error:
         raise _service_error(error) from error

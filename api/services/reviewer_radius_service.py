@@ -17,14 +17,19 @@ from __future__ import annotations
 import math
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import quote_plus
 
 import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
+from api.services.business_attribute_service import get_business_display_attributes
+from api.services.business_photo_service import get_business_photos
+
 MODEL_VERSION = "v04"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 EARTH_RADIUS_KM = 6371.0
+MAP_COORDINATE_PRECISION = 1
 
 
 def _haversine_distance_bearing(
@@ -53,16 +58,104 @@ def _load_activity_with_business_names() -> pd.DataFrame:
     spatial_dir = PROJECT_ROOT / "data" / "processed" / "spatial"
     businesses = pd.read_parquet(
         spatial_dir / "business_locations_v04.parquet",
-        columns=["business_id", "name", "city", "latitude", "longitude"],
+        columns=["business_id", "name", "city", "state", "latitude", "longitude"],
     )
     activity = pd.read_parquet(
         spatial_dir / "reviewer_activity_locations_v04.parquet",
         columns=["sample_id", "period_type", "business_id", "review_count"],
     )
-    return activity.merge(businesses, on="business_id", how="left")
+    interim_dir = PROJECT_ROOT / "data" / "interim"
+    metadata = pd.concat(
+        [
+            pd.read_parquet(
+                interim_dir / "restaurant_businesses.parquet",
+                columns=["business_id", "stars", "review_count", "categories"],
+            ),
+            pd.read_parquet(
+                interim_dir / "additional_culinary_businesses_v02.parquet",
+                columns=["business_id", "stars", "review_count", "categories"],
+            ),
+        ],
+        ignore_index=True,
+    ).drop_duplicates("business_id", keep="first")
+    metadata = metadata.rename(columns={"review_count": "dataset_review_count"})
+    return activity.merge(businesses, on="business_id", how="left").merge(
+        metadata, on="business_id", how="left"
+    )
 
 
-def _period_payload(summary: dict, points: pd.DataFrame) -> dict:
+def _region_map_payload(points: pd.DataFrame) -> dict | None:
+    """Return city/zone-level geography only; never expose venue coordinates."""
+    valid = points.dropna(subset=["city", "latitude", "longitude"]).copy()
+    if valid.empty:
+        return None
+
+    city_groups = (
+        valid.groupby("city", as_index=False)
+        .agg(
+            latitude=("latitude", "mean"),
+            longitude=("longitude", "mean"),
+            review_count=("review_count", "sum"),
+            venue_count=("business_id", "nunique"),
+        )
+        .sort_values(["review_count", "venue_count", "city"], ascending=[False, False, True])
+    )
+    primary_row = city_groups.iloc[0]
+
+    def city_payload(row: pd.Series) -> dict:
+        return {
+            "city": str(row.city),
+            "latitude": round(float(row.latitude), MAP_COORDINATE_PRECISION),
+            "longitude": round(float(row.longitude), MAP_COORDINATE_PRECISION),
+            "reviewCount": int(row.review_count),
+            "venueCount": int(row.venue_count),
+        }
+
+    primary = city_payload(primary_row)
+    satellites = []
+    for _, row in city_groups.iloc[1:4].iterrows():
+        item = city_payload(row)
+        distance, _ = _haversine_distance_bearing(
+            primary["latitude"], primary["longitude"], item["latitude"], item["longitude"]
+        )
+        item["distanceFromPrimaryKm"] = round(distance)
+        satellites.append(item)
+
+    # A 0.1-degree grid deliberately generalizes the primary-city points for
+    # the inset. It conveys concentration without returning venues or their
+    # precise locations.
+    primary_city_points = valid[valid["city"] == primary_row.city].copy()
+    primary_city_points["zone_lat"] = primary_city_points["latitude"].round(MAP_COORDINATE_PRECISION)
+    primary_city_points["zone_lon"] = primary_city_points["longitude"].round(MAP_COORDINATE_PRECISION)
+    zones = (
+        primary_city_points.groupby(["zone_lat", "zone_lon"], as_index=False)
+        .agg(review_count=("review_count", "sum"), venue_count=("business_id", "nunique"))
+        .sort_values(["review_count", "venue_count"], ascending=False)
+        .head(6)
+    )
+
+    return {
+        "primaryRegion": primary,
+        "satelliteRegions": satellites,
+        "additionalRegionCount": max(0, len(city_groups) - 1 - len(satellites)),
+        "primaryZones": [
+            {
+                "latitude": float(row.zone_lat),
+                "longitude": float(row.zone_lon),
+                "reviewCount": int(row.review_count),
+                "venueCount": int(row.venue_count),
+            }
+            for _, row in zones.iterrows()
+        ],
+    }
+
+
+def _period_payload(
+    summary: dict,
+    points: pd.DataFrame,
+    display_attributes: dict[str, dict],
+    business_photos: dict[str, list[dict]],
+) -> dict:
     if not summary["radius_available"]:
         return {"available": False, "activityYear": int(summary["activity_year"])}
 
@@ -78,11 +171,35 @@ def _period_payload(summary: dict, points: pd.DataFrame) -> dict:
         )
         businesses.append(
             {
+                "businessId": str(row.business_id),
                 "name": row.name,
                 "city": row.city,
+                "state": row.state,
+                "latitude": float(row.latitude),
+                "longitude": float(row.longitude),
                 "reviewCount": int(row.review_count),
+                "stars": float(row.stars) if pd.notna(row.stars) else None,
+                "datasetReviewCount": (
+                    int(row.dataset_review_count)
+                    if pd.notna(row.dataset_review_count)
+                    else None
+                ),
+                "categories": [
+                    label.strip()
+                    for label in (
+                        str(row.categories) if pd.notna(row.categories) else ""
+                    ).split(",")
+                    if label.strip()
+                ],
                 "distanceKm": round(distance, 2),
                 "bearingDeg": round(bearing, 1),
+                "displayAttributes": display_attributes.get(str(row.business_id)),
+                "photos": business_photos.get(str(row.business_id), []),
+                "yelpSearchUrl": (
+                    "https://www.yelp.com/search?find_desc="
+                    f"{quote_plus(str(row.name))}&find_loc="
+                    f"{quote_plus(f'{row.city}, {row.state}') }"
+                ),
             }
         )
     businesses.sort(key=lambda b: b["distanceKm"])
@@ -92,6 +209,7 @@ def _period_payload(summary: dict, points: pd.DataFrame) -> dict:
         "activityYear": int(summary["activity_year"]),
         "p90RadiusKm": round(summary["p90_radius_km"], 2),
         "businesses": businesses,
+        "mapRegions": _region_map_payload(points),
     }
 
 
@@ -128,11 +246,16 @@ def get_reviewer_radius(engine: Engine, user_id: str) -> dict | None:
     summaries = {row["period_type"]: dict(row) for row in summary_rows}
     activity = _load_activity_with_business_names()
     reviewer_rows = activity[activity["sample_id"] == sample_id]
+    business_ids = reviewer_rows["business_id"].dropna().astype(str).unique().tolist()
+    display_attributes = get_business_display_attributes(engine, business_ids)
+    business_photos = get_business_photos(engine, business_ids)
 
     periods = {}
     for period_type, summary in summaries.items():
         period_points = reviewer_rows[reviewer_rows["period_type"] == period_type]
-        periods[period_type] = _period_payload(summary, period_points)
+        periods[period_type] = _period_payload(
+            summary, period_points, display_attributes, business_photos
+        )
 
     selection = summaries.get("selection")
     change = None

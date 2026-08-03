@@ -45,11 +45,24 @@ _COLUMNS = """
 
 
 def get_reviewers(engine: Engine) -> list[dict]:
+    queue_columns = ", ".join(
+        f"queue.{column.strip()}" for column in _COLUMNS.split(",") if column.strip()
+    )
     with engine.connect() as conn:
         rows = conn.execute(
             text(
-                f"SELECT {_COLUMNS} FROM vw_reviewer_work_queue "
-                "WHERE model_version = :v"
+                f"SELECT {queue_columns}, region.state AS region_state, region.top_city, "
+                "entry.first_power_year "
+                "FROM vw_reviewer_work_queue AS queue "
+                "LEFT JOIN reviewer_region AS region "
+                "ON region.sample_id = queue.sample_id AND region.model_version = :v "
+                "LEFT JOIN ("
+                "  SELECT user_id, MIN(selection_year) AS first_power_year "
+                "  FROM reviewer_region_history "
+                "  WHERE model_version = :v "
+                "  GROUP BY user_id"
+                ") AS entry ON entry.user_id = queue.user_id "
+                "WHERE queue.model_version = :v"
             ),
             {"v": MODEL_VERSION},
         ).mappings().all()
@@ -58,4 +71,18 @@ def get_reviewers(engine: Engine) -> list[dict]:
     frame = normalize_profiles(frame, model_version=MODEL_VERSION)
     frame = frame.sort_values("priority_rank")
 
-    return [build_row(row) for _, row in frame.iterrows()]
+    serialized = []
+    for _, row in frame.iterrows():
+        item = build_row(row)
+        item["region"] = row.get("region_state") or None
+        item["topCity"] = row.get("top_city") or None
+        first_power_year = row.get("first_power_year")
+        item["firstPowerYear"] = (
+            int(first_power_year) if pd.notna(first_power_year) else None
+        )
+        item["isNewcomer"] = bool(
+            pd.notna(first_power_year)
+            and int(first_power_year) == int(row["selection_year"])
+        )
+        serialized.append(item)
+    return serialized

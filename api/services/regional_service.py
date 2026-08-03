@@ -7,13 +7,146 @@ model_version='v04' 로 고정한다.
 """
 from __future__ import annotations
 
-import numpy as np
+from functools import lru_cache
+from pathlib import Path
+import re
+from urllib.parse import quote_plus
 
-from sqlalchemy import text
+import numpy as np
+import pandas as pd
+
+from sqlalchemy import bindparam, text
 from sqlalchemy.engine import Engine
+
+from api.services.business_attribute_service import get_business_display_attributes
+from api.services.business_photo_service import get_business_photos
 
 MODEL_VERSION = "v04"
 MINIMUM_REVIEWERS = 30
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _normalize_city(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
+@lru_cache(maxsize=1)
+def _load_region_coordinates() -> dict[tuple[str, str], tuple[float, float]]:
+    """Use actual business coordinates as map markers for state-level regions."""
+    path = PROJECT_ROOT / "data" / "processed" / "spatial" / "business_locations_v04.parquet"
+    frame = pd.read_parquet(path, columns=["state", "city", "latitude", "longitude"])
+    frame = frame.dropna(subset=["state", "city", "latitude", "longitude"])
+    frame["city_key"] = frame["city"].astype(str).map(_normalize_city)
+    grouped = frame.groupby(["state", "city_key"], as_index=False)[["latitude", "longitude"]].mean()
+    coordinates = {
+        (row.state, row.city_key): (float(row.latitude), float(row.longitude))
+        for row in grouped.itertuples(index=False)
+    }
+    state_means = frame.groupby("state", as_index=False)[["latitude", "longitude"]].mean()
+    coordinates.update(
+        {
+            (row.state, "__state__"): (float(row.latitude), float(row.longitude))
+            for row in state_means.itertuples(index=False)
+        }
+    )
+    return coordinates
+
+
+def _region_coordinates(row: dict) -> dict:
+    coordinates = _load_region_coordinates()
+    latitude, longitude = coordinates.get(
+        (row["state"], _normalize_city(row["top_city"] or "")),
+        coordinates.get((row["state"], "__state__"), (None, None)),
+    )
+    return {"latitude": latitude, "longitude": longitude}
+
+
+@lru_cache(maxsize=1)
+def _load_business_coordinates() -> dict[str, tuple[float, float]]:
+    path = PROJECT_ROOT / "data" / "processed" / "spatial" / "business_locations_v04.parquet"
+    frame = pd.read_parquet(path, columns=["business_id", "latitude", "longitude"])
+    frame = frame.dropna(subset=["business_id", "latitude", "longitude"])
+    return {
+        str(row.business_id): (float(row.latitude), float(row.longitude))
+        for row in frame.itertuples(index=False)
+    }
+
+
+def get_regional_campaign_restaurants(
+    engine: Engine, region: str, sample_ids: list[str]
+) -> dict:
+    """Aggregate already-derived individual recommendations for a campaign pool.
+
+    The caller supplies the currently selected, client-side risk-type pool.
+    This makes the restaurant candidates change with the campaign selection
+    without reimplementing risk classification in SQL.
+    """
+    unique_sample_ids = list(dict.fromkeys(sample_ids))[:5000]
+    if not unique_sample_ids:
+        return {"available": False, "region": region, "restaurants": []}
+
+    statement = text(
+        """
+        SELECT recommendation.business_id, recommendation.business_name,
+               recommendation.city, recommendation.state,
+               recommendation.primary_category, recommendation.stars,
+               recommendation.review_count,
+               COUNT(DISTINCT recommendation.sample_id) AS matched_reviewer_count,
+               MIN(recommendation.recommendation_rank) AS best_rank
+        FROM reviewer_restaurant_recommendation AS recommendation
+        INNER JOIN reviewer_region AS reviewer_region
+          ON reviewer_region.sample_id = recommendation.sample_id
+         AND reviewer_region.model_version = recommendation.model_version
+        WHERE recommendation.model_version = :model_version
+          AND reviewer_region.state = :region
+          AND recommendation.sample_id IN :sample_ids
+        GROUP BY recommendation.business_id, recommendation.business_name,
+                 recommendation.city, recommendation.state,
+                 recommendation.primary_category, recommendation.stars,
+                 recommendation.review_count
+        ORDER BY matched_reviewer_count DESC, best_rank ASC, recommendation.review_count DESC
+        LIMIT 12
+        """
+    ).bindparams(bindparam("sample_ids", expanding=True))
+    with engine.connect() as connection:
+        rows = connection.execute(
+            statement,
+            {
+                "model_version": MODEL_VERSION,
+                "region": region,
+                "sample_ids": unique_sample_ids,
+            },
+        ).mappings().all()
+
+    coordinates = _load_business_coordinates()
+    display_attributes = get_business_display_attributes(
+        engine, [str(row["business_id"]) for row in rows]
+    )
+    business_photos = get_business_photos(
+        engine, [str(row["business_id"]) for row in rows]
+    )
+    restaurants = []
+    for row in rows:
+        latitude, longitude = coordinates.get(str(row["business_id"]), (None, None))
+        query = quote_plus(f'{row["business_name"]} {row["city"]} {row["state"]}')
+        restaurants.append(
+            {
+                "businessId": row["business_id"],
+                "name": row["business_name"],
+                "city": row["city"],
+                "state": row["state"],
+                "primaryCategory": row["primary_category"],
+                "stars": float(row["stars"]),
+                "reviewCount": int(row["review_count"]),
+                "matchedReviewerCount": int(row["matched_reviewer_count"]),
+                "latitude": latitude,
+                "longitude": longitude,
+                "yelpSearchUrl": f"https://www.yelp.com/search?find_desc={query}",
+                "displayAttributes": display_attributes.get(str(row["business_id"])),
+                "photos": business_photos.get(str(row["business_id"]), []),
+            }
+        )
+    return {"available": bool(restaurants), "region": region, "restaurants": restaurants}
 
 
 def get_regional_summary(engine: Engine) -> dict:
@@ -71,6 +204,7 @@ def get_regional_summary(engine: Engine) -> dict:
     regions = [
         {
             "region": row["state"],
+            **_region_coordinates(row),
             "topCity": row["top_city"] or "—",
             "reviewers": int(row["total_reviewers"]),
             "retained": int(row["retained_count"]),
