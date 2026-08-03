@@ -86,6 +86,7 @@ jobs:
           AWS_API_SERVICE: ${{ vars.AWS_API_SERVICE || 'reviewer-retention.service' }}
           AWS_AUTH_SERVICE: ${{ vars.AWS_AUTH_SERVICE || 'reviewer-retention-auth.service' }}
           AWS_DEPLOY_PATH: ${{ vars.AWS_DEPLOY_PATH || '/srv/reviewer-retention' }}
+          AWS_FRONTEND_ROOT: ${{ vars.AWS_FRONTEND_ROOT || '/var/www/reviewer-retention' }}
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'http://52.78.194.110:8000' }}
         run: |
           : "${AWS_SSH_HOST:?Missing AWS_SSH_HOST secret}"
@@ -95,6 +96,7 @@ jobs:
           : "${AWS_API_SERVICE:?Missing AWS_API_SERVICE variable}"
           : "${AWS_AUTH_SERVICE:?Missing AWS_AUTH_SERVICE variable}"
           : "${AWS_DEPLOY_PATH:?Missing AWS_DEPLOY_PATH variable}"
+          : "${AWS_FRONTEND_ROOT:?Missing AWS_FRONTEND_ROOT variable}"
           : "${VITE_API_BASE_URL:?Missing VITE_API_BASE_URL variable}"
 
           [[ "$AWS_SSH_HOST" =~ ^[A-Za-z0-9._:-]+$ ]] || { echo "Invalid AWS_SSH_HOST"; exit 1; }
@@ -102,6 +104,8 @@ jobs:
           [[ "$AWS_API_SERVICE" =~ ^[A-Za-z0-9_.@-]+$ ]] || { echo "Invalid AWS_API_SERVICE"; exit 1; }
           [[ "$AWS_AUTH_SERVICE" =~ ^[A-Za-z0-9_.@-]+$ ]] || { echo "Invalid AWS_AUTH_SERVICE"; exit 1; }
           [[ "$AWS_DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]] || { echo "Invalid AWS_DEPLOY_PATH"; exit 1; }
+          [[ "$AWS_FRONTEND_ROOT" =~ ^/var/www/[A-Za-z0-9._/-]+$ ]] || { echo "Invalid AWS_FRONTEND_ROOT"; exit 1; }
+          [[ "$AWS_FRONTEND_ROOT" != *'..'* ]] || { echo "Invalid AWS_FRONTEND_ROOT"; exit 1; }
           [[ "$VITE_API_BASE_URL" =~ ^https?://[^[:space:]]+$ ]] || { echo "Invalid VITE_API_BASE_URL"; exit 1; }
 
       - name: Configure SSH
@@ -124,6 +128,7 @@ jobs:
           AWS_API_SERVICE: ${{ vars.AWS_API_SERVICE || 'reviewer-retention.service' }}
           AWS_AUTH_SERVICE: ${{ vars.AWS_AUTH_SERVICE || 'reviewer-retention-auth.service' }}
           AWS_DEPLOY_PATH: ${{ vars.AWS_DEPLOY_PATH || '/srv/reviewer-retention' }}
+          AWS_FRONTEND_ROOT: ${{ vars.AWS_FRONTEND_ROOT || '/var/www/reviewer-retention' }}
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'http://52.78.194.110:8000' }}
           EXPECTED_SHA: ${{ needs.validate.outputs.commit_sha }}
         run: |
@@ -139,8 +144,8 @@ jobs:
 
           printf -v cleanup_command 'rm -f -- %q' "$remote_script"
           printf -v remote_command \
-            'set -Eeuo pipefail; trap %q EXIT; cd %q && EXPECTED_SHA=%q API_SERVICE=%q AUTH_SERVICE=%q VITE_API_BASE_URL=%q bash %q' \
-            "$cleanup_command" "$AWS_DEPLOY_PATH" "$EXPECTED_SHA" "$AWS_API_SERVICE" "$AWS_AUTH_SERVICE" "$VITE_API_BASE_URL" "$remote_script"
+            'set -Eeuo pipefail; trap %q EXIT; cd %q && EXPECTED_SHA=%q API_SERVICE=%q AUTH_SERVICE=%q FRONTEND_ROOT=%q VITE_API_BASE_URL=%q bash %q' \
+            "$cleanup_command" "$AWS_DEPLOY_PATH" "$EXPECTED_SHA" "$AWS_API_SERVICE" "$AWS_AUTH_SERVICE" "$AWS_FRONTEND_ROOT" "$VITE_API_BASE_URL" "$remote_script"
 
           ssh \
             -i "$HOME/.ssh/deploy_key" \
