@@ -65,18 +65,20 @@ def _load_activity_with_business_names() -> pd.DataFrame:
         columns=["sample_id", "period_type", "business_id", "review_count"],
     )
     interim_dir = PROJECT_ROOT / "data" / "interim"
-    metadata = pd.concat(
-        [
-            pd.read_parquet(
-                interim_dir / "restaurant_businesses.parquet",
-                columns=["business_id", "stars", "review_count", "categories"],
-            ),
-            pd.read_parquet(
-                interim_dir / "additional_culinary_businesses_v02.parquet",
-                columns=["business_id", "stars", "review_count", "categories"],
-            ),
-        ],
-        ignore_index=True,
+    metadata_columns = ["business_id", "stars", "review_count", "categories"]
+    metadata_paths = [
+        interim_dir / "restaurant_businesses.parquet",
+        interim_dir / "additional_culinary_businesses_v02.parquet",
+    ]
+    metadata_frames = [
+        pd.read_parquet(path, columns=metadata_columns)
+        for path in metadata_paths
+        if path.is_file()
+    ]
+    metadata = (
+        pd.concat(metadata_frames, ignore_index=True)
+        if metadata_frames
+        else pd.DataFrame(columns=metadata_columns)
     ).drop_duplicates("business_id", keep="first")
     metadata = metadata.rename(columns={"review_count": "dataset_review_count"})
     return activity.merge(businesses, on="business_id", how="left").merge(

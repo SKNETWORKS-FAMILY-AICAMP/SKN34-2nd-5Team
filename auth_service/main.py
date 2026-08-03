@@ -195,6 +195,10 @@ def build_api_router() -> APIRouter:
             expires_at=utcnow() + timedelta(hours=settings.session_hours),
         )
         user.last_login_at = utcnow()
+        # Flush the parent-row update before inserting a session that holds a
+        # foreign-key lock on the same user. Shared-account login bursts can
+        # otherwise create a MySQL lock-order deadlock.
+        db.flush()
         db.add(auth_session)
         db.commit()
         _set_auth_cookies(
