@@ -1,0 +1,68 @@
+{
+  "model_version": "v05_02_dl",
+  "dataset_version": "v04",
+  "feature_set": "extended81",
+  "expected_rows": 37953,
+  "expected_core_features": 43,
+  "expected_total_features": 81,
+  "time_structure": {
+    "baseline": "comparison_year (Y-1)",
+    "recent": "selection_year (Y)",
+    "target": "target_year (Y+1, labels only)"
+  },
+  "extra_feature_groups": {
+    "category14": [
+      "baseline_unique_category_count",
+      "baseline_normalized_category_entropy",
+      "baseline_simpson_category_diversity",
+      "baseline_top_category_share",
+      "recent_unique_category_count",
+      "recent_normalized_category_entropy",
+      "recent_simpson_category_diversity",
+      "recent_top_category_share",
+      "unique_category_count_diff",
+      "unique_category_ratio",
+      "unique_category_decline_rate",
+      "category_entropy_decline",
+      "simpson_diversity_decline",
+      "top_category_share_increase"
+    ],
+    "spatial12": [
+      "baseline_spatial_business_count",
+      "baseline_median_radius_km",
+      "baseline_p90_radius_km",
+      "recent_spatial_business_count",
+      "recent_median_radius_km",
+      "recent_p90_radius_km",
+      "median_radius_decline_km",
+      "p90_radius_decline_km",
+      "log_p90_radius_decline",
+      "center_shift_km",
+      "log_center_shift",
+      "recent_spatial_available"
+    ],
+    "rating12": [
+      "baseline_mean_rating",
+      "baseline_rating_std",
+      "baseline_low_rating_rate",
+      "baseline_high_rating_rate",
+      "recent_mean_rating",
+      "recent_rating_std",
+      "recent_low_rating_rate",
+      "recent_high_rating_rate",
+      "mean_rating_change",
+      "rating_std_change",
+      "low_rating_rate_increase",
+      "high_rating_rate_decline"
+    ]
+  },
+  "excluded_columns": [
+    "useful",
+    "cool",
+    "funny",
+    "target_review_count",
+    "target_active_months",
+    "retention_state",
+    "churn"
+  ]
+}

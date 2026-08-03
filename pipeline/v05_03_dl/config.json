@@ -1,0 +1,29 @@
+{
+  "model_version": "v05_03_dl",
+  "dataset_version": "v04",
+  "feature_set": "core43+monthly24",
+  "expected_samples": 37953,
+  "sequence_length": 24,
+  "sequence_channels": [
+    "review_count",
+    "unique_business_count",
+    "active_flag"
+  ],
+  "time_structure": {
+    "sequence_months_0_11": "comparison_year (Y-1)",
+    "sequence_months_12_23": "selection_year (Y)",
+    "target": "target_year (Y+1, labels only)"
+  },
+  "model": {
+    "static_hidden_dims": [64, 32],
+    "gru_hidden_dim": 32,
+    "fusion_hidden_dim": 64,
+    "dropout": 0.2,
+    "learning_rate": 0.0007,
+    "weight_decay": 0.0005,
+    "epochs": 30,
+    "batch_size": 2048,
+    "class_weighted_loss": false
+  },
+  "seeds": [42, 2026, 3405]
+}

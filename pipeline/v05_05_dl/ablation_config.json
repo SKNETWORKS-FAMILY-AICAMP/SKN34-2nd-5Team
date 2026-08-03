@@ -1,0 +1,70 @@
+{
+  "baseline_version": "v05_05_dl",
+  "experiments": {
+    "v05_05_01_dl": {
+      "label": "state_static_features",
+      "description": "Add five recency, inactivity, and exploration-stop features only to the conditional stopped head.",
+      "extra_feature_group": "state_static5",
+      "state_positive_weight": 1.0,
+      "auxiliary_subtype_weight": 0.0
+    },
+    "v05_05_02_dl": {
+      "label": "last_k_shortcut",
+      "description": "Add explicit last-1/3/6-month summaries only to the conditional stopped head.",
+      "extra_feature_group": "last_k9",
+      "state_positive_weight": 1.0,
+      "auxiliary_subtype_weight": 0.0
+    },
+    "v05_05_03_dl": {
+      "label": "exploration_stop",
+      "description": "Add time-safe new-business and revisit summaries only to the conditional stopped head.",
+      "extra_feature_group": "exploration7",
+      "state_positive_weight": 1.0,
+      "auxiliary_subtype_weight": 0.0
+    },
+    "v05_05_04_dl": {
+      "label": "state_positive_weight",
+      "description": "Keep the baseline inputs and set conditional stopped BCE positive weight to 1.5.",
+      "extra_feature_group": "none",
+      "state_positive_weight": 1.5,
+      "auxiliary_subtype_weight": 0.0
+    },
+    "v05_05_05_dl": {
+      "label": "weakened_subtype_multitask",
+      "description": "Add an at-risk auxiliary head for stopped, weakened count-only, and weakened low-active subtypes.",
+      "extra_feature_group": "none",
+      "state_positive_weight": 1.0,
+      "auxiliary_subtype_weight": 0.25
+    }
+  },
+  "state_static5": [
+    "recent_recency_days",
+    "recency_vs_mean_interval",
+    "inactive_month_count_3m",
+    "inactive_month_count_6m",
+    "months_since_last_new_business"
+  ],
+  "last_k9": [
+    "last1_review_count",
+    "last3_review_count",
+    "last6_review_count",
+    "last3_inactive_months",
+    "last6_inactive_months",
+    "current_inactive_streak_24m",
+    "last3_unique_business_count",
+    "last6_unique_business_count",
+    "review_count_slope_last6m"
+  ],
+  "exploration7": [
+    "last3_new_business_count",
+    "last6_new_business_count",
+    "last3_new_business_rate",
+    "last6_new_business_rate",
+    "months_since_last_new_business_24m",
+    "new_business_slope_last6m",
+    "last6_revisited_business_count"
+  ],
+  "extra_hidden_dim": 16,
+  "test_policy": "selection_year=2018 rows are excluded from feature generation, training, prediction, threshold selection, and reporting"
+}
+

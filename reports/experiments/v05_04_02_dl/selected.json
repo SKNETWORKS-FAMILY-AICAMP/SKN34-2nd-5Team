@@ -1,0 +1,49 @@
+{
+  "version": "v05_04_02_dl",
+  "selection_basis": "pooled expanding-time OOF only",
+  "selected_feature_set": "core56_dl_stable",
+  "selected_feature_count": 56,
+  "selected_config": {
+    "batch_size": 512,
+    "class_weighted_loss": false,
+    "dropout": 0.2,
+    "epochs": 50,
+    "hidden_dims": [
+      128,
+      64
+    ],
+    "learning_rate": 0.0005,
+    "name": "mlp_compact_unweighted",
+    "weight_decay": 0.0005
+  },
+  "source_stage": "v05_04_02_dl",
+  "weakened_threshold": 0.42,
+  "stopped_threshold": 0.35,
+  "oof_metrics": {
+    "accuracy": 0.603919336477476,
+    "balanced_accuracy": 0.5654156171161692,
+    "macro_precision": 0.5799182246623236,
+    "macro_recall": 0.5654156171161692,
+    "macro_f1": 0.5697234986558758,
+    "weighted_f1": 0.60460011543955,
+    "macro_pr_auc": 0.5902482528809423,
+    "macro_ovr_roc_auc": 0.7700383104394345,
+    "retained_precision": 0.7176140522078556,
+    "retained_recall": 0.5992665783844352,
+    "retained_f1": 0.6531223980016653,
+    "retained_support": 9817,
+    "retained_pr_auc": 0.7590918069238436,
+    "weakened_precision": 0.5750292625829106,
+    "weakened_recall": 0.6663351116737499,
+    "weakened_f1": 0.6173242858339616,
+    "weakened_support": 11059,
+    "weakened_pr_auc": 0.6001079663887281,
+    "stopped_precision": 0.4471113591962043,
+    "stopped_recall": 0.4306451612903226,
+    "stopped_f1": 0.43872381213200057,
+    "stopped_support": 3720,
+    "stopped_pr_auc": 0.41154498533025535
+  },
+  "feature_dataset_sha256": "42c4bdd9540bd887ad91be87bc63f2ccbbbfddf995e1287119b97170f0afe153",
+  "elapsed_seconds": 890.6002951000119
+}

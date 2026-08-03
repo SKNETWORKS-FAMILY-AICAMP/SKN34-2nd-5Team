@@ -1,0 +1,63 @@
+{
+  "version": "v05_04_dl",
+  "dataset_version": "v05_2",
+  "screen_feature_sets": [
+    "core43",
+    "core52_all_supplied",
+    "core45_filtered_keep_decline",
+    "core56_dl_stable"
+  ],
+  "fixed_mlp": {
+    "name": "mlp_medium_unweighted_reference",
+    "hidden_dims": [128, 64, 32],
+    "dropout": 0.2,
+    "learning_rate": 0.0007,
+    "weight_decay": 0.0005,
+    "epochs": 50,
+    "batch_size": 512,
+    "class_weighted_loss": false
+  },
+  "tuning_candidates": [
+    {
+      "name": "mlp_medium_low_dropout",
+      "hidden_dims": [128, 64, 32],
+      "dropout": 0.1,
+      "learning_rate": 0.0007,
+      "weight_decay": 0.0001,
+      "epochs": 50,
+      "batch_size": 512,
+      "class_weighted_loss": false
+    },
+    {
+      "name": "mlp_compact_unweighted",
+      "hidden_dims": [128, 64],
+      "dropout": 0.2,
+      "learning_rate": 0.0005,
+      "weight_decay": 0.0005,
+      "epochs": 50,
+      "batch_size": 512,
+      "class_weighted_loss": false
+    }
+  ],
+  "tune_top_feature_sets": 2,
+  "hybrid": {
+    "sequence_channels": [
+      "review_count",
+      "unique_business_count",
+      "active_flag"
+    ],
+    "model": {
+      "static_hidden_dims": [64, 32],
+      "gru_hidden_dim": 32,
+      "fusion_hidden_dim": 64,
+      "dropout": 0.2,
+      "learning_rate": 0.0007,
+      "weight_decay": 0.0005,
+      "epochs": 30,
+      "batch_size": 2048,
+      "class_weighted_loss": false
+    }
+  },
+  "selection_rule": "highest pooled expanding-time OOF Macro F1; ties by Macro PR-AUC, balanced accuracy, stopped recall, weakened recall, then seed stability",
+  "final_test_rule": "select exactly one final candidate using OOF before final-test evaluation"
+}

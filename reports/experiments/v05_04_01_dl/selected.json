@@ -1,0 +1,26 @@
+{
+  "version": "v05_04_01_dl",
+  "selection_basis": "pooled expanding-time OOF only",
+  "selected_feature_set": "core56_dl_stable",
+  "selected_feature_count": 56,
+  "selected_config": {
+    "name": "mlp_medium_unweighted_reference",
+    "hidden_dims": [
+      128,
+      64,
+      32
+    ],
+    "dropout": 0.2,
+    "learning_rate": 0.0007,
+    "weight_decay": 0.0005,
+    "epochs": 50,
+    "batch_size": 512,
+    "class_weighted_loss": false
+  },
+  "weakened_threshold": 0.42,
+  "stopped_threshold": 0.35,
+  "oof_macro_f1": 0.5692855878206006,
+  "oof_macro_pr_auc": 0.5893504618127597,
+  "feature_dataset_sha256": "42c4bdd9540bd887ad91be87bc63f2ccbbbfddf995e1287119b97170f0afe153",
+  "elapsed_seconds": 1081.984723099973
+}

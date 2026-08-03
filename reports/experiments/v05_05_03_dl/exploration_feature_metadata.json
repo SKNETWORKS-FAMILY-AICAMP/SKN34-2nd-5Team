@@ -1,0 +1,13 @@
+{
+  "version": "v05_05_03_dl",
+  "status": "development_features_only",
+  "samples": 31420,
+  "selection_year_min": 2010,
+  "selection_year_max": 2017,
+  "final_test_rows_loaded": 0,
+  "sequence_rows": 754080,
+  "definition": "A business is new in a sample-month when the user's first culinary review of that business occurs in that calendar month. Future reviews cannot change the historical first-review timestamp.",
+  "output_path": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\data\\processed\\experiments\\monthly_exploration_sequence_v05_05_03.parquet",
+  "output_sha256": "5318c80c7ae6cf8cd06ee51c07ac5512905e587ebc16c7a3976ff485f7d70bd9",
+  "elapsed_seconds": 3.196653100079857
+}

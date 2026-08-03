@@ -1,0 +1,53 @@
+{
+  "version": "v05_05_dl",
+  "status": "development_features_only",
+  "samples": 31420,
+  "selection_year_min": 2010,
+  "selection_year_max": 2017,
+  "final_test_rows_loaded": 0,
+  "sequence_rows": 754080,
+  "sequence_length": 24,
+  "sequence_channels": [
+    "monthly_review_count",
+    "monthly_active",
+    "monthly_unique_business_count",
+    "monthly_mean_interval_days"
+  ],
+  "lifecycle_features": [
+    "account_age_days",
+    "elite_year_count_prior",
+    "is_elite_selection_year",
+    "years_since_last_elite",
+    "recent_elite_streak"
+  ],
+  "lifecycle_definitions": {
+    "account_age_days": "days from yelping_since to January 1 after selection_year",
+    "elite_year_count_prior": "count of Elite years strictly before selection_year",
+    "is_elite_selection_year": "whether selection_year appears in Elite history",
+    "years_since_last_elite": "selection_year minus latest Elite year at or before selection; -1 when unavailable",
+    "recent_elite_streak": "consecutive Elite years ending at selection_year; zero when not Elite in selection_year"
+  },
+  "monthly_interval_definition": "mean within-calendar-month gap between consecutive culinary reviews; zero for fewer than two reviews",
+  "lifecycle_diagnostics": {
+    "unique_users": 19971,
+    "users_with_invalid_elite_tokens_excluded": 3060,
+    "samples_with_future_elite_years_excluded": 16271,
+    "samples_without_observed_elite_history": 17106,
+    "selection_year_elite_samples": 13908
+  },
+  "inputs": {
+    "modeling_dataset": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\data\\processed\\modeling_dataset_rolling_v05_2.parquet",
+    "restaurant_reviews": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\data\\interim\\restaurant_reviews.parquet",
+    "culinary_reviews": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\data\\interim\\additional_culinary_reviews_v02.parquet",
+    "user_json": "C:\\Users\\playdata2\\Desktop\\SKN34-2nd-5Team\\data\\raw\\yelp_academic_dataset_user.json",
+    "user_json_size_bytes": 3363329011
+  },
+  "artifacts": {
+    "lifecycle_path": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\data\\processed\\experiments\\lifecycle_features_v05_05.parquet",
+    "lifecycle_sha256": "89c0f485a633d16c1303b25be1bb580adbf81f5892b368505ab2e4c85a4d74ae",
+    "sequence_path": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\data\\processed\\experiments\\monthly_core4_sequence_v05_05.parquet",
+    "sequence_sha256": "6dda59d097d9f6e0dae5fdf0863ce9887a6abded27d47bce9c9a6f3094f5ad52"
+  },
+  "test_policy": "selection_year=2018 rows are excluded from feature generation, training, prediction, threshold selection, and reporting",
+  "elapsed_seconds": 5.731070599984378
+}

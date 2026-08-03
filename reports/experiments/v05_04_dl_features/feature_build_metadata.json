@@ -1,0 +1,80 @@
+{
+  "version": "v05_04_dl_features",
+  "dataset_version": "v05_2",
+  "rows": 37953,
+  "source_columns": 64,
+  "output_columns": 73,
+  "metadata_columns": [
+    "sample_id",
+    "user_id",
+    "comparison_year",
+    "selection_year",
+    "target_year",
+    "target_review_count",
+    "target_active_months",
+    "retention_state",
+    "churn",
+    "prior_activity_available",
+    "scope",
+    "split_v04"
+  ],
+  "core_feature_count": 43,
+  "supplied_added_feature_count": 9,
+  "dl_derived_feature_count": 9,
+  "dl_derived_features": [
+    "dl_review_count_prev3m",
+    "dl_review_count_recent3m",
+    "dl_review_recent3m_vs_prev3m_smoothed",
+    "dl_review_recent3m_log_ratio",
+    "dl_previous3m_inactive",
+    "dl_current_inactive_streak",
+    "dl_elite_history_available",
+    "dl_years_since_last_elite_observed",
+    "dl_recency_vs_mean_interval_log1p"
+  ],
+  "feature_set_counts": {
+    "core43": 43,
+    "core45_tenure": 45,
+    "core50_momentum": 50,
+    "core52_all_supplied": 52,
+    "core44_filtered_drop8": 44,
+    "core45_filtered_keep_decline": 45,
+    "core29_lightweight": 29,
+    "core61_all_plus_dl_derived": 61,
+    "core56_dl_stable": 56
+  },
+  "time_structure": "comparison Y-1 and selection Y are model inputs; target Y+1 is label only",
+  "input_sha256": {
+    "v04_modeling_dataset": "3abf8295326703d32909c4a6d9b6cbfd78b50f792b3575e4bd6e1405400e1cc0",
+    "v05_2_modeling_dataset": "5a23563d00bc18cc0ffa86cd2d1d733eaae0162ffc86e59883965ee6cdebade1",
+    "monthly_sequence": "a705d6e556778aa8f44647ce345b38da963b2510afe5ac1419c4cafebec2213e",
+    "feature_config": "8e6f7b67fc1897bfe1f624615dc877ea97dc711c1c9b06286f8c7d8ba0b5ebde"
+  },
+  "output_sha256": "42c4bdd9540bd887ad91be87bc63f2ccbbbfddf995e1287119b97170f0afe153",
+  "raw_ratio_diagnostic": {
+    "feature": "review_recent3m_vs_prev3m",
+    "p95": 399999.99999999994,
+    "p99": 1300000.0,
+    "maximum": 17700000.0,
+    "dl_alternatives": [
+      "dl_review_recent3m_vs_prev3m_smoothed",
+      "dl_review_recent3m_log_ratio"
+    ]
+  },
+  "supplied_monthly_feature_reconciliation": {
+    "rows": 37953,
+    "inactive_month_count_3m_exact_matches": 37318,
+    "inactive_month_count_3m_exact_match_rate": 0.9832687798066029,
+    "inactive_month_count_6m_exact_matches": 34915,
+    "inactive_month_count_6m_exact_match_rate": 0.9199536268542671
+  },
+  "notes": [
+    "The supplied 64-column parquet is never overwritten.",
+    "All protected v04 columns and row order are byte-value equivalent after loading.",
+    "No global imputation or scaling is applied; training must fit preprocessing inside each fold.",
+    "DL-derived recent-window features use months 18..23 only and never use target-year activity.",
+    "The core56_dl_stable set replaces unstable sentinel/ratio inputs with explicit DL alternatives.",
+    "Supplied inactive-month features are preserved, but their partial mismatch with the protected monthly sequence must be resolved against the teammate's generation code before final model selection."
+  ],
+  "elapsed_seconds": 1.7051714999834076
+}

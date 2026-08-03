@@ -1,0 +1,31 @@
+{
+  "status": "passed",
+  "baseline_version": "v05_05_dl",
+  "ablation_versions": [
+    "v05_05_01_dl",
+    "v05_05_02_dl",
+    "v05_05_03_dl",
+    "v05_05_04_dl",
+    "v05_05_05_dl"
+  ],
+  "development_selection_years": [
+    2010,
+    2017
+  ],
+  "oof_validation_years": [
+    2013,
+    2014,
+    2015,
+    2016,
+    2017
+  ],
+  "seeds": [
+    42,
+    2026,
+    3405
+  ],
+  "development_samples_per_experiment": 31420,
+  "oof_samples_per_experiment": 24596,
+  "final_test_rows_loaded_or_scored": 0,
+  "adopted_ablation_count": 0
+}

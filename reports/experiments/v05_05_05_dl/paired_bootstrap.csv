@@ -1,0 +1,4 @@
+﻿metric,resampling_unit,mean_difference_candidate_minus_baseline,ci_2_5,ci_97_5
+macro_f1,user_id_cluster,0.00021632602162326142,-0.0012428558149820302,0.0015950587804025604
+weakened_recall,user_id_cluster,0.00012609327597095087,-0.0018814719215201974,0.002097506948330685
+

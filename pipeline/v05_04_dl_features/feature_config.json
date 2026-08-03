@@ -1,0 +1,108 @@
+{
+  "version": "v05_04_dl_features",
+  "dataset_version": "v05_2",
+  "expected_rows": 37953,
+  "expected_source_columns": 64,
+  "expected_core_features": 43,
+  "expected_added_features": 9,
+  "expected_metadata_columns": 12,
+  "sequence_length": 24,
+  "metadata_columns": [
+    "sample_id",
+    "user_id",
+    "comparison_year",
+    "selection_year",
+    "target_year",
+    "target_review_count",
+    "target_active_months",
+    "retention_state",
+    "churn",
+    "prior_activity_available",
+    "scope",
+    "split_v04"
+  ],
+  "added_feature_groups": {
+    "tenure": [
+      "active_years",
+      "years_since_last_elite"
+    ],
+    "momentum": [
+      "review_count_slope_6m",
+      "review_recent3m_vs_prev3m",
+      "inactive_month_count_6m",
+      "inactive_month_count_3m",
+      "recency_vs_mean_interval",
+      "unique_business_slope_6m",
+      "months_since_last_new_business"
+    ]
+  },
+  "importance_drop8": [
+    "recent_interval_available",
+    "recent_revisit_rate",
+    "recent_new_vs_baseline_rate",
+    "review_count_decline_rate",
+    "active_month_diff",
+    "active_month_ratio",
+    "reviews_per_active_month_ratio",
+    "review_count_ratio"
+  ],
+  "importance_drop7_keep_decline": [
+    "recent_interval_available",
+    "recent_revisit_rate",
+    "recent_new_vs_baseline_rate",
+    "active_month_diff",
+    "active_month_ratio",
+    "reviews_per_active_month_ratio",
+    "review_count_ratio"
+  ],
+  "lightweight_drop23": [
+    "baseline_review_count",
+    "baseline_active_months",
+    "baseline_reviews_per_active_month",
+    "recent_review_count",
+    "recent_active_months",
+    "recent_reviews_per_active_month",
+    "review_count_diff",
+    "active_month_decline_rate",
+    "reviews_per_active_month_diff",
+    "reviews_per_active_month_ratio",
+    "baseline_mean_interval_days",
+    "baseline_median_interval_days",
+    "baseline_max_interval_days",
+    "baseline_recency_days",
+    "recent_mean_interval_days",
+    "recent_median_interval_days",
+    "recent_max_interval_days",
+    "mean_interval_increase_days",
+    "unique_business_count_diff",
+    "unique_business_ratio",
+    "baseline_new_business_rate",
+    "recent_new_business_rate",
+    "new_business_rate_decline"
+  ],
+  "dl_derived_features": [
+    "dl_review_count_prev3m",
+    "dl_review_count_recent3m",
+    "dl_review_recent3m_vs_prev3m_smoothed",
+    "dl_review_recent3m_log_ratio",
+    "dl_previous3m_inactive",
+    "dl_current_inactive_streak",
+    "dl_elite_history_available",
+    "dl_years_since_last_elite_observed",
+    "dl_recency_vs_mean_interval_log1p"
+  ],
+  "forbidden_model_inputs": [
+    "sample_id",
+    "user_id",
+    "comparison_year",
+    "selection_year",
+    "target_year",
+    "target_review_count",
+    "target_active_months",
+    "retention_state",
+    "churn",
+    "prior_activity_available",
+    "scope",
+    "split_v04"
+  ]
+}

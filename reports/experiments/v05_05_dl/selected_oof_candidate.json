@@ -1,0 +1,115 @@
+{
+  "version": "v05_05_dl",
+  "status": "development_candidate_complete",
+  "model_family": "Core4 GRU + Lifecycle MLP + H2 hierarchical heads",
+  "selection_basis": "pooled expanding-time OOF only",
+  "development_samples": 31420,
+  "oof_samples": 24596,
+  "development_selection_years": [
+    2010,
+    2017
+  ],
+  "oof_validation_years": [
+    2013,
+    2014,
+    2015,
+    2016,
+    2017
+  ],
+  "final_test_rows_loaded": 0,
+  "final_test_predictions_created": 0,
+  "final_test_metrics_created": 0,
+  "selected_thresholds": {
+    "risk_score": 0.55,
+    "conditional_stopped_score": 0.4
+  },
+  "oof_metrics": {
+    "accuracy": 0.6106684013660758,
+    "balanced_accuracy": 0.5713882684829558,
+    "macro_precision": 0.5865085065143153,
+    "macro_recall": 0.5713882684829558,
+    "macro_f1": 0.5762866218654159,
+    "weighted_f1": 0.6113360965353767,
+    "macro_pr_auc": 0.5980200909356773,
+    "macro_ovr_roc_auc": 0.7739596372401003,
+    "retained_to_stopped_count": 319,
+    "retained_to_stopped_rate": 0.03249465213405317,
+    "stopped_to_retained_count": 219,
+    "stopped_to_retained_rate": 0.05887096774193548,
+    "severe_error_count": 538,
+    "severe_error_rate": 0.021873475361847455,
+    "retained_precision": 0.7244321595962023,
+    "retained_recall": 0.6140368748090048,
+    "retained_f1": 0.6646818833388466,
+    "retained_support": 9817,
+    "retained_pr_auc": 0.7638345851793018,
+    "weakened_precision": 0.5792859945076501,
+    "weakened_recall": 0.6676010489194322,
+    "weakened_f1": 0.6203159132918837,
+    "weakened_support": 11059,
+    "weakened_pr_auc": 0.6090382086344814,
+    "stopped_precision": 0.4558073654390935,
+    "stopped_recall": 0.43252688172043013,
+    "stopped_f1": 0.4438620689655172,
+    "stopped_support": 3720,
+    "stopped_pr_auc": 0.4211874789932486
+  },
+  "seed_macro_f1_mean": 0.575545664032039,
+  "seed_macro_f1_std": 0.0024421844119659197,
+  "model_config": {
+    "gru_hidden_dim": 64,
+    "lifecycle_hidden_dim": 16,
+    "fusion_hidden_dim": 64,
+    "dropout": 0.2,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0005,
+    "epochs": 30,
+    "batch_size": 1024,
+    "risk_positive_weight": 1.25,
+    "state_loss_weight": 1.0,
+    "gradient_clip_norm": 1.0
+  },
+  "sequence_channels": [
+    "monthly_review_count",
+    "monthly_active",
+    "monthly_unique_business_count",
+    "monthly_mean_interval_days"
+  ],
+  "lifecycle_features": [
+    "account_age_days",
+    "elite_year_count_prior",
+    "is_elite_selection_year",
+    "years_since_last_elite",
+    "recent_elite_streak"
+  ],
+  "feature_artifacts": {
+    "lifecycle_path": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\data\\processed\\experiments\\lifecycle_features_v05_05.parquet",
+    "lifecycle_sha256": "89c0f485a633d16c1303b25be1bb580adbf81f5892b368505ab2e4c85a4d74ae",
+    "sequence_path": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\data\\processed\\experiments\\monthly_core4_sequence_v05_05.parquet",
+    "sequence_sha256": "6dda59d097d9f6e0dae5fdf0863ce9887a6abded27d47bce9c9a6f3094f5ad52"
+  },
+  "model_artifacts": {
+    "artifact_status": "development_candidate_not_test_evaluated",
+    "training_selection_years": [
+      2010,
+      2017
+    ],
+    "preprocessing_path": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\models\\experiments\\v05_05_dl\\preprocessing.joblib",
+    "preprocessing_sha256": "b22dc7360a989b03dae1801ffc1c9ac6776bf74e0329d600c6b7c635e6acea1f",
+    "weight_sha256": {
+      "42": "6f97cb1efee0821d6121beca6064b8ac66ddf99a39a5e992655691a53d20f0bb",
+      "2026": "852e264af18f299ab1e17f72fdc22dee3601f95d50dbdf86ba38d1cb6947767d",
+      "3405": "e4556b26924b2ca18b326481070abd95a56784ca323bb3d9510d42090290b8b3"
+    }
+  },
+  "test_policy": "selection_year=2018 rows are excluded from feature generation, training, prediction, threshold selection, and reporting",
+  "historical_holdout_note": "The 2018 holdout was exposed by earlier experiments, so v05_05 is reported as an OOF development candidate and is not assigned a new final-Test score.",
+  "runtime": {
+    "device": "cpu",
+    "python_version": "3.12.10",
+    "torch_version": "2.13.0+cpu",
+    "sklearn_version": "1.4.2",
+    "pandas_version": "2.2.3",
+    "elapsed_seconds": 826.8289754000725
+  }
+}

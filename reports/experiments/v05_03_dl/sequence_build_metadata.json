@@ -1,0 +1,27 @@
+{
+  "version": "v05_03_dl",
+  "dataset_version": "v04",
+  "feature_set": "core43+monthly24",
+  "samples": 37953,
+  "sequence_length": 24,
+  "sequence_rows": 910872,
+  "sequence_channels": [
+    "review_count",
+    "unique_business_count",
+    "active_flag"
+  ],
+  "active_month_rows": 366695,
+  "time_structure": {
+    "sequence_months_0_11": "comparison_year (Y-1)",
+    "sequence_months_12_23": "selection_year (Y)",
+    "target": "target_year (Y+1, labels only)"
+  },
+  "input_sha256": "3abf8295326703d32909c4a6d9b6cbfd78b50f792b3575e4bd6e1405400e1cc0",
+  "output_sha256": "a705d6e556778aa8f44647ce345b38da963b2510afe5ac1419c4cafebec2213e",
+  "elapsed_seconds": 4.924513399950229,
+  "notes": [
+    "Only comparison-year and selection-year reviews are used.",
+    "Months without activity are represented by zeros.",
+    "Monthly totals are cross-validated against Core43 annual counts."
+  ]
+}

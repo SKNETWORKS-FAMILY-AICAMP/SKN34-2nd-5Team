@@ -1,0 +1,5 @@
+# v05 deep-learning challengers
+# Installs the base project requirements plus PyTorch:
+#   .\.venv\Scripts\python.exe -m pip install -r requirements-dl.txt
+-r requirements.txt
+torch==2.13.0

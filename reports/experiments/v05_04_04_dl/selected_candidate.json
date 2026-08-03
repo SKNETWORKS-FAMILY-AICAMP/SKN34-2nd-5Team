@@ -1,0 +1,109 @@
+{
+  "version": "v05_04_04_dl",
+  "status": "dl_development_complete",
+  "selection_basis": "pooled expanding-time OOF only",
+  "selected_candidate": "v05_04_static",
+  "selected_model_family": "PyTorch TabularMLP",
+  "selected_feature_set": "core56_dl_stable",
+  "selected_feature_count": 56,
+  "decision_thresholds": {
+    "weakened_score": 0.42,
+    "stopped_score": 0.35
+  },
+  "oof_metrics": {
+    "accuracy": 0.603919336477476,
+    "balanced_accuracy": 0.5654156171161692,
+    "macro_precision": 0.5799182246623236,
+    "macro_recall": 0.5654156171161692,
+    "macro_f1": 0.5697234986558758,
+    "weighted_f1": 0.60460011543955,
+    "macro_pr_auc": 0.5902482528809423,
+    "macro_ovr_roc_auc": 0.7700383104394345,
+    "retained_precision": 0.7176140522078556,
+    "retained_recall": 0.5992665783844352,
+    "retained_f1": 0.6531223980016653,
+    "retained_support": 9817,
+    "retained_pr_auc": 0.7590918069238436,
+    "weakened_precision": 0.5750292625829106,
+    "weakened_recall": 0.6663351116737499,
+    "weakened_f1": 0.6173242858339616,
+    "weakened_support": 11059,
+    "weakened_pr_auc": 0.6001079663887281,
+    "stopped_precision": 0.4471113591962043,
+    "stopped_recall": 0.4306451612903226,
+    "stopped_f1": 0.43872381213200057,
+    "stopped_support": 3720,
+    "stopped_pr_auc": 0.41154498533025535
+  },
+  "test_metrics": {
+    "accuracy": 0.6154905862544008,
+    "balanced_accuracy": 0.5639803380255352,
+    "macro_precision": 0.5890796353803149,
+    "macro_recall": 0.5639803380255352,
+    "macro_f1": 0.5729682982548506,
+    "weighted_f1": 0.6133267535777643,
+    "macro_pr_auc": 0.5943564272358638,
+    "macro_ovr_roc_auc": 0.7698399841011073,
+    "retained_precision": 0.693868349864743,
+    "retained_recall": 0.5955882352941176,
+    "retained_f1": 0.6409829237817576,
+    "retained_support": 2584,
+    "retained_pr_auc": 0.7352721441257655,
+    "weakened_precision": 0.5955182072829132,
+    "weakened_recall": 0.6936378466557912,
+    "weakened_f1": 0.640844009042954,
+    "weakened_support": 3065,
+    "weakened_pr_auc": 0.621335719655302,
+    "stopped_precision": 0.4778523489932886,
+    "stopped_recall": 0.40271493212669685,
+    "stopped_f1": 0.4370779619398404,
+    "stopped_support": 884,
+    "stopped_pr_auc": 0.4264614179265241
+  },
+  "top20_policy": {
+    "target_users": 1307.0,
+    "status_loss_captured": 1164.0,
+    "status_loss_precision": 0.8905891354246366,
+    "status_loss_recall": 0.2947581666244619,
+    "status_loss_lift": 1.4733397877257917,
+    "stopped_captured": 481.0,
+    "stopped_recall": 0.5441176470588235,
+    "weakened_captured": 683.0,
+    "weakened_recall": 0.22283849918433932
+  },
+  "model_details": {
+    "input_dim_after_imputation": 77,
+    "model_config": {
+      "name": "mlp_compact_unweighted",
+      "hidden_dims": [
+        128,
+        64
+      ],
+      "dropout": 0.2,
+      "learning_rate": 0.0005,
+      "weight_decay": 0.0005,
+      "epochs": 50,
+      "batch_size": 512,
+      "class_weighted_loss": false
+    }
+  },
+  "artifacts": {
+    "preprocessing_sha256": "236d75672cd5577481d91c978331fba753d7e6784d36965303e340c14261d452",
+    "weight_sha256": {
+      "42": "fb7121108b98d9e5bbeb090534a2b5a2132d5302aa13817d981384b82fae1051",
+      "2026": "b8efe21be9baf3064b3f984f3c88c0a5088d0b05e10dff9cebad476252706d99",
+      "3405": "b6f7d0a4e30352a0a5201bf12d449ea31d28be8b56e55d5986a03e356675df06"
+    }
+  },
+  "profile_path": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\data\\processed\\experiments\\final_test_retention_profiles_v05_04_04_dl.parquet",
+  "feature_dataset_sha256": "42c4bdd9540bd887ad91be87bc63f2ccbbbfddf995e1287119b97170f0afe153",
+  "runtime": {
+    "device": "cpu",
+    "torch_version": "2.13.0+cpu",
+    "python_version": "3.12.10",
+    "sklearn_version": "1.4.2",
+    "pandas_version": "2.2.3",
+    "elapsed_seconds": 122.72312510001939
+  },
+  "scope_boundary": "ML comparison and ML-DL ensemble are intentionally deferred to v05_04_05 and v05_04_06 with teammate inputs."
+}

@@ -1,0 +1,39 @@
+{
+  "version": "v05_05_dl",
+  "dataset_version": "v05_2",
+  "development_selection_years": [2010, 2017],
+  "oof_validation_years": [2013, 2014, 2015, 2016, 2017],
+  "sequence_length": 24,
+  "sequence_channels": [
+    "monthly_review_count",
+    "monthly_active",
+    "monthly_unique_business_count",
+    "monthly_mean_interval_days"
+  ],
+  "lifecycle_features": [
+    "account_age_days",
+    "elite_year_count_prior",
+    "is_elite_selection_year",
+    "years_since_last_elite",
+    "recent_elite_streak"
+  ],
+  "model": {
+    "gru_hidden_dim": 64,
+    "lifecycle_hidden_dim": 16,
+    "fusion_hidden_dim": 64,
+    "dropout": 0.2,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0005,
+    "epochs": 30,
+    "batch_size": 1024,
+    "risk_positive_weight": 1.25,
+    "state_loss_weight": 1.0,
+    "gradient_clip_norm": 1.0
+  },
+  "seeds": [42, 2026, 3405],
+  "risk_thresholds": [0.45, 0.5, 0.55],
+  "conditional_stopped_thresholds": [0.4, 0.5, 0.6],
+  "selection_rule": "highest pooled expanding-time OOF Macro F1; ties by Macro PR-AUC, balanced accuracy, severe error rate, stopped recall, weakened recall, then seed stability",
+  "test_policy": "selection_year=2018 rows are excluded from feature generation, training, prediction, threshold selection, and reporting"
+}
+
