@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 
 class RegisterRequest(BaseModel):
@@ -43,10 +43,86 @@ class DecisionRequest(BaseModel):
 
 class ApprovalRequest(DecisionRequest):
     access_role: Literal["VIEWER", "OPERATOR"]
+    region_code: str | None = Field(default=None, max_length=16)
+
+    @field_validator("region_code")
+    @classmethod
+    def normalize_region(cls, value: str | None) -> str | None:
+        return value.strip().upper() if value and value.strip() else None
+
+    @model_validator(mode="after")
+    def operator_requires_region(self):
+        if self.access_role == "OPERATOR" and not self.region_code:
+            raise ValueError("운영자 계정에는 담당 권역이 필요합니다.")
+        return self
 
 
 class RoleUpdateRequest(DecisionRequest):
     access_role: Literal["VIEWER", "OPERATOR"]
+    region_code: str | None = Field(default=None, max_length=16)
+
+    @field_validator("region_code")
+    @classmethod
+    def normalize_region(cls, value: str | None) -> str | None:
+        return value.strip().upper() if value and value.strip() else None
+
+
+class AdminUserCreateRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=80)
+    email: EmailStr | None = None
+    password: str = Field(min_length=10, max_length=128)
+    full_name: str = Field(min_length=2, max_length=100)
+    access_role: Literal["VIEWER", "OPERATOR"]
+    region_code: str | None = Field(default=None, max_length=16)
+    must_change_password: bool = True
+
+    @field_validator("username", "full_name")
+    @classmethod
+    def trim_required_text(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("region_code")
+    @classmethod
+    def normalize_region(cls, value: str | None) -> str | None:
+        return value.strip().upper() if value and value.strip() else None
+
+    @model_validator(mode="after")
+    def operator_requires_region(self):
+        if self.access_role == "OPERATOR" and not self.region_code:
+            raise ValueError("운영자 계정에는 담당 권역이 필요합니다.")
+        return self
+
+
+class AdminBulkRegionUsersRequest(BaseModel):
+    region_codes: list[str] = Field(min_length=1, max_length=14)
+    password_length: int = Field(default=14, ge=12, le=32)
+    must_change_password: bool = True
+
+    @field_validator("region_codes")
+    @classmethod
+    def normalize_regions(cls, values: list[str]) -> list[str]:
+        normalized = [value.strip().upper() for value in values if value.strip()]
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("권역 코드가 중복되었습니다.")
+        return normalized
+
+
+class AdminUserStatusRequest(DecisionRequest):
+    active: bool
+
+
+class PasswordResetRequest(DecisionRequest):
+    new_password: str = Field(min_length=10, max_length=128)
+
+
+class CreatedCredential(BaseModel):
+    user: "UserResponse"
+    temporary_password: str
+
+
+class BulkUserCreateResponse(BaseModel):
+    items: list[CreatedCredential]
+    total: int
 
 
 class UserResponse(BaseModel):
@@ -61,9 +137,12 @@ class UserResponse(BaseModel):
     signup_reason: str
     status: Literal["PENDING", "APPROVED", "REJECTED", "SUSPENDED"]
     access_role: Literal["VIEWER", "OPERATOR", "ADMIN"] | None
+    region_code: str | None
+    must_change_password: bool
     is_admin: bool
     created_at: datetime
     approved_at: datetime | None
+    last_login_at: datetime | None
 
 
 class RegistrationResponse(BaseModel):

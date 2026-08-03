@@ -36,10 +36,13 @@ class AccessRole(str, enum.Enum):
 
 class ApprovalAction(str, enum.Enum):
     REGISTERED = "REGISTERED"
+    ACCOUNT_CREATED = "ACCOUNT_CREATED"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
     SUSPENDED = "SUSPENDED"
+    REACTIVATED = "REACTIVATED"
     ROLE_CHANGED = "ROLE_CHANGED"
+    PASSWORD_RESET = "PASSWORD_RESET"
 
 
 class User(Base):
@@ -57,10 +60,13 @@ class User(Base):
     signup_reason: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(20), default=UserStatus.PENDING.value, index=True)
     access_role: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    region_code: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     approved_by_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("auth_users.id"), nullable=True
     )

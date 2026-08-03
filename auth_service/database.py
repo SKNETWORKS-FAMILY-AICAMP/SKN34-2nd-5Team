@@ -29,6 +29,11 @@ def initialize_database(engine: Engine) -> None:
     user_column_migrations = {
         "username": "ALTER TABLE auth_users ADD COLUMN username VARCHAR(80) NULL",
         "access_role": "ALTER TABLE auth_users ADD COLUMN access_role VARCHAR(20) NULL",
+        "region_code": "ALTER TABLE auth_users ADD COLUMN region_code VARCHAR(16) NULL",
+        "must_change_password": (
+            "ALTER TABLE auth_users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT 0"
+        ),
+        "last_login_at": "ALTER TABLE auth_users ADD COLUMN last_login_at DATETIME NULL",
     }
     for column_name, statement in user_column_migrations.items():
         if column_name in user_columns:
@@ -62,6 +67,11 @@ def initialize_database(engine: Engine) -> None:
         with engine.begin() as connection:
             connection.execute(
                 text("CREATE INDEX ix_auth_users_access_role ON auth_users (access_role)")
+            )
+    if "ix_auth_users_region_code" not in user_indexes:
+        with engine.begin() as connection:
+            connection.execute(
+                text("CREATE INDEX ix_auth_users_region_code ON auth_users (region_code)")
             )
 
     with engine.begin() as connection:

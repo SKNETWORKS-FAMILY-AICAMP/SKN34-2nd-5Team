@@ -33,13 +33,26 @@ from auth_service.models import (
     UserStatus,
     utcnow,
 )
-from auth_service.operations import find_user_by_email, find_user_by_identifier, normalize_email
+from auth_service.operations import (
+    apply_password_reset,
+    create_managed_user,
+    find_user_by_email,
+    find_user_by_identifier,
+    generate_temporary_password,
+    normalize_email,
+)
 from auth_service.schemas import (
+    AdminBulkRegionUsersRequest,
+    AdminUserCreateRequest,
+    AdminUserStatusRequest,
     ApprovalRequest,
+    BulkUserCreateResponse,
+    CreatedCredential,
     DecisionRequest,
     LoginRequest,
     LoginResponse,
     MessageResponse,
+    PasswordResetRequest,
     RegisterRequest,
     RegistrationResponse,
     RoleUpdateRequest,
@@ -181,6 +194,7 @@ def build_api_router() -> APIRouter:
             csrf_hash=token_digest(csrf_token),
             expires_at=utcnow() + timedelta(hours=settings.session_hours),
         )
+        user.last_login_at = utcnow()
         db.add(auth_session)
         db.commit()
         _set_auth_cookies(
@@ -226,12 +240,88 @@ def build_api_router() -> APIRouter:
         user_status: UserStatus = Query(UserStatus.PENDING, alias="status"),
     ) -> UserListResponse:
         del admin
-        filters = (User.is_admin.is_(False), User.status == user_status.value)
+        filters = (User.status == user_status.value,)
         items = db.scalars(
             select(User).where(*filters).order_by(User.created_at.desc())
         ).all()
         total = db.scalar(select(func.count()).select_from(User).where(*filters)) or 0
         return UserListResponse(items=[_user_response(user) for user in items], total=total)
+
+    @router.post(
+        "/admin/users",
+        response_model=CreatedCredential,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def create_user(
+        payload: AdminUserCreateRequest,
+        admin: AdminCsrfContext,
+        db: DatabaseSession,
+    ) -> CreatedCredential:
+        try:
+            user = create_managed_user(
+                db,
+                actor=admin.user,
+                username=payload.username,
+                email=str(payload.email) if payload.email else None,
+                password=payload.password,
+                full_name=payload.full_name,
+                access_role=AccessRole(payload.access_role),
+                region_code=payload.region_code,
+                must_change_password=payload.must_change_password,
+            )
+        except ValueError as error:
+            db.rollback()
+            raise api_error(
+                status.HTTP_409_CONFLICT,
+                "account_creation_failed",
+                str(error),
+            ) from error
+        return CreatedCredential(user=_user_response(user), temporary_password=payload.password)
+
+    @router.post(
+        "/admin/users/bulk-regions",
+        response_model=BulkUserCreateResponse,
+        status_code=status.HTTP_201_CREATED,
+    )
+    def create_region_users(
+        payload: AdminBulkRegionUsersRequest,
+        admin: AdminCsrfContext,
+        db: DatabaseSession,
+    ) -> BulkUserCreateResponse:
+        created: list[tuple[User, str]] = []
+        try:
+            for region_code in payload.region_codes:
+                username = f"region_{region_code.lower()}_ops"
+                temporary_password = generate_temporary_password(payload.password_length)
+                user = create_managed_user(
+                    db,
+                    actor=admin.user,
+                    username=username,
+                    password=temporary_password,
+                    full_name=f"{region_code} 권역 운영자",
+                    access_role=AccessRole.OPERATOR,
+                    region_code=region_code,
+                    must_change_password=payload.must_change_password,
+                    commit=False,
+                )
+                created.append((user, temporary_password))
+            db.commit()
+            for user, _ in created:
+                db.refresh(user)
+        except ValueError as error:
+            db.rollback()
+            raise api_error(
+                status.HTTP_409_CONFLICT,
+                "bulk_account_creation_failed",
+                str(error),
+            ) from error
+        return BulkUserCreateResponse(
+            items=[
+                CreatedCredential(user=_user_response(user), temporary_password=password)
+                for user, password in created
+            ],
+            total=len(created),
+        )
 
     def decide_user(
         *,
@@ -242,6 +332,7 @@ def build_api_router() -> APIRouter:
         target_status: UserStatus,
         action: ApprovalAction,
         access_role: AccessRole | None = None,
+        region_code: str | None = None,
     ) -> UserResponse:
         user = db.get(User, user_id)
         if user is None or user.is_admin:
@@ -258,6 +349,7 @@ def build_api_router() -> APIRouter:
             user.approved_at = utcnow()
             user.approved_by_id = admin.user.id
             user.access_role = (access_role or AccessRole.VIEWER).value
+            user.region_code = region_code if user.access_role == AccessRole.OPERATOR.value else None
         db.add(
             ApprovalEvent(
                 user_id=user.id,
@@ -287,6 +379,7 @@ def build_api_router() -> APIRouter:
             target_status=UserStatus.APPROVED,
             action=ApprovalAction.APPROVED,
             access_role=AccessRole(payload.access_role),
+            region_code=payload.region_code,
         )
 
     @router.post("/admin/users/{user_id}/reject", response_model=UserResponse)
@@ -327,10 +420,18 @@ def build_api_router() -> APIRouter:
             )
 
         previous_role = user.access_role
-        if previous_role == payload.access_role:
+        previous_region = user.region_code
+        if payload.access_role == AccessRole.OPERATOR.value and not payload.region_code:
+            raise api_error(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "region_required",
+                "운영자 계정에는 담당 권역이 필요합니다.",
+            )
+        if previous_role == payload.access_role and previous_region == payload.region_code:
             return _user_response(user)
 
         user.access_role = payload.access_role
+        user.region_code = payload.region_code if payload.access_role == AccessRole.OPERATOR.value else None
         db.add(
             ApprovalEvent(
                 user_id=user.id,
@@ -338,7 +439,86 @@ def build_api_router() -> APIRouter:
                 action=ApprovalAction.ROLE_CHANGED.value,
                 previous_role=previous_role,
                 new_role=payload.access_role,
-                note=payload.note,
+                note=(
+                    f"{payload.note} · 담당 권역 {previous_region or '전체'} → "
+                    f"{user.region_code or '전체'}"
+                ).strip(" ·"),
+            )
+        )
+        db.commit()
+        db.refresh(user)
+        return _user_response(user)
+
+    @router.patch("/admin/users/{user_id}/status", response_model=UserResponse)
+    def update_user_status(
+        user_id: str,
+        payload: AdminUserStatusRequest,
+        admin: AdminCsrfContext,
+        db: DatabaseSession,
+    ) -> UserResponse:
+        user = db.get(User, user_id)
+        if user is None or user.is_admin:
+            raise api_error(
+                status.HTTP_404_NOT_FOUND,
+                "user_not_found",
+                "상태를 변경할 사용자를 찾을 수 없습니다.",
+            )
+        target_status = UserStatus.APPROVED if payload.active else UserStatus.SUSPENDED
+        if user.status == target_status.value:
+            return _user_response(user)
+        previous_status = user.status
+        user.status = target_status.value
+        if not payload.active:
+            for session_row in db.scalars(
+                select(AuthSession).where(
+                    AuthSession.user_id == user.id,
+                    AuthSession.revoked_at.is_(None),
+                )
+            ):
+                session_row.revoked_at = utcnow()
+        db.add(
+            ApprovalEvent(
+                user_id=user.id,
+                actor_user_id=admin.user.id,
+                action=(
+                    ApprovalAction.REACTIVATED.value
+                    if payload.active
+                    else ApprovalAction.SUSPENDED.value
+                ),
+                previous_role=user.access_role,
+                new_role=user.access_role,
+                note=payload.note or f"계정 상태 {previous_status} → {target_status.value}",
+            )
+        )
+        db.commit()
+        db.refresh(user)
+        return _user_response(user)
+
+    @router.patch("/admin/users/{user_id}/password", response_model=UserResponse)
+    def reset_user_password(
+        user_id: str,
+        payload: PasswordResetRequest,
+        admin: AdminCsrfContext,
+        db: DatabaseSession,
+    ) -> UserResponse:
+        user = db.get(User, user_id)
+        if user is None or user.is_admin:
+            raise api_error(
+                status.HTTP_404_NOT_FOUND,
+                "user_not_found",
+                "비밀번호를 재설정할 사용자를 찾을 수 없습니다.",
+            )
+        apply_password_reset(
+            db, user=user, new_password=payload.new_password, must_change_password=True
+        )
+        db.add(
+            ApprovalEvent(
+                user_id=user.id,
+                actor_user_id=admin.user.id,
+                action=ApprovalAction.PASSWORD_RESET.value,
+                previous_role=user.access_role,
+                new_role=user.access_role,
+                note=payload.note or "설정 화면에서 비밀번호 재설정",
             )
         )
         db.commit()
