@@ -87,7 +87,7 @@ jobs:
           AWS_AUTH_SERVICE: ${{ vars.AWS_AUTH_SERVICE || 'reviewer-retention-auth.service' }}
           AWS_DEPLOY_PATH: ${{ vars.AWS_DEPLOY_PATH || '/srv/reviewer-retention' }}
           AWS_FRONTEND_ROOT: ${{ vars.AWS_FRONTEND_ROOT || '/var/www/reviewer-retention' }}
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'http://52.78.194.110:8000' }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'http://52.78.194.110' }}
         run: |
           : "${AWS_SSH_HOST:?Missing AWS_SSH_HOST secret}"
           : "${AWS_SSH_USER:?Missing AWS_SSH_USER secret}"
@@ -129,7 +129,7 @@ jobs:
           AWS_AUTH_SERVICE: ${{ vars.AWS_AUTH_SERVICE || 'reviewer-retention-auth.service' }}
           AWS_DEPLOY_PATH: ${{ vars.AWS_DEPLOY_PATH || '/srv/reviewer-retention' }}
           AWS_FRONTEND_ROOT: ${{ vars.AWS_FRONTEND_ROOT || '/var/www/reviewer-retention' }}
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'http://52.78.194.110:8000' }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'http://52.78.194.110' }}
           EXPECTED_SHA: ${{ needs.validate.outputs.commit_sha }}
         run: |
           remote_script="/tmp/reviewer-retention-deploy-${EXPECTED_SHA}.sh"
