@@ -1,9 +1,16 @@
 """콘텐츠 위험 / 권역별 화면(vw_regional_risk_summary) 조회.
 
 app/src/data/regional.json 의 export_regional()과 필드가 1:1로 대응된다
-(scripts/export_frontend_data.py:756). regional.json 자체는 6,533명
-전원이 이미 권역이 배정된 v04 Test 표본 기준으로 만들어졌으므로, 여기서도
-model_version='v04' 로 고정한다.
+(scripts/export_frontend_data.py:756).
+
+모델 버전 상수를 두 개로 나눈다. `get_regional_summary`는
+vw_regional_risk_summary(reviewer_region + model_predictions)를 읽어 예측
+결과에 따라 바뀌므로 운영 중인 예측 모델(PREDICTION_MODEL_VERSION)을 따라간다.
+`get_regional_radius`(reviewer_spatial_summary)와
+`get_regional_campaign_restaurants`(reviewer_restaurant_recommendation)는
+예측 모델과 무관한 지리·추천 파생 데이터라 v04에 고정한다 —
+v05/database/ddl/017_add_recommendation_context.sql의 "모델 버전은 v04로
+유지 — 예측 모델과 무관"과 같은 이유다.
 """
 from __future__ import annotations
 
@@ -21,7 +28,8 @@ from sqlalchemy.engine import Engine
 from api.services.business_attribute_service import get_business_display_attributes
 from api.services.business_photo_service import get_business_photos
 
-MODEL_VERSION = "v04"
+PREDICTION_MODEL_VERSION = "v05_05_dl"
+DERIVED_MODEL_VERSION = "v04"
 MINIMUM_REVIEWERS = 30
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -112,7 +120,7 @@ def get_regional_campaign_restaurants(
         rows = connection.execute(
             statement,
             {
-                "model_version": MODEL_VERSION,
+                "model_version": DERIVED_MODEL_VERSION,
                 "region": region,
                 "sample_ids": unique_sample_ids,
             },
@@ -156,7 +164,7 @@ def get_regional_summary(engine: Engine) -> dict:
                 "SELECT comparison_year, selection_year FROM cohort_samples "
                 "WHERE model_version = :v AND split_v04 = 'test' LIMIT 1"
             ),
-            {"v": MODEL_VERSION},
+            {"v": PREDICTION_MODEL_VERSION},
         ).first()
 
         total_reviewers = conn.execute(
@@ -164,14 +172,14 @@ def get_regional_summary(engine: Engine) -> dict:
                 "SELECT COUNT(*) FROM cohort_samples "
                 "WHERE model_version = :v AND split_v04 = 'test'"
             ),
-            {"v": MODEL_VERSION},
+            {"v": PREDICTION_MODEL_VERSION},
         ).scalar()
 
         covered_reviewers = conn.execute(
             text(
                 "SELECT COUNT(*) FROM reviewer_region WHERE model_version = :v"
             ),
-            {"v": MODEL_VERSION},
+            {"v": PREDICTION_MODEL_VERSION},
         ).scalar()
 
         if cohort_row is None or not covered_reviewers:
@@ -193,7 +201,7 @@ def get_regional_summary(engine: Engine) -> dict:
                 ORDER BY total_reviewers DESC
                 """
             ),
-            {"v": MODEL_VERSION},
+            {"v": PREDICTION_MODEL_VERSION},
         ).mappings().all()
 
     # 뷰의 high_risk_rate 컬럼은 정수 나눗셈이라 MySQL이 소수점 4자리로
@@ -251,7 +259,7 @@ def get_regional_radius(engine: Engine) -> dict:
                 "SELECT state, p90_radius_km FROM vw_reviewer_regional_radius "
                 "WHERE model_version = :v"
             ),
-            {"v": MODEL_VERSION},
+            {"v": DERIVED_MODEL_VERSION},
         ).all()
 
     by_state: dict[str, list[float]] = {}

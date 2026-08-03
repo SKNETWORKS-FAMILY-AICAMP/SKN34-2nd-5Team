@@ -90,7 +90,7 @@ function number(value) {
 }
 
 function getSnapshotData(trustData, version) {
-  if (version === "v04") {
+  if (version === "v05_05_dl") {
     return {
       available: true,
       overall: trustData.overall,
@@ -103,6 +103,7 @@ function getSnapshotData(trustData, version) {
     };
   }
 
+  if (version === "v04") return { ...trustData.v04, binary: false };
   if (version === "v03") return { ...trustData.v03, binary: false };
   if (version === "v02") return { ...trustData.v02, binary: true };
   return { available: false };
@@ -124,7 +125,7 @@ function TrustCenterPage() {
   const operationsSummary = useOperationsSummary();
   const [trustData, setTrustData] = useState(null);
   const [error, setError] = useState(null);
-  const [selectedVersion, setSelectedVersion] = useState("v04");
+  const [selectedVersion, setSelectedVersion] = useState("v05_05_dl");
 
   useEffect(() => {
     let cancelled = false;
@@ -158,7 +159,7 @@ function TrustCenterPage() {
     selectedSnapshot?.validationSamples ?? snapshotData?.validationSamples ?? 0;
   const targetUsers = capacityPoint
     ? capacityPoint.targetUsers
-    : selectedVersion === "v04"
+    : selectedVersion === "v05_05_dl"
       ? operationsSummary.targetUsers
       : 0;
 
@@ -221,7 +222,7 @@ function TrustCenterPage() {
               <SmallMetric label="Lift" value={capacityPoint ? `${capacityPoint.lift.toFixed(2)}배` : "-"} />
             </div>
             <p className="mt-3 text-xs leading-5 text-[#626D67]">
-              {selectedVersion === "v04"
+              {selectedVersion === "v05_05_dl"
                 ? "현재 운영은 통합 위험 순위 상위 20%를 기본 검토 범위로 사용합니다."
                 : "과거 스냅샷은 당시 저장된 평가 결과이며 현재 운영 대상과 혼합하지 않습니다."}
             </p>
@@ -281,13 +282,15 @@ function TrustCenterPage() {
             </Panel>
           )}
 
-          {trustData.v03?.available && (
-            <Panel title="버전 추세 (v03 → v04)" info="멀티클래스 세대(v03·v04)만 비교합니다 — v02는 이진분류라 같은 축에 놓지 않습니다.">
+          {trustData.v04?.available && trustData.overall && (
+            <Panel title="버전 추세 (v04 → v05_05_dl)" info="같은 2018→2019 Test 6,533명 표본에서 이전 운영 모델(v04, 로지스틱)과 현재 운영 모델(v05_05_dl, Lifecycle Fusion H2 딥러닝)을 비교합니다.">
               <VersionTrend
-                v03={trustData.v03.overall}
-                v04={trustData.overall}
-                v03Snapshot={trustData.snapshots.find((item) => item.modelVersion === "v03")}
-                v04Snapshot={trustData.snapshots.find((item) => item.modelVersion === "v04")}
+                before={trustData.v04.overall}
+                after={trustData.overall}
+                beforeLabel="v04"
+                afterLabel="v05_05_dl"
+                beforeSnapshot={trustData.snapshots.find((item) => item.modelVersion === "v04")}
+                afterSnapshot={trustData.snapshots.find((item) => item.modelVersion === "v05_05_dl")}
               />
             </Panel>
           )}
@@ -321,7 +324,12 @@ function TrustCenterPage() {
                   <td className="px-4 py-3 font-black">{snapshot.modelVersion}</td>
                   <td className="px-4 py-3"><StatusBadge status={snapshot.status} /></td>
                   <td className="px-4 py-3 text-[#626D67]">{snapshot.problemType}</td>
-                  <td className="px-4 py-3">{snapshot.featureCount}개</td>
+                  <td className="px-4 py-3">
+                    {snapshot.featureCount}개
+                    {snapshot.featureSet && (
+                      <span className="ml-1 text-[#8A948F]">({snapshot.featureSet})</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">{snapshot.selectionYear} → {snapshot.validationYear}</td>
                   <td className="px-4 py-3">{number(snapshot.validationSamples)}명</td>
                   <td className="px-4 py-3 text-right">
@@ -344,7 +352,7 @@ function TrustCenterPage() {
           선정·피처 마감 이후의 리뷰와 상태 라벨은 모델 입력에서 제외하고 사후 검증에만 사용합니다.
         </ReferenceCard>
         <ReferenceCard title="모델 비교">
-          v04는 현재 3상태 운영 모델이며 v03은 과거 3상태, v02는 이진 이탈 참고 모델입니다.
+          v05_05_dl(Lifecycle Fusion H2)이 현재 3상태 운영 모델이며, v04·v03은 과거 3상태(로지스틱), v02는 이진 이탈 참고 모델입니다.
         </ReferenceCard>
         <ReferenceCard title="용어 사전">
           위험 점수는 확률이 아닌 우선순위이며 리뷰 활동 반경은 공개 음식점 리뷰 위치의 분포입니다.
@@ -553,18 +561,18 @@ const TREND_METRICS = [
   { key: "balancedAccuracy", label: "Balanced Accuracy" },
 ];
 
-function VersionTrend({ v03, v04, v03Snapshot, v04Snapshot }) {
+function VersionTrend({ before, after, beforeLabel, afterLabel, beforeSnapshot, afterSnapshot }) {
   return (
     <div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
       {TREND_METRICS.map(({ key, label }) => {
-        const before = v03?.[key];
-        const after = v04?.[key];
-        if (before === undefined || after === undefined) return null;
-        const delta = after - before;
+        const beforeValue = before?.[key];
+        const afterValue = after?.[key];
+        if (beforeValue === undefined || afterValue === undefined) return null;
+        const delta = afterValue - beforeValue;
         const data = [
-          { version: "v03", value: before },
-          { version: "v04", value: after },
+          { version: beforeLabel, value: beforeValue },
+          { version: afterLabel, value: afterValue },
         ];
         return (
           <div key={key} className="rounded-lg border border-[#DDE4DF] p-3">
@@ -588,11 +596,24 @@ function VersionTrend({ v03, v04, v03Snapshot, v04Snapshot }) {
         );
       })}
       </div>
-      {v03Snapshot && v04Snapshot && (
+      {beforeSnapshot && afterSnapshot && (
         <p className="mt-3 text-xs leading-5 text-[#626D67]">
-          v03 검증 표본 {number(v03Snapshot.validationSamples)}명({v03Snapshot.selectionYear}→{v03Snapshot.validationYear}),
-          v04 검증 표본 {number(v04Snapshot.validationSamples)}명({v04Snapshot.selectionYear}→{v04Snapshot.validationYear})으로
-          코호트와 검증 연도가 다릅니다.
+          {beforeSnapshot.validationSamples === afterSnapshot.validationSamples &&
+          beforeSnapshot.selectionYear === afterSnapshot.selectionYear &&
+          beforeSnapshot.validationYear === afterSnapshot.validationYear ? (
+            <>
+              {beforeLabel}·{afterLabel} 모두 같은 검증 표본 {number(afterSnapshot.validationSamples)}명
+              ({afterSnapshot.selectionYear}→{afterSnapshot.validationYear})으로 비교했습니다.
+            </>
+          ) : (
+            <>
+              {beforeLabel} 검증 표본 {number(beforeSnapshot.validationSamples)}명
+              ({beforeSnapshot.selectionYear}→{beforeSnapshot.validationYear}),{" "}
+              {afterLabel} 검증 표본 {number(afterSnapshot.validationSamples)}명
+              ({afterSnapshot.selectionYear}→{afterSnapshot.validationYear})으로
+              코호트와 검증 연도가 다릅니다.
+            </>
+          )}
         </p>
       )}
     </div>

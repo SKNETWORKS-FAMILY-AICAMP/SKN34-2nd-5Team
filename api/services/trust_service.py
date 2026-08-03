@@ -1,6 +1,7 @@
 """Trust Center(trust.json) 조회.
 
-v04(3클래스 메인) + v03(3클래스 비교, 접힘) + v02(이진분류 비교, 접힘).
+v05_05_dl(3클래스 운영 모델) + v04(3클래스 이전 세대) + v03(3클래스 비교, 접힘)
++ v02(이진분류 비교, 접힘).
 export_trust()/_multiclass_trust_block()/_v03_top20()/_v02_block()
 (scripts/export_frontend_data.py:433-580)과 대응한다.
 
@@ -288,22 +289,24 @@ def get_trust_data(engine: Engine) -> dict:
         version_rows = conn.execute(
             text(
                 "SELECT model_version, model_name, model_type, problem_type, "
-                "feature_count, test_selection_year, test_target_year, "
+                "feature_set, feature_count, test_selection_year, test_target_year, "
                 "test_samples, priority_target_rate, loaded_at "
                 "FROM model_versions "
-                "WHERE model_version IN ('v02', 'v03', 'v04') "
+                "WHERE model_version IN ('v02', 'v03', 'v04', 'v05_05_dl') "
                 "ORDER BY model_version DESC"
             )
         ).mappings().all()
         version_by_id = {row["model_version"]: row for row in version_rows}
-        version_row = version_by_id["v04"]
+        version_row = version_by_id["v05_05_dl"]
 
+        v05_05 = _multiclass_block(conn, "v05_05_dl")
         v04 = _multiclass_block(conn, "v04")
         v03 = _multiclass_block(conn, "v03")
         v03["top20"] = _v03_top20(conn)
         v02 = _v02_block(conn)
 
-    baseline_pr_auc = v04.pop("_baseline_pr_auc", 0.0)
+    baseline_pr_auc = v05_05.pop("_baseline_pr_auc", 0.0)
+    v04.pop("_baseline_pr_auc", None)
     v03.pop("_baseline_pr_auc", None)
 
     snapshots = []
@@ -315,29 +318,31 @@ def get_trust_data(engine: Engine) -> dict:
                 "modelName": row["model_name"],
                 "modelType": row["model_type"],
                 "problemType": row["problem_type"],
+                "featureSet": row["feature_set"],
                 "featureCount": int(row["feature_count"]),
                 "comparisonYear": int(row["test_selection_year"]) - 1,
                 "selectionYear": int(row["test_selection_year"]),
                 "validationYear": int(row["test_target_year"]),
                 "validationSamples": int(row["test_samples"]),
                 "priorityTargetRate": float(row["priority_target_rate"]),
-                "status": "operational" if version == "v04" else "archived",
+                "status": "operational" if version == "v05_05_dl" else "archived",
                 "loadedAt": row["loaded_at"].isoformat() if row["loaded_at"] else None,
             }
         )
 
     return {
         "serviceVersion": "v05",
-        "modelVersion": "v04",
+        "modelVersion": "v05_05_dl",
         "validationPeriod": f"Test {version_row.test_target_year}",
         "snapshots": snapshots,
-        "overall": v04["overall"],
-        "classPerformance": v04["classPerformance"],
-        "confusionMatrix": v04["confusionMatrix"],
-        "topK": v04["topK"],
-        "featureImportance": v04["featureImportance"],
-        "groupImportance": v04["groupImportance"],
+        "overall": v05_05["overall"],
+        "classPerformance": v05_05["classPerformance"],
+        "confusionMatrix": v05_05["confusionMatrix"],
+        "topK": v05_05["topK"],
+        "featureImportance": v05_05["featureImportance"],
+        "groupImportance": v05_05["groupImportance"],
         "baselinePrAuc": baseline_pr_auc,
+        "v04": v04,
         "v03": v03,
         "v02": v02,
     }

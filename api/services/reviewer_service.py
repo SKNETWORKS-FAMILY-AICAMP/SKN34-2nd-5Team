@@ -26,7 +26,7 @@ from sqlalchemy.engine import Engine
 from shared.retention.frontend_serializer import build_row
 from shared.retention.profile_normalization import _normalize_profiles as normalize_profiles
 
-MODEL_VERSION = "v04"
+MODEL_VERSION = "v05_05_dl"
 
 _COLUMNS = """
     sample_id, user_id, comparison_year, selection_year, target_year,

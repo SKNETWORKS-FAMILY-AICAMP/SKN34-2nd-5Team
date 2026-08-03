@@ -14,7 +14,7 @@ from __future__ import annotations
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
-MODEL_VERSION = "v04"
+MODEL_VERSION = "v05_05_dl"
 
 
 def get_operations_summary(engine: Engine) -> dict:

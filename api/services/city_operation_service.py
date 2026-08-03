@@ -1,11 +1,20 @@
-"""Read-only city operating context for the v05 review-supply command center."""
+"""Read-only city operating context for the v05 review-supply command center.
+
+city_review_supply/city_newcomer/regional_review_supply/regional_newcomer는
+v04 코호트로만 적재돼 있어(v05/README 참고) DERIVED_MODEL_VERSION="v04"로
+고정한다. 반면 core_reviewers/crm_targets는 vw_reviewer_work_queue의
+selected_for_crm을 세어 만드는 값이라 실제 운영 중인 예측 모델
+(PREDICTION_MODEL_VERSION)을 따라가야 한다 — 두 상수를 분리하지 않으면
+"핵심 리뷰어" 카운트가 화면에서 실제 예측 모델과 어긋난다.
+"""
 from __future__ import annotations
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
 
 
-MODEL_VERSION = "v04"
+PREDICTION_MODEL_VERSION = "v05_05_dl"
+DERIVED_MODEL_VERSION = "v04"
 SELECTION_YEAR = 2018
 MIN_ACTIVE_REVIEWERS = 30
 MIN_ANNUAL_REVIEWS = 100
@@ -125,19 +134,20 @@ def get_city_operating_context(
                         INNER JOIN reviewer_region AS region
                           ON region.model_version = queue.model_version
                          AND region.sample_id = queue.sample_id
-                        WHERE queue.model_version = :model_version
+                        WHERE queue.model_version = :prediction_model_version
                           AND queue.selection_year = :selection_year
                         GROUP BY region.state, LOWER(TRIM(region.top_city))
                     ) AS crm
                       ON crm.state = supply.state
                      AND crm.city_key = supply.city_key
-                    WHERE supply.model_version = :model_version
+                    WHERE supply.model_version = :derived_model_version
                       AND supply.activity_year = :selection_year
                     ORDER BY supply.state, supply.city
                     """
                 ),
                 {
-                    "model_version": MODEL_VERSION,
+                    "prediction_model_version": PREDICTION_MODEL_VERSION,
+                    "derived_model_version": DERIVED_MODEL_VERSION,
                     "selection_year": selection_year,
                 },
             ).mappings()
@@ -180,18 +190,19 @@ def get_city_operating_context(
                         INNER JOIN reviewer_region AS region
                           ON region.model_version = queue.model_version
                          AND region.sample_id = queue.sample_id
-                        WHERE queue.model_version = :model_version
+                        WHERE queue.model_version = :prediction_model_version
                           AND queue.selection_year = :selection_year
                         GROUP BY region.state
                     ) AS crm
                       ON crm.state = supply.state
-                    WHERE supply.model_version = :model_version
+                    WHERE supply.model_version = :derived_model_version
                       AND supply.activity_year = :selection_year
                     ORDER BY supply.state
                     """
                 ),
                 {
-                    "model_version": MODEL_VERSION,
+                    "prediction_model_version": PREDICTION_MODEL_VERSION,
+                    "derived_model_version": DERIVED_MODEL_VERSION,
                     "selection_year": selection_year,
                 },
             ).mappings()
@@ -389,7 +400,7 @@ def get_city_operating_context(
     return {
         "available": bool(cities),
         "reason": None if cities else "no_rows_for_selection_year",
-        "modelVersion": MODEL_VERSION,
+        "modelVersion": PREDICTION_MODEL_VERSION,
         "comparisonYear": selection_year - 1,
         "selectionYear": selection_year,
         "minimumSample": {
