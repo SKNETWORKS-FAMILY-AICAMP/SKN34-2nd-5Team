@@ -77,7 +77,7 @@ ssh-keyscan -H <AWS 고정 IP>
 | `AWS_FRONTEND_ROOT` | `/var/www/reviewer-retention` |
 | `AWS_API_SERVICE` | `reviewer-retention.service` |
 | `AWS_AUTH_SERVICE` | `reviewer-retention-auth.service` |
-| `VITE_API_BASE_URL` | `http://52.78.194.110:8000` |
+| `VITE_API_BASE_URL` | `http://52.78.194.110` |
 
 위 서비스 이름은 AWS 서버에서 직접 확인한 값이다.
 `VITE_API_BASE_URL`을 누락하면 React가 관람자의 `localhost:8000`을 조회하게 되므로
