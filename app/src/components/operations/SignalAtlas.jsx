@@ -24,8 +24,8 @@ function recencyBinIndex(days) {
 // first). Border = cells where that rate is the majority outcome, not a
 // judgment call about the person, just where the aggregate leans.
 function fillFor(rate) {
-  if (rate >= 0.9) return { bg: "#E15D47", text: "#fff" };
-  if (rate >= 0.7) return { bg: "#E86A54", text: "#fff" };
+  if (rate >= 0.9) return { bg: "#E15D47", text: "#17211D" };
+  if (rate >= 0.7) return { bg: "#E86A54", text: "#17211D" };
   if (rate >= 0.4) return { bg: "#E6B26F", text: "#5C3A0E" };
   if (rate >= 0.2) return { bg: "#E9C48A", text: "#5C3A0E" };
   if (rate >= 0.1) return { bg: "#C5DFCF", text: "#17211D" };

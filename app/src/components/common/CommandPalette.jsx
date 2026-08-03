@@ -4,11 +4,13 @@ import { useNavigate } from "react-router";
 import { useReviewers } from "../../context/operations-context";
 
 const PAGES = [
-  { label: "운영 홈", path: "/" },
-  { label: "리뷰어 관리", path: "/reviewers" },
-  { label: "리텐션 플레이북", path: "/playbook" },
-  { label: "콘텐츠 위험", path: "/regional" },
-  { label: "모델 신뢰", path: "/trust" },
+  { label: "콘텐츠 공급 위험", path: "/" },
+  { label: "콘텐츠 공급 위험", path: "/regional" },
+  { label: "핵심 리뷰어 관리", path: "/reviewers?mode=individual&status=미검토&sort=우선순위" },
+  { label: "신규 핵심 유입", path: "/?layer=newcomers" },
+  { label: "운영 결과·알림", path: "/operations-history" },
+  { label: "운영안 설계", path: "/playbook" },
+  { label: "운영 신뢰", path: "/trust" },
 ];
 
 // Global ⌘K / Ctrl+K palette (B-12) — deterministic routing only: page

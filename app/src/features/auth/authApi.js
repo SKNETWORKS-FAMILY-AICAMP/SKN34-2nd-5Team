@@ -67,4 +67,77 @@ export async function fetchCurrentUser() {
   return response.json();
 }
 
+async function adminRequest(path, options = {}) {
+  const response = await request(`/admin${path}`, {
+    ...options,
+    headers: {
+      ...(options.method && options.method !== "GET" ? { "X-CSRF-Token": getCsrfToken() } : {}),
+      ...options.headers,
+    },
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(errorMessage(body, response.status));
+  return body;
+}
+
+export function fetchAdminUsers(status) {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return adminRequest(`/users${query}`, { method: "GET" });
+}
+
+export function createAdminUser(payload) {
+  return adminRequest("/users", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createRegionAdminUsers(regionCodes) {
+  return adminRequest("/users/bulk-regions", {
+    method: "POST",
+    body: JSON.stringify({
+      region_codes: regionCodes,
+      password_length: 14,
+      must_change_password: true,
+    }),
+  });
+}
+
+export function approveAdminUser(userId, accessRole, regionCode = null, note = "") {
+  return adminRequest(`/users/${encodeURIComponent(userId)}/approve`, {
+    method: "POST",
+    body: JSON.stringify({ access_role: accessRole, region_code: regionCode, note }),
+  });
+}
+
+export function rejectAdminUser(userId, note = "") {
+  return adminRequest(`/users/${encodeURIComponent(userId)}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+}
+
+export function updateAdminUserRole(userId, accessRole, regionCode = null, note = "") {
+  return adminRequest(`/users/${encodeURIComponent(userId)}/role`, {
+    method: "PATCH",
+    body: JSON.stringify({ access_role: accessRole, region_code: regionCode, note }),
+  });
+}
+
+export function updateAdminUserStatus(userId, active, note = "") {
+  return adminRequest(`/users/${encodeURIComponent(userId)}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ active, note }),
+  });
+}
+
+// Blocked server-side for admin-role accounts (see auth_service/main.py's
+// reset_user_password) — admin passwords only change via server CLI.
+export function resetAdminUserPassword(userId, newPassword, note = "") {
+  return adminRequest(`/users/${encodeURIComponent(userId)}/password`, {
+    method: "PATCH",
+    body: JSON.stringify({ new_password: newPassword, note }),
+  });
+}
+
 export { getCsrfToken };

@@ -80,6 +80,35 @@ export function loadRegionalDerivedContext(selectionYear = 2018) {
   });
 }
 
+let cityOperatingPromise = null;
+
+export function loadCityOperatingContext(selectionYear = 2018) {
+  if (!cityOperatingPromise) {
+    cityOperatingPromise = fetch(
+      `${API_BASE_URL}/api/regional/cities?selection_year=${selectionYear}`,
+    ).then((response) => {
+      if (!response.ok) {
+        throw new Error(`도시 운영 데이터를 불러오지 못했습니다 (${response.status})`);
+      }
+      return response.json();
+    });
+  }
+  return cityOperatingPromise;
+}
+
+export function loadRegionalCampaignRestaurants(region, sampleIds) {
+  return fetch(`${API_BASE_URL}/api/regional/campaign-restaurants`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ region, sample_ids: sampleIds }),
+  }).then((response) => {
+    if (!response.ok) {
+      throw new Error(`권역 음식점 후보를 불러오지 못했습니다. (${response.status})`);
+    }
+    return response.json();
+  });
+}
+
 const recommendationPromises = new Map();
 
 export function loadReviewerRecommendations(userId) {

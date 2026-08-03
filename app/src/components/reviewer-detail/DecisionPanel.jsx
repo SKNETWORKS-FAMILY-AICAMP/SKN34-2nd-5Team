@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-
 import { createInteraction, loadInteractions } from "../../services/decisionService";
+import { useAuth } from "../../features/auth/auth-context";
+import { canMutate } from "../../features/auth/rolePolicy";
 
 const decisionOptions = [
   "리뷰 다시 시작 유도",
@@ -18,11 +19,12 @@ function DecisionPanel({
   modelVersion,
   savedRecord,
   recommendedDecision,
+  interventionHref,
   onSave,
   onCancel,
-  previousReviewer,
-  nextReviewer,
 }) {
+  const { user } = useAuth();
+  const writable = canMutate(user?.access_role);
   const [selectedDecision, setSelectedDecision] = useState(
     savedRecord?.decision ?? "",
   );
@@ -111,16 +113,15 @@ function DecisionPanel({
   }
 
   return (
-    <div className="rounded-xl border border-[#DDE4DF] bg-white p-5">
-      <div>
-        <h2 className="text-lg font-bold text-[#17211D]">
+    <div className="overflow-hidden rounded-xl border border-[#AFCDBE] bg-white p-4 shadow-[0_8px_24px_rgba(23,33,29,0.07)]">
+      <div className="flex items-start justify-between gap-3 border-b border-[#E2E7E3] pb-3">
+        <div>
+        <p className="text-[9px] font-black tracking-[0.14em] text-[#137A5A]">MANAGER DECISION</p>
+        <h2 className="mt-0.5 text-base font-black text-[#17211D]">
           관리자 판단
         </h2>
-
-        <p className="mt-2 text-sm leading-6 text-[#626D67]">
-          모델 판단과 활동 근거를 확인한 뒤 운영 결과를
-          분류합니다.
-        </p>
+        </div>
+        <span className="rounded-full bg-[#F1F4F1] px-2.5 py-1 text-[10px] font-bold text-[#626D67]">근거 검토·판단</span>
       </div>
 
       <div className="mt-4">
@@ -148,15 +149,16 @@ function DecisionPanel({
 
       <form
         onSubmit={handleSubmit}
-        className="mt-5 space-y-2"
+        className="mt-4"
       >
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
         {decisionOptions.map((option) => (
           <label
             key={option}
             className={[
-              "flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm transition",
+              "flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-xs transition",
               selectedDecision === option
-                ? "border-[#137A5A] bg-[#E3F1EA]"
+                ? "border-[#075C45] bg-[#E3F1EA] font-bold text-[#075C45]"
                 : "border-[#DDE4DF] hover:bg-[#F6F8F6]",
             ].join(" ")}
           >
@@ -168,19 +170,20 @@ function DecisionPanel({
               onChange={(event) =>
                 setSelectedDecision(event.target.value)
               }
-              className="accent-[#137A5A]"
+              className="accent-[#075C45]"
             />
 
             <span>{option}</span>
           </label>
         ))}
+        </div>
 
-        <label className="block pt-2 text-xs font-medium text-[#626D67]">
+        <label className="mt-3 block text-xs font-medium text-[#626D67]">
           판단 메모
           <textarea
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            rows={3}
+            rows={2}
             maxLength={5000}
             placeholder="판단 근거나 후속 확인 사항을 남기세요"
             className="mt-1.5 w-full resize-y rounded-lg border border-[#DDE4DF] bg-white px-3 py-2 text-sm text-[#17211D] outline-none focus:border-[#137A5A]"
@@ -199,26 +202,40 @@ function DecisionPanel({
 
         <button
           type="submit"
-          disabled={saving}
-          className="mt-4 min-h-11 w-full rounded-lg bg-[#137A5A] px-5 font-bold text-white transition hover:bg-[#185C46]"
+          disabled={saving || !writable}
+          className="mt-3 min-h-11 w-full rounded-xl bg-[#075C45] px-5 text-sm font-black text-white transition hover:bg-[#064936]"
         >
-          {saving ? "저장 중…" : "관리자 판단 저장"}
+          {saving ? "저장 중…" : writable ? "관리자 판단 저장" : "조회 전용"}
         </button>
+
+        <div className="mt-2 min-h-11">
+          {savedRecord ? (
+            <Link
+              to={interventionHref}
+              className="flex min-h-11 w-full items-center justify-center rounded-xl border border-[#075C45] bg-white px-5 text-sm font-black text-[#075C45] transition hover:bg-[#F0F7F3]"
+            >
+              개인 개입안 확인 →
+            </Link>
+          ) : (
+            <p className="flex min-h-11 items-center justify-center rounded-xl bg-[#F4F6F4] px-4 text-center text-[10px] font-bold text-[#718078]">
+              판단 저장 후 개인 개입안을 확인할 수 있습니다.
+            </p>
+          )}
+        </div>
       </form>
 
-      {message && (
-        <p className="mt-3 text-xs font-semibold text-[#137A5A]">
-          {message}
-        </p>
-      )}
+      <p className="mt-3 min-h-4 text-xs font-semibold text-[#137A5A]">
+        {message || "\u00a0"}
+      </p>
 
-      <p className="mt-5 border-t border-[#DDE4DF] pt-4 text-xs leading-5 text-[#626D67]">
+      <p className="mt-3 border-t border-[#DDE4DF] pt-3 text-[10px] leading-4 text-[#626D67]">
         판단·메모·스누즈와 변경 이력은 서버에 저장됩니다. 담당자 선택은
         로그인 사용자 목록 연동 후 활성화됩니다.
       </p>
 
-      <form onSubmit={handleInteraction} className="mt-4 rounded-lg bg-[#F7F8F5] p-3">
-        <p className="text-xs font-medium text-[#17211D]">접촉 이력</p>
+      <details className="mt-3 rounded-lg border border-[#E3E8E4] bg-[#F7F8F5] p-3">
+        <summary className="cursor-pointer text-xs font-bold text-[#17211D]">접촉 이력 · {interactions.length}건</summary>
+      <form onSubmit={handleInteraction} className="mt-3">
         <div className="mt-2 flex gap-2">
           <select
             value={interactionChannel}
@@ -240,10 +257,10 @@ function DecisionPanel({
           />
           <button
             type="submit"
-            disabled={interactionSaving}
+            disabled={interactionSaving || !writable}
             className="min-h-9 rounded bg-[#17211D] px-3 text-xs font-medium text-white disabled:opacity-50"
           >
-            기록
+            {writable ? "기록" : "조회"}
           </button>
         </div>
         {interactions.length > 0 && (
@@ -257,33 +274,19 @@ function DecisionPanel({
           </ul>
         )}
       </form>
+      </details>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        {previousReviewer ? (
-          <Link
-            to={`/reviewers/${previousReviewer.userId}`}
-            className="flex min-h-11 items-center justify-center rounded-lg border border-[#DDE4DF] px-3 text-sm font-bold text-[#137A5A] transition hover:border-[#137A5A] hover:bg-[#E3F1EA]"
-          >
-            ← 이전 리뷰어
-          </Link>
-        ) : (
-          <span className="flex min-h-11 items-center justify-center rounded-lg border border-[#DDE4DF] px-3 text-sm font-bold text-[#B3BBB6]">
-            ← 이전 리뷰어
-          </span>
-        )}
-
-        {nextReviewer ? (
-          <Link
-            to={`/reviewers/${nextReviewer.userId}`}
-            className="flex min-h-11 items-center justify-center rounded-lg border border-[#DDE4DF] px-3 text-sm font-bold text-[#137A5A] transition hover:border-[#137A5A] hover:bg-[#E3F1EA]"
-          >
-            다음 리뷰어 →
-          </Link>
-        ) : (
-          <span className="flex min-h-11 items-center justify-center rounded-lg border border-[#DDE4DF] px-3 text-sm font-bold text-[#B3BBB6]">
-            다음 리뷰어 →
-          </span>
-        )}
+      <div className="mt-3 rounded-lg border border-[#DDE4DF] bg-[#F7F9F7] p-3">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[10px] font-black tracking-[0.1em] text-[#137A5A]">운영안 미리보기</p>
+          <span className="text-[10px] text-[#626D67]">판단 저장 후 4단계에서 확정</span>
+        </div>
+        <p className="mt-2 text-xs font-bold text-[#17211D]">{selectedDecision || recommendedDecision}</p>
+        <div className="mt-2 flex flex-wrap gap-1.5 text-[9px] font-bold text-[#4F5D56]">
+          <span className="rounded-full border border-[#C7D8CF] bg-white px-2 py-1">개입 대상 확인</span>
+          <span className="rounded-full border border-[#C7D8CF] bg-white px-2 py-1">메시지·혜택 설계</span>
+          <span className="rounded-full border border-[#C7D8CF] bg-white px-2 py-1">30·60·90일 추적</span>
+        </div>
       </div>
     </div>
   );

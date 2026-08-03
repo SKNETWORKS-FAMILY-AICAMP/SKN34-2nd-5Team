@@ -1,32 +1,32 @@
-function EvidenceList({ evidence, hoveredGroup, onHoverGroup }) {
+function EvidenceList({ evidence, hoveredGroup, onHoverGroup, compact = false }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-[#DDE4DF] bg-white">
+    <div className={`grid overflow-hidden rounded-xl border border-[#DDE4DF] bg-white ${compact ? "grid-cols-1" : "md:grid-cols-2"}`}>
       {evidence.map((item, index) => (
         <div
           key={item.title}
           onMouseEnter={() => onHoverGroup?.(item.group)}
           onMouseLeave={() => onHoverGroup?.(null)}
           className={[
-            "flex gap-4 border-b border-[#DDE4DF] px-5 py-4 last:border-b-0 transition",
+            compact
+              ? "flex gap-2.5 border-b border-[#DDE4DF] px-3 py-2.5 transition last:border-b-0"
+              : "flex gap-3 border-b border-[#DDE4DF] px-4 py-3 transition md:border-r md:[&:nth-child(even)]:border-r-0 md:[&:nth-last-child(-n+2)]:border-b-0",
             hoveredGroup === item.group ? "bg-[#E3F1EA]" : "",
           ].join(" ")}
         >
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F1F4F1] text-xs font-bold text-[#626D67]">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#F1F4F1] text-[10px] font-bold text-[#626D67]">
             {index + 1}
           </span>
 
           <div>
-            <strong className="text-sm text-[#17211D]">
+            <strong className="text-xs text-[#17211D]">
               {item.title}
             </strong>
 
-            <p className="mt-1 text-sm leading-6 text-[#626D67]">
+            <p className={`${compact ? "mt-0.5 line-clamp-2 text-[10px] leading-4" : "mt-1 text-[11px] leading-5"} text-[#626D67]`}>
               {item.evidence}
             </p>
 
-            <span className="mt-2 inline-flex rounded bg-[#F1F4F1] px-2 py-1 text-xs text-[#626D67]">
-              {item.group}
-            </span>
+            {!compact && <span className="mt-1.5 inline-flex rounded bg-[#F1F4F1] px-2 py-0.5 text-[10px] text-[#626D67]">{item.group}</span>}
           </div>
         </div>
       ))}

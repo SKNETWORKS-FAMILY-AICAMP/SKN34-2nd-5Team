@@ -1,30 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
+import { useSearchParams } from "react-router";
 
 import DataModeBadge from "../components/DataModeBadge";
-import PageHeader from "../components/common/PageHeader";
 import Skeleton from "../components/common/Skeleton";
 import ErrorState from "../components/common/ErrorState";
 import RegionalBubbleMap from "../components/regional/RegionalBubbleMap";
-import RegionalRiskTable from "../components/regional/RegionalRiskTable";
+import RegionalInsightPanel from "../components/regional/RegionalInsightPanel";
 import RegionalTravelRange from "../components/regional/RegionalTravelRange";
+import WorkflowHeader from "../components/workflow/WorkflowHeader";
 import { useOperationsSummary } from "../context/operations-context";
 import { loadRegionalDerivedContext, loadRegionalRisk } from "../data";
 
-const sortRules = {
-  "활동 리뷰어": (first, second) => second.reviewers - first.reviewers,
-  "고위험 비율": (first, second) => second.highRiskRate - first.highRiskRate,
-  "고위험 리뷰어": (first, second) => second.highRisk - first.highRisk,
-};
-
 function RegionalRiskPage() {
   const operationsSummary = useOperationsSummary();
-  const [sortRule, setSortRule] = useState("고위험 비율");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [regionalRisk, setRegionalRisk] = useState(null);
   const [error, setError] = useState(null);
   const [hoveredRegion, setHoveredRegion] = useState(null);
-  const [viewMode, setViewMode] = useState("priority");
   const [derivedContext, setDerivedContext] = useState(null);
+  const [mapLayer, setMapLayer] = useState("supply");
+  const viewMode = searchParams.get("view") === "travel" ? "travel" : "map";
 
   useEffect(() => {
     let cancelled = false;
@@ -56,11 +51,30 @@ function RegionalRiskPage() {
     };
   }, []);
 
-  const regions = useMemo(
-    () =>
-      regionalRisk ? [...regionalRisk.regions].sort(sortRules[sortRule]) : [],
-    [regionalRisk, sortRule],
-  );
+  const regions = useMemo(() => {
+    if (!regionalRisk) return [];
+    const supplyByRegion = new Map(
+      (derivedContext?.regions ?? []).map((region) => [region.region, region]),
+    );
+    return regionalRisk.regions
+      .map((region) => ({ ...region, ...supplyByRegion.get(region.region) }))
+      .sort((first, second) => (first.reviewSupplyChangeRate ?? 0) - (second.reviewSupplyChangeRate ?? 0));
+  }, [derivedContext, regionalRisk]);
+
+  const defaultRegion = [...regions]
+    .filter((region) => region.reviewSupplyChangeRate !== null && region.reviewSupplyChangeRate !== undefined)
+    .sort((first, second) => first.reviewSupplyChangeRate - second.reviewSupplyChangeRate)[0] ?? regions[0];
+  const activeSelectedRegion = searchParams.get("region") ?? defaultRegion?.region ?? null;
+  const selectedRegionData = regions.find((region) => region.region === activeSelectedRegion) ?? null;
+
+  function updateParams(updates) {
+    const next = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === "") next.delete(key);
+      else next.set(key, value);
+    });
+    setSearchParams(next, { replace: true });
+  }
 
   const totals = useMemo(() => {
     const reviewers = regions.reduce((sum, item) => sum + item.reviewers, 0);
@@ -85,212 +99,84 @@ function RegionalRiskPage() {
   }
 
   return (
-    <section>
-      <PageHeader
-        title="콘텐츠 공급 위험"
-        description="거주지가 아닌 음식점 리뷰 활동 지역을 기준으로 권역별 콘텐츠 공급 위험을 비교합니다."
-        meta={
-          <>
-            <DataModeBadge />
-            <p className="mt-2 text-xs text-[#626D67]">{regions.length}개 권역</p>
-          </>
-        }
-      >
-        <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-[#626D67]">
-          <span>활동 리뷰어 {totals.reviewers.toLocaleString()}</span>
-          <span>·</span>
-          <span className="text-[#BF3620]">
-            고위험 {totals.highRisk.toLocaleString()} ({(totals.highRiskRate * 100).toFixed(1)}%)
-          </span>
-          <span>·</span>
-          <span className="text-[#137A5A]">
-            검토 대상 {totals.crmTargets.toLocaleString()}
-          </span>
+    <section className="pb-5">
+      <WorkflowHeader
+        eyebrow="REGIONAL OPERATIONS"
+        title="콘텐츠 공급 권역 선택"
+        description="음식점 리뷰 활동 지역을 기준으로 공급 둔화 권역을 찾고, 다음 단계에서 CRM 후보 리뷰어를 검토합니다."
+        steps={["운영 신호 확인", "대상 선정", "근거 검토·판단", "운영안 설계", "실행·성과 추적"]}
+        activeStep={1}
+        aside={<div className="text-right"><DataModeBadge /><p className="mt-2 text-[11px] text-[#718078]">{regions.length}개 권역 · {totals.crmTargets.toLocaleString()}명 검토 대상</p></div>}
+      />
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        <SummaryMetric label="활동 리뷰어" value={`${totals.reviewers.toLocaleString()}명`} />
+        <SummaryMetric label="고위험 리뷰어" value={`${totals.highRisk.toLocaleString()}명`} note={`${(totals.highRiskRate * 100).toFixed(1)}% · 운영 우선순위`} tone="warning" />
+        <SummaryMetric label="CRM 검토 대상" value={`${totals.crmTargets.toLocaleString()}명`} tone="green" />
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex rounded-xl border border-[#DDE4DF] bg-white p-1">
+          <button type="button" onClick={() => updateParams({ view: null })} className={`min-h-9 rounded-lg px-4 text-xs font-bold ${viewMode === "map" ? "bg-[#075C45] text-white" : "text-[#626D67]"}`}>권역 지도</button>
+          <button type="button" onClick={() => updateParams({ view: "travel" })} className={`min-h-9 rounded-lg px-4 text-xs font-bold ${viewMode === "travel" ? "bg-[#075C45] text-white" : "text-[#626D67]"}`}>탐방 범위 분석</button>
         </div>
-      </PageHeader>
-
-      <p className="mt-4 rounded-lg bg-[#E6EFF1] px-4 py-2.5 text-xs leading-5 text-[#356A78]">
-        권역은 리뷰어가 {regionalRisk.comparisonYear}~{regionalRisk.selectionYear}년
-        관찰 구간에 가장 많이 리뷰한 지역(state)입니다. 거주지, 직장, 실제 생활
-        반경을 추론하지 않습니다.
-      </p>
-
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex gap-1.5">
-          <button
-            type="button"
-            onClick={() => setViewMode("priority")}
-            className={[
-              "min-h-8 rounded-lg border px-3 text-xs font-medium transition",
-              viewMode === "priority"
-                ? "border-[#137A5A] bg-[#E3F1EA] text-[#137A5A]"
-                : "border-[#DDE4DF] text-[#626D67] hover:border-[#137A5A]",
-            ].join(" ")}
-          >
-            권역 우선순위
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode("travel")}
-            className={[
-              "min-h-8 rounded-lg border px-3 text-xs font-medium transition",
-              viewMode === "travel"
-                ? "border-[#137A5A] bg-[#E3F1EA] text-[#137A5A]"
-                : "border-[#DDE4DF] text-[#626D67] hover:border-[#137A5A]",
-            ].join(" ")}
-          >
-            탐방 범위
-          </button>
-          {derivedContext && (
-            <button
-              type="button"
-              onClick={() => setViewMode("supply")}
-              className={[
-                "min-h-8 rounded-lg border px-3 text-xs font-medium transition",
-                viewMode === "supply"
-                  ? "border-[#137A5A] bg-[#E3F1EA] text-[#137A5A]"
-                  : "border-[#DDE4DF] text-[#626D67] hover:border-[#137A5A]",
-              ].join(" ")}
-            >
-              리뷰 공급 변화
-            </button>
-          )}
-        </div>
-
-        {viewMode === "priority" && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-[#626D67]">정렬</span>
-            {Object.keys(sortRules).map((rule) => (
-              <button
-                key={rule}
-                type="button"
-                onClick={() => setSortRule(rule)}
-                className={[
-                  "min-h-8 rounded-full border px-3 text-xs font-medium transition",
-                  sortRule === rule
-                    ? "border-[#137A5A] bg-[#E3F1EA] text-[#137A5A]"
-                    : "border-[#DDE4DF] text-[#626D67] hover:border-[#137A5A]",
-                ].join(" ")}
-              >
-                {rule}
-              </button>
+        {viewMode === "map" && (
+          <div className="flex rounded-xl border border-[#DDE4DF] bg-white p-1">
+            {[["supply", "리뷰 공급"], ["highRisk", "고위험"], ["newcomers", "신규 유입"]].map(([key, label]) => (
+              <button key={key} type="button" onClick={() => setMapLayer(key)} className={`min-h-10 rounded-lg px-3 text-xs font-bold ${mapLayer === key ? "bg-[#E3F1EA] text-[#075C45]" : "text-[#718078]"}`}>{label}</button>
             ))}
           </div>
         )}
       </div>
 
-      {viewMode === "priority" ? (
-        <>
-          <div className="mt-4">
-            <RegionalBubbleMap
-              regions={regions}
-              hoveredRegion={hoveredRegion}
-              onHoverRegion={setHoveredRegion}
-            />
-          </div>
-
-          <div className="mt-6">
-            <p className="mb-2 text-xs text-[#626D67]">
-              표본 {regionalRisk.minimumReviewers}명 미만 권역은 비율이 흔들릴 수
-              있어 별도로 표시합니다. 지도와 표는 서로 연동됩니다.
-            </p>
-
-            <RegionalRiskTable
-              regions={regions}
-              minimumReviewers={regionalRisk.minimumReviewers}
-              hoveredRegion={hoveredRegion}
-              onHoverRegion={setHoveredRegion}
-            />
-          </div>
-        </>
-      ) : viewMode === "travel" ? (
-        <div className="mt-4">
-          <RegionalTravelRange />
-        </div>
+      {viewMode === "travel" ? (
+        <div className="mt-4"><RegionalTravelRange /></div>
       ) : (
-        <RegionalSupplyContext data={derivedContext} />
+        <>
+          <div className="mt-4 grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+            <div>
+              <RegionalBubbleMap
+                regions={regions}
+                hoveredRegion={hoveredRegion}
+                onHoverRegion={setHoveredRegion}
+                selectedRegion={activeSelectedRegion}
+                onSelectRegion={(region) => updateParams({ region })}
+                layer={mapLayer}
+              />
+              <p className="mt-3 rounded-xl bg-[#E9F1F3] px-4 py-3 text-xs leading-5 text-[#356A78]">
+                권역은 {regionalRisk.comparisonYear}~{regionalRisk.selectionYear}년 음식점 리뷰 활동의 대표 지역(state)입니다. 거주지·직장·실제 생활 반경을 추론하지 않습니다.
+              </p>
+            </div>
+            <RegionalInsightPanel region={selectedRegionData} />
+          </div>
+
+          <section className="mt-5 rounded-2xl border border-[#DDE4DF] bg-white p-5">
+            <div className="flex items-center justify-between gap-3"><div><p className="text-xs font-black tracking-[0.1em] text-[#137A5A]">REGION RANKING</p><h2 className="mt-1 text-base font-black">리뷰 공급 우선 확인 순위</h2></div><span className="text-[11px] text-[#718078]">핀과 목록은 동일한 권역을 선택합니다</span></div>
+            <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+              {regions.slice(0, 4).map((region, index) => (
+                <button key={region.region} type="button" onClick={() => updateParams({ region: region.region })} className={`rounded-xl border p-4 text-left transition ${activeSelectedRegion === region.region ? "border-[#075C45] bg-[#EEF7F2]" : "border-[#E2E7E3] hover:border-[#9FBCAE]"}`}>
+                  <span className="text-[10px] font-black text-[#789086]">PRIORITY {index + 1}</span>
+                  <strong className="mt-1 block text-sm">{region.region} · {region.topCity}</strong>
+                  <span className={`mt-2 block text-lg font-black ${region.reviewSupplyChangeRate < 0 ? "text-[#C94734]" : "text-[#075C45]"}`}>{region.reviewSupplyChangeRate >= 0 ? "+" : ""}{(region.reviewSupplyChangeRate * 100).toFixed(1)}%</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </>
       )}
 
-      <div className="mt-10 rounded-xl border border-[#DDE4DF] bg-white p-6">
-        <h2 className="text-lg font-bold text-[#17211D]">운영 연결</h2>
-
-        <p className="mt-3 text-sm leading-7 text-[#626D67]">
-          위험 권역을 확인한 뒤 리뷰어 워크리스트에서 개별 활동 변화와 개입
-          필요성을 검토합니다.
-        </p>
-
-        <Link
-          to="/reviewers"
-          className="mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-[#137A5A] px-5 font-bold text-white transition hover:bg-[#185C46]"
-        >
-          리뷰어 워크리스트 열기
-        </Link>
-      </div>
-
-      <footer className="mt-12 border-t border-[#DDE4DF] pt-5 text-xs leading-5 text-[#626D67]">
-        Reviewer Retention · {operationsSummary.dataModeLabel} data · 고위험
-        비율은 운영 검토 우선순위이며 실제 콘텐츠 소멸 확률이 아닙니다.
-      </footer>
+      <footer className="mt-8 border-t border-[#DDE4DF] pt-4 text-xs leading-5 text-[#718078]">Reviewer Retention · {operationsSummary.dataModeLabel} data · 고위험 비율과 모델 점수는 운영 우선순위이며 확률이 아닙니다.</footer>
     </section>
   );
 }
 
-function RegionalSupplyContext({ data }) {
-  const regions = [...data.regions].sort(
-    (first, second) => second.reviewSupplyChangeRate - first.reviewSupplyChangeRate,
-  );
-  const totalReviews = regions.reduce((sum, region) => sum + region.reviewCount, 0);
-  const previousReviews = regions.reduce(
-    (sum, region) => sum + (region.previousYearReviewCount ?? 0),
-    0,
-  );
-  const totalChangeRate = previousReviews > 0
-    ? (totalReviews - previousReviews) / previousReviews
-    : 0;
-  const newcomers = regions.reduce((sum, region) => sum + region.newPowerReviewers, 0);
-
+function SummaryMetric({ label, value, note, tone }) {
   return (
-    <div className="mt-4 rounded-xl border border-[#DDE4DF] bg-white p-5">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <SupplyMetric label={`${data.selectionYear}년 전체 음식점 리뷰`} value={totalReviews.toLocaleString()} />
-        <SupplyMetric label="전년 대비 리뷰 공급" value={`${totalChangeRate >= 0 ? "+" : ""}${(totalChangeRate * 100).toFixed(1)}%`} />
-        <SupplyMetric label="신규 파워 리뷰어" value={`${newcomers.toLocaleString()}명`} />
-      </div>
-      <p className="mt-4 text-xs leading-5 text-[#626D67]">
-        전체 음식점 리뷰 기준으로 재계산해 파워 리뷰어 코호트 선정 편향을 제거했습니다. 신규 유입은 최초 코호트 진입 연도에 한 번만 집계합니다.
-      </p>
-      <div className="mt-4 overflow-x-auto">
-        <table className="min-w-[640px] w-full text-sm">
-          <thead>
-            <tr className="border-b border-[#DDE4DF] text-left text-xs text-[#626D67]">
-              <th className="py-2">권역</th><th className="py-2 text-right">리뷰 공급</th><th className="py-2 text-right">전년 대비</th><th className="py-2 text-right">활동 리뷰어</th><th className="py-2 text-right">신규 파워 리뷰어</th>
-            </tr>
-          </thead>
-          <tbody>
-            {regions.map((region) => (
-              <tr key={region.region} className="border-b border-[#F1F4F1] last:border-0">
-                <td className="py-2 font-bold text-[#17211D]">{region.region}</td>
-                <td className="py-2 text-right">{region.reviewCount.toLocaleString()}</td>
-                <td className={`py-2 text-right font-medium ${region.reviewSupplyChangeRate < 0 ? "text-[#BF3620]" : "text-[#137A5A]"}`}>
-                  {region.reviewSupplyChangeRate >= 0 ? "+" : ""}{(region.reviewSupplyChangeRate * 100).toFixed(1)}%
-                </td>
-                <td className="py-2 text-right text-[#626D67]">{region.activeReviewers.toLocaleString()}</td>
-                <td className="py-2 text-right text-[#626D67]">{region.newPowerReviewers.toLocaleString()}명</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-function SupplyMetric({ label, value }) {
-  return (
-    <div className="rounded-lg bg-[#F7F8F5] p-4">
-      <p className="text-xs text-[#626D67]">{label}</p>
-      <p className="mt-1 text-xl font-bold text-[#17211D]">{value}</p>
-    </div>
+    <article className="rounded-xl border border-[#DDE4DF] bg-white px-5 py-4">
+      <p className="text-xs font-semibold text-[#718078]">{label}</p>
+      <p className={`mt-1 text-xl font-black ${tone === "warning" ? "text-[#C94734]" : tone === "green" ? "text-[#075C45]" : "text-[#17211D]"}`}>{value}</p>
+      {note && <p className="mt-1 text-[11px] text-[#8A948F]">{note}</p>}
+    </article>
   );
 }
 
