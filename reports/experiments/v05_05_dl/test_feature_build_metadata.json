@@ -1,0 +1,46 @@
+{
+  "version": "v05_05_dl",
+  "status": "test_features_complete",
+  "samples": 6533,
+  "comparison_year": 2017,
+  "selection_year": 2018,
+  "target_year": 2019,
+  "target_columns_loaded": [],
+  "sequence_rows": 156792,
+  "sequence_length": 24,
+  "sequence_channels": [
+    "monthly_review_count",
+    "monthly_active",
+    "monthly_unique_business_count",
+    "monthly_mean_interval_days"
+  ],
+  "lifecycle_features": [
+    "account_age_days",
+    "elite_year_count_prior",
+    "is_elite_selection_year",
+    "years_since_last_elite",
+    "recent_elite_streak"
+  ],
+  "feature_cutoff": "2018-12-31",
+  "lifecycle_diagnostics": {
+    "unique_users": 6533,
+    "users_with_invalid_elite_tokens_excluded": 2738,
+    "samples_with_future_elite_years_excluded": 3723,
+    "samples_without_observed_elite_history": 2790,
+    "selection_year_elite_samples": 3655
+  },
+  "inputs": {
+    "modeling_dataset": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\data\\processed\\modeling_dataset_rolling_v05_2.parquet",
+    "restaurant_reviews": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\data\\interim\\restaurant_reviews.parquet",
+    "culinary_reviews": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\data\\interim\\additional_culinary_reviews_v02.parquet",
+    "user_json": "C:\\Users\\playdata2\\Desktop\\SKN34-2nd-5Team\\data\\raw\\yelp_academic_dataset_user.json",
+    "user_json_size_bytes": 3363329011
+  },
+  "artifacts": {
+    "test_lifecycle_path": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\data\\processed\\experiments\\test_lifecycle_features_v05_05.parquet",
+    "test_lifecycle_sha256": "2ea1edf44c36812332ab58a47bfad6915755f3b5a0e92234bd337dddc3249de8",
+    "test_sequence_path": "C:\\Users\\playdata2\\Documents\\GitHub\\SKN34-2nd-5Team\\data\\processed\\experiments\\test_monthly_core4_sequence_v05_05.parquet",
+    "test_sequence_sha256": "5b3e67b22b7e1103954ad915d89e50290c3c3c9305f2f6fe2d4b39383fb77767"
+  },
+  "elapsed_seconds": 14.034284900000785
+}
