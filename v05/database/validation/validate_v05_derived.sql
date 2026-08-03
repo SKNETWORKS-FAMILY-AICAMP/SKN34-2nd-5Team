@@ -1,8 +1,12 @@
--- Run after load_v05_derived.py. Every issue_count must be 0.
+-- Run after the v05 derived-table reloaders. Every issue_count must be 0.
+-- The recommendation reloader already asserts Parquet row count = loaded DB row
+-- count inside one transaction, so this SQL validates the resulting data contract
+-- rather than pinning a legitimate algorithm result to one historical row count.
 
-SELECT 'recommendation_row_count' AS check_name,
-       ABS(COUNT(*) - 19351) AS issue_count
-FROM reviewer_restaurant_recommendation WHERE model_version = 'v04'
+SELECT 'recommendation_empty' AS check_name,
+       CASE WHEN COUNT(*) = 0 THEN 1 ELSE 0 END AS issue_count
+FROM reviewer_restaurant_recommendation
+WHERE model_version = 'v04'
 UNION ALL
 SELECT 'region_history_row_count', ABS(COUNT(*) - 37953)
 FROM reviewer_region_history WHERE model_version = 'v04'
@@ -29,11 +33,39 @@ FROM (
     GROUP BY sample_id, business_id HAVING COUNT(*) > 1
 ) AS issues
 UNION ALL
+SELECT 'recommendation_duplicate_rank', COUNT(*)
+FROM (
+    SELECT sample_id, recommendation_rank
+    FROM reviewer_restaurant_recommendation
+    WHERE model_version = 'v04'
+    GROUP BY sample_id, recommendation_rank HAVING COUNT(*) > 1
+) AS issues
+UNION ALL
+SELECT 'recommendation_version_mismatch', COUNT(*)
+FROM reviewer_restaurant_recommendation
+WHERE model_version = 'v04'
+  AND recommendation_version <> 'v05_primary_cluster_radius'
+UNION ALL
 SELECT 'recommendation_invalid_contract', COUNT(*)
 FROM reviewer_restaurant_recommendation
 WHERE model_version = 'v04'
   AND (distance_km < 0 OR search_radius_km > 50 OR stars < 3.5
+       OR distance_km > search_radius_km + 0.01
        OR review_count < 10 OR recommendation_rank NOT BETWEEN 1 AND 3)
+UNION ALL
+SELECT 'recommendation_missing_cluster_context', COUNT(*)
+FROM reviewer_restaurant_recommendation
+WHERE model_version = 'v04'
+  AND (recommendation_version IS NULL OR observed_p90_radius_km IS NULL
+       OR local_p90_radius_km IS NULL OR travel_outlier_count IS NULL
+       OR activity_cluster_count IS NULL OR primary_cluster_business_count IS NULL)
+UNION ALL
+SELECT 'recommendation_invalid_cluster_context', COUNT(*)
+FROM reviewer_restaurant_recommendation
+WHERE model_version = 'v04'
+  AND (local_p90_radius_km <= 0 OR activity_cluster_count < 1
+       OR primary_cluster_business_count < 1
+       OR (activity_cluster_count = 1 AND travel_outlier_count <> 0))
 UNION ALL
 SELECT 'recommendation_orphan_sample', COUNT(*)
 FROM reviewer_restaurant_recommendation AS recommendation
