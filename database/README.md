@@ -222,3 +222,22 @@ metadata와 대조하고 `model_versions`에 기록한다. 신규 예측 서비�
 v02·v03 모델 바이너리는 저장소에 없으므로 해당 버전의 `model_sha256`은
 NULL이다. 대신 비교 리포트 파일별 SHA256과 리포트 묶음 계약 SHA256을
 `metadata_json`에 저장한다.
+
+## 10. v05 XGBoost Trust Center 비교 후보 적재
+
+XGBoost v05는 현재 운영 모델 `v05_05_dl`을 교체하지 않고 Trust Center의
+검증 비교용으로만 `v05_ml_xgb` 버전에 적재한다. 먼저 전달받은 산출물 폴더를
+검증하고, 검증이 끝난 뒤에만 AWS MySQL에 추가한다.
+
+```bat
+python database\load\load_v05_ml_xgb.py ^
+  --artifact-root "C:\path\to\xgboost-v05" ^
+  --dry-run
+
+python database\load\load_v05_ml_xgb.py ^
+  --artifact-root "C:\path\to\xgboost-v05" ^
+  --confirm-database yelp_data
+```
+
+로더는 joblib을 실행하지 않고 SHA256만 metadata와 대조한다. 기존 행을
+삭제하거나 덮어쓰지 않으며, 같은 `v05_ml_xgb` 행이 있으면 안전상 중단한다.

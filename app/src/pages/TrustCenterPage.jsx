@@ -20,6 +20,7 @@ import { loadTrustData } from "../data";
 
 const STATUS_LABELS = {
   operational: "운영 중",
+  candidate: "비교 후보",
   archived: "과거 참고",
 };
 
@@ -104,6 +105,7 @@ function getSnapshotData(trustData, version) {
   }
 
   if (version === "v04") return { ...trustData.v04, binary: false };
+  if (version === "v05_ml_xgb") return { ...trustData.v05MlXgb, binary: false };
   if (version === "v03") return { ...trustData.v03, binary: false };
   if (version === "v02") return { ...trustData.v02, binary: true };
   return { available: false };
@@ -224,6 +226,8 @@ function TrustCenterPage() {
             <p className="mt-3 text-xs leading-5 text-[#626D67]">
               {selectedVersion === "v05_05_dl"
                 ? "현재 운영은 통합 위험 순위 상위 20%를 기본 검토 범위로 사용합니다."
+                : selectedVersion === "v05_ml_xgb"
+                  ? "XGBoost v05는 Trust Center 비교 후보이며 현재 운영 대상과 예측 결과를 바꾸지 않습니다."
                 : "과거 스냅샷은 당시 저장된 평가 결과이며 현재 운영 대상과 혼합하지 않습니다."}
             </p>
           </Panel>
@@ -304,7 +308,7 @@ function TrustCenterPage() {
         />
       </Panel>
 
-      <Panel className="mt-4" title="과거 검증 스냅샷" info="보존된 모델 결과를 조회하며 현재 운영 수치와 자동 합산하지 않습니다.">
+      <Panel className="mt-4" title="검증 스냅샷" info="운영·비교 후보·과거 모델 결과를 조회하며 현재 운영 수치와 자동 합산하지 않습니다.">
         <div className="overflow-x-auto">
           <table className="min-w-[820px] w-full text-sm">
             <thead className="bg-[#F6F8F6] text-left text-xs text-[#626D67]">
@@ -352,7 +356,7 @@ function TrustCenterPage() {
           선정·피처 마감 이후의 리뷰와 상태 라벨은 모델 입력에서 제외하고 사후 검증에만 사용합니다.
         </ReferenceCard>
         <ReferenceCard title="모델 비교">
-          v05_05_dl(Lifecycle Fusion H2)이 현재 3상태 운영 모델이며, v04·v03은 과거 3상태(로지스틱), v02는 이진 이탈 참고 모델입니다.
+          v05_05_dl(Lifecycle Fusion H2)이 현재 3상태 운영 모델이며, v05_ml_xgb는 XGBoost 비교 후보입니다. v04·v03은 과거 3상태, v02는 이진 이탈 참고 모델입니다.
         </ReferenceCard>
         <ReferenceCard title="용어 사전">
           위험 점수는 확률이 아닌 우선순위이며 리뷰 활동 반경은 공개 음식점 리뷰 위치의 분포입니다.
@@ -677,7 +681,12 @@ function TimelineConnector({ grow, years }) {
 }
 
 function StatusBadge({ status }) {
-  return <span className={`rounded-full px-2 py-1 text-[10px] font-black ${status === "operational" ? "bg-[#DFF1E8] text-[#087A5A]" : "bg-[#EEF0EE] text-[#626D67]"}`}>{STATUS_LABELS[status] ?? status}</span>;
+  const tone = status === "operational"
+    ? "bg-[#DFF1E8] text-[#087A5A]"
+    : status === "candidate"
+      ? "bg-[#E7F0FC] text-[#225EA8]"
+      : "bg-[#EEF0EE] text-[#626D67]";
+  return <span className={`rounded-full px-2 py-1 text-[10px] font-black ${tone}`}>{STATUS_LABELS[status] ?? status}</span>;
 }
 
 function ReferenceCard({ title, children }) {
