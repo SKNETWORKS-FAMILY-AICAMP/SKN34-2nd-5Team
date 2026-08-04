@@ -10,6 +10,22 @@ $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $PythonExe = Join-Path $ProjectRoot 'venv\Scripts\python.exe'
 $StatusScript = Join-Path $PSScriptRoot 'check_local_status.ps1'
 
+function Resolve-NpmCommand {
+    $pathCommand = Get-Command 'npm.cmd' -ErrorAction SilentlyContinue
+    if ($null -ne $pathCommand) {
+        $env:PATH = "$(Split-Path -Parent $pathCommand.Source);$env:PATH"
+        return $pathCommand.Source
+    }
+
+    $standardCommand = Join-Path $env:ProgramFiles 'nodejs\npm.cmd'
+    if (Test-Path -LiteralPath $standardCommand -PathType Leaf) {
+        $env:PATH = "$(Split-Path -Parent $standardCommand);$env:PATH"
+        return $standardCommand
+    }
+
+    throw 'npm.cmd was not found. Install Node.js 20.19+ or 22.12+, then reopen the terminal.'
+}
+
 function Get-ListenerPid {
     param([int]$Port)
 
@@ -58,7 +74,9 @@ if ($shouldStartAuth -and $null -eq (Get-ListenerPid -Port 8100)) {
 
 if ($shouldStartReact -and $null -eq (Get-ListenerPid -Port 5173)) {
     Write-Host 'Starting React on 5173...' -ForegroundColor Cyan
-    Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', 'npm run dev -- --host 127.0.0.1' `
+    $npmCommand = Resolve-NpmCommand
+    Start-Process -FilePath $npmCommand `
+        -ArgumentList @('run', 'dev', '--', '--host', '127.0.0.1') `
         -WorkingDirectory (Join-Path $ProjectRoot 'app') -WindowStyle Hidden
 }
 
