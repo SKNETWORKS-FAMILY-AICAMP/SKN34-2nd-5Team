@@ -96,11 +96,16 @@ export function loadCityOperatingContext(selectionYear = 2018) {
   return cityOperatingPromise;
 }
 
-export function loadRegionalCampaignRestaurants(region, sampleIds) {
+export function loadRegionalCampaignRestaurants(region, sampleIds, targetScope = "region", cityKey = null) {
   return fetch(`${API_BASE_URL}/api/regional/campaign-restaurants`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ region, sample_ids: sampleIds }),
+    body: JSON.stringify({
+      region,
+      sample_ids: sampleIds,
+      target_scope: targetScope,
+      city_key: targetScope === "city" ? cityKey : null,
+    }),
   }).then((response) => {
     if (!response.ok) {
       throw new Error(`권역 음식점 후보를 불러오지 못했습니다. (${response.status})`);
@@ -126,6 +131,25 @@ export function loadReviewerRecommendations(userId) {
     );
   }
   return recommendationPromises.get(userId);
+}
+
+const reviewerRadiusPromises = new Map();
+
+export function loadReviewerRadius(userId) {
+  if (!reviewerRadiusPromises.has(userId)) {
+    reviewerRadiusPromises.set(
+      userId,
+      fetch(
+        `${API_BASE_URL}/api/reviewer-details/${encodeURIComponent(userId)}/radius`,
+      ).then((response) => {
+        if (!response.ok) {
+          throw new Error(`반경 데이터를 불러오지 못했습니다 (${response.status})`);
+        }
+        return response.json();
+      }),
+    );
+  }
+  return reviewerRadiusPromises.get(userId);
 }
 
 // Per-reviewer detail is far larger than the worklist rows, so each reviewer

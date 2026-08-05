@@ -21,6 +21,21 @@ v04 원본·코호트·공간 데이터
 Parquet는 생성·검증·복구용 중간 산출물이고, React 런타임의 기준은
 FastAPI를 통해 조회하는 MySQL `yelp_data`다.
 
+### 현재 운영 기준 (`v05_05_dl`)
+
+2026-08-05부터 화면에 표시되는 운영 컨텍스트는 DEC-014에 따라
+Restaurants + 승인된 추가 미식 업종으로 통일한다. 기존 v04 파생 산출물과
+적재 행은 비교·롤백용으로 보존한다.
+
+```powershell
+venv\Scripts\python.exe v05\pipeline\derive_operating_context_v05_05.py
+venv\Scripts\python.exe v05\database\load\load_operating_context_v05_05.py `
+  --confirm-database yelp_data --confirm-replace v05_05_dl
+```
+
+통합 로더는 `v05_05_dl` 행만 하나의 트랜잭션에서 교체한다. 모델 점수는
+재적재하지 않으며, 권역·도시·공급·반경·추천·요일 컨텍스트만 갱신한다.
+
 ## 2. 디렉터리
 
 ```text
@@ -209,3 +224,4 @@ mysql --default-character-set=utf8mb4 yelp_data `
 - [`docs/ui/V05_WORK_SPEC.md`](../docs/ui/V05_WORK_SPEC.md)
 - [`docs/ui/V05_IMPLEMENTATION_REPORT.md`](../docs/ui/V05_IMPLEMENTATION_REPORT.md)
 - [`docs/CODEX_HANDOFF.md`](../docs/CODEX_HANDOFF.md)
+- [`docs/06_decisions/DEC-014_unified_operating_context.md`](../docs/06_decisions/DEC-014_unified_operating_context.md)

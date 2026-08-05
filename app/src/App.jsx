@@ -21,6 +21,7 @@ const ReviewerDetailPage = lazy(() => import("./pages/ReviewerDetailPage"));
 const ContentNetworkPage = lazy(() => import("./pages/ContentNetworkPage"));
 const OperationsHistoryPage = lazy(() => import("./pages/OperationsHistoryPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const SponsorshipManagementPage = lazy(() => import("./pages/SponsorshipManagementPage"));
 
 function App() {
   return (
@@ -46,6 +47,7 @@ function App() {
                       <Route path="/operations-history" element={<OperationsHistoryPage />} />
                       <Route path="/trust" element={<TrustCenterPage />} />
                       <Route path="/settings" element={<SettingsPage />} />
+                      <Route path="/settings/sponsorships" element={<SponsorshipManagementPage />} />
                     </Routes>
                   </Suspense>
                 </AppShell>

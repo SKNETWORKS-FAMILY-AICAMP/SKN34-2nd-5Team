@@ -13,6 +13,8 @@ plotly==5.24.1
 scikit-learn==1.4.2
 imbalanced-learn
 joblib
+xgboost
+lightgbm
 
 # 공간·거리 계산
 geopy

@@ -26,7 +26,7 @@ from sqlalchemy.engine import Engine
 from api.services.business_attribute_service import get_business_display_attributes
 from api.services.business_photo_service import get_business_photos
 
-MODEL_VERSION = "v04"
+MODEL_VERSION = "v05_05_dl"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 EARTH_RADIUS_KM = 6371.0
 MAP_COORDINATE_PRECISION = 1

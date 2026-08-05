@@ -71,6 +71,10 @@ class TargetListWrite(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     decision: str = Field(min_length=1, max_length=64)
     model_version: str = Field(alias="modelVersion", min_length=1, max_length=16)
+    target_scope: str | None = Field(default=None, alias="targetScope", pattern="^(region|city)$")
+    region_code: str | None = Field(default=None, alias="regionCode", max_length=32)
+    city_key: str | None = Field(default=None, alias="cityKey", max_length=128)
+    city_name: str | None = Field(default=None, alias="cityName", max_length=128)
     members: list[TargetListMember] = Field(min_length=1, max_length=5000)
 
 
@@ -87,6 +91,9 @@ class ActionPlanWrite(BaseModel):
     reviewer_user_id: str | None = Field(default=None, alias="reviewerUserId", max_length=64)
     sample_id: str | None = Field(default=None, alias="sampleId", max_length=64)
     region_code: str | None = Field(default=None, alias="regionCode", max_length=32)
+    target_scope: str | None = Field(default=None, alias="targetScope", pattern="^(region|city)$")
+    city_key: str | None = Field(default=None, alias="cityKey", max_length=128)
+    city_name: str | None = Field(default=None, alias="cityName", max_length=128)
     target_list_id: int | None = Field(default=None, alias="targetListId")
     manager_decision: str | None = Field(default=None, alias="managerDecision", max_length=64)
     action_type: str = Field(alias="actionType", min_length=1, max_length=128)
@@ -207,6 +214,10 @@ def post_target_list(
             "name": body.name,
             "decision": body.decision,
             "model_version": body.model_version,
+            "target_scope": body.target_scope,
+            "region_code": body.region_code,
+            "city_key": body.city_key,
+            "city_name": body.city_name,
             "members": [
                 {"user_id": member.user_id, "sample_id": member.sample_id}
                 for member in body.members

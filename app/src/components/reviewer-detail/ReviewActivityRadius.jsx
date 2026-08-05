@@ -6,8 +6,7 @@ import BusinessAttributeBadges from "../business/BusinessAttributeBadges";
 import BusinessPhoto from "../business/BusinessPhoto";
 import DatasetRating from "../business/DatasetRating";
 import BusinessMapMarker, { MapLegend } from "../map/BusinessMapMarker";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+import { loadReviewerRadius } from "../../data";
 
 // Circles are capped at this many km so one distant outlier (a travel
 // review) doesn't shrink the entire local cluster to invisibility — real
@@ -318,11 +317,7 @@ function ReviewActivityRadius({ userId, recommendationData }) {
 
   useEffect(() => {
     let active = true;
-    fetch(`${API_BASE_URL}/api/reviewer-details/${encodeURIComponent(userId)}/radius`)
-      .then((response) => {
-        if (!response.ok) throw new Error(`반경 데이터를 불러오지 못했습니다 (${response.status})`);
-        return response.json();
-      })
+    loadReviewerRadius(userId)
       .then((json) => {
         if (active) setData(json);
       })
@@ -426,6 +421,12 @@ function ReviewActivityRadius({ userId, recommendationData }) {
     ? Math.min(selection.p90RadiusKm, scaleKm) * pxPerKm
     : null;
 
+  const comparisonCity = comparison?.mapRegions?.primaryRegion?.city;
+  const selectionCity = selection?.mapRegions?.primaryRegion?.city;
+  const cityChanged = Boolean(
+    bothAvailable && comparisonCity && selectionCity && comparisonCity !== selectionCity,
+  );
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[#DDE4DF] bg-white">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#E2E7E3] px-4 py-2.5">
@@ -474,6 +475,31 @@ function ReviewActivityRadius({ userId, recommendationData }) {
       ) : visualMode === "activity" && hasMapBusinesses ? (
         <ActualActivityMap period={mapPeriod} mapRegions={mapRegions} />
       ) : (
+      <>
+      {cityChanged && (
+        <div className="mt-3 rounded-lg border border-[#B7D8C8] bg-[#F0F7F3] p-3">
+          <p className="text-[9px] font-black tracking-[0.1em] text-[#137A5A]">왜 추천 지역이 바뀌었나</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[13px] font-bold text-[#17211D]">
+            <span className="font-normal text-[#626D67]">{comparison.activityYear}년 주 활동 도시</span>
+            <span>{comparisonCity}</span>
+            <span className="text-[#075C45]">→</span>
+            <span className="font-normal text-[#626D67]">{selection.activityYear}년</span>
+            <span className="text-[#075C45]">{selectionCity}</span>
+          </div>
+          <p className="mt-1.5 text-[11px] leading-5 text-[#4F5D56]">
+            활동 중심이 {change?.centerShiftKm ?? "—"}km 이동해서, <span className="font-bold">추천 후보</span> 탭의 음식점 추천도 이제 {selectionCity} 기준으로 자동 계산됩니다.
+          </p>
+          {recommendationRestaurants.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setVisualMode("recommendations")}
+              className="mt-2 min-h-9 rounded-lg border border-[#075C45] bg-white px-3 text-[11px] font-bold text-[#075C45] hover:bg-[#F0F7F3]"
+            >
+              추천 후보 탭에서 확인 →
+            </button>
+          )}
+        </div>
+      )}
       <div className="mt-3 flex flex-col gap-3 sm:flex-row">
         <svg
           viewBox={`0 0 ${VIEWPORT_PX} ${SVG_HEIGHT_PX}`}
@@ -642,6 +668,7 @@ function ReviewActivityRadius({ userId, recommendationData }) {
           )}
         </div>
       </div>
+      </>
       )}
 
       {visualMode === "recommendations" ? (

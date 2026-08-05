@@ -15,6 +15,7 @@ const VALID_SCOPE = ["region", "core", "newcomers"];
 const VALID_SORT = ["우선순위", "중단 점수", "약화 점수", "활동 감소순", "리뷰 공백"];
 const VALID_CRM = ["전체", "상위 20%", "상위 20% 제외"];
 const SCOPE_LABELS = { region: "권역 종합", core: "핵심 리뷰어", newcomers: "신규 유입" };
+const MODEL_VERSION_DISPLAY_LABELS = { v05_05_dl: "v05" };
 
 function normalize(value) { return String(value ?? "").trim().toLocaleLowerCase(); }
 function readEnum(params, key, fallback, values) { const value = params.get(key); return value !== null && values.includes(value) ? value : fallback; }
@@ -166,7 +167,7 @@ function ReviewerListPage() {
       )}
 
       {regionalCampaignMode && <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[#DDE4DF] bg-white px-4 py-2.5"><div className="min-w-0 flex-1"><span className="text-[10px] font-bold text-[#718078]">캠페인 대상</span><p className="truncate text-sm font-black text-[#17211D]">{selectedIds.size.toLocaleString()}명 선택</p></div><Link to={campaignHref} className="flex min-h-10 min-w-[190px] items-center justify-center rounded-lg bg-[#075C45] px-5 text-xs font-black text-white">캠페인 설계로 이동 →</Link></div>}
-      <footer className="mt-4 border-t border-[#E3E8E5] pt-2 text-[9px] text-[#718078]">{summary.modelVersion} 실데이터 · {SCOPE_LABELS[scopeFilter]} {scopedReviewers.length.toLocaleString()}명 · 모델 점수는 확률이 아닌 운영 우선순위입니다.</footer>
+      <footer className="mt-4 border-t border-[#E3E8E5] pt-2 text-[9px] text-[#718078]">{MODEL_VERSION_DISPLAY_LABELS[summary.modelVersion] ?? summary.modelVersion} 실데이터 · {SCOPE_LABELS[scopeFilter]} {scopedReviewers.length.toLocaleString()}명 · 모델 점수는 확률이 아닌 운영 우선순위입니다.</footer>
     </section>
   );
 }

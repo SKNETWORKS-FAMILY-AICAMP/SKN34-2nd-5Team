@@ -16,7 +16,10 @@ import {
 import { useDecisions } from "../context/DecisionContext";
 import {
   formatTopPercent,
+  loadCityOperatingContext,
   loadPlaybooks,
+  loadRegionalDerivedContext,
+  loadReviewerRadius,
   loadReviewerRecommendations,
   strategyFor,
 } from "../data";
@@ -56,9 +59,11 @@ function PlaybookPage() {
   const reviewers = useReviewers();
   const riskTypes = useRiskTypes();
   const { decisions } = useDecisions();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const contextUserId = searchParams.get("reviewer");
   const contextRegion = searchParams.get("region");
+  const targetScope = searchParams.get("scope") === "city" ? "city" : "region";
+  const contextCityKey = targetScope === "city" ? searchParams.get("city") : null;
 
   const [riskTypeFilter, setRiskTypeFilter] = useState("전체");
   const [targetLists, setTargetLists] = useState([]);
@@ -70,6 +75,8 @@ function PlaybookPage() {
   const [listFeedback, setListFeedback] = useState("");
   const [listFeedbackTone, setListFeedbackTone] = useState("success");
   const [campaignSignal, setCampaignSignal] = useState(searchParams.get("riskType") ?? "전체");
+  const [regionalDerivedContext, setRegionalDerivedContext] = useState(null);
+  const [cityOperatingContext, setCityOperatingContext] = useState(null);
   const showLegacyCampaign = new URLSearchParams(window.location.search).has("legacy");
   const requestedMemberIds = useMemo(
     () => new Set((searchParams.get("members") ?? "").split(",").filter(Boolean)),
@@ -104,12 +111,39 @@ function PlaybookPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!contextRegion) {
+      return undefined;
+    }
+    Promise.all([loadRegionalDerivedContext(), loadCityOperatingContext()])
+      .then(([regionalData, cityData]) => {
+        if (!cancelled) {
+          setRegionalDerivedContext(regionalData);
+          setCityOperatingContext(cityData);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRegionalDerivedContext(null);
+          setCityOperatingContext(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [contextRegion]);
+
   // playbooks 기본값은 []로 둬서, 로딩 중에도 아래 useMemo들이 안전하게
   // 돈다. 실제 로딩/에러 표시는 훅 순서 끝(visiblePlaybooks 뒤)에서 가드.
   const [playbooks, setPlaybooks] = useState([]);
   const [loadStatus, setLoadStatus] = useState("loading");
   const [loadError, setLoadError] = useState(null);
-  const [recommendationData, setRecommendationData] = useState(null);
+  const [recommendationResult, setRecommendationResult] = useState({ userId: null, data: null });
+  const [reviewerRadiusResult, setReviewerRadiusResult] = useState({ userId: null, status: "idle", data: null });
+  const recommendationData = recommendationResult.userId === contextUserId ? recommendationResult.data : null;
+  const reviewerRadiusData = reviewerRadiusResult.userId === contextUserId ? reviewerRadiusResult.data : null;
+  const reviewerRadiusStatus = reviewerRadiusResult.userId === contextUserId ? reviewerRadiusResult.status : "loading";
 
   useEffect(() => {
     let cancelled = false;
@@ -138,10 +172,34 @@ function PlaybookPage() {
 
     loadReviewerRecommendations(contextUserId)
       .then((data) => {
-        if (!cancelled && data.available) setRecommendationData(data);
+        if (!cancelled) setRecommendationResult({ userId: contextUserId, data: data.available ? data : null });
       })
       .catch(() => {
         // Optional v05 data must not block the existing playbook workflow.
+        if (!cancelled) setRecommendationResult({ userId: contextUserId, data: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [contextUserId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!contextUserId) return undefined;
+
+    loadReviewerRadius(contextUserId)
+      .then((data) => {
+        if (!cancelled) {
+          setReviewerRadiusResult({
+            userId: contextUserId,
+            status: data.available ? "ready" : "unavailable",
+            data,
+          });
+        }
+      })
+      .catch(() => {
+        // Historical business evidence is supplementary and must not block the workflow.
+        if (!cancelled) setReviewerRadiusResult({ userId: contextUserId, status: "error", data: null });
       });
     return () => {
       cancelled = true;
@@ -179,14 +237,54 @@ function PlaybookPage() {
 
   const campaignCandidates = useMemo(() => {
     if (!contextRegion) return [];
+    if (targetScope === "city") {
+      const eligible = (cityOperatingContext?.cities ?? []).some(
+        (city) => city.minimumSampleMet && city.state === contextRegion && city.cityKey === contextCityKey,
+      );
+      if (!eligible) return [];
+    }
     return reviewersWithDecisions
       .filter((reviewer) => reviewer.region === contextRegion)
+      .filter((reviewer) => targetScope !== "city" || reviewer.topCity?.trim().toLowerCase() === contextCityKey)
       .filter((reviewer) => reviewer.crmTarget)
       .filter((reviewer) => reviewer.managerDecision !== "이번엔 제외")
       .filter((reviewer) => requestedMemberIds.size === 0 || requestedMemberIds.has(reviewer.userId))
       .filter((reviewer) => campaignSignal === "전체" || reviewer.riskType === campaignSignal)
       .sort((first, second) => first.priorityRank - second.priorityRank);
-  }, [campaignSignal, contextRegion, requestedMemberIds, reviewersWithDecisions]);
+  }, [campaignSignal, cityOperatingContext, contextCityKey, contextRegion, requestedMemberIds, reviewersWithDecisions, targetScope]);
+  const regionalOperatingContext = useMemo(
+    () => regionalDerivedContext?.regions?.find((item) => item.region === contextRegion) ?? null,
+    [contextRegion, regionalDerivedContext],
+  );
+  const allEligibleCampaignCities = useMemo(
+    () => (cityOperatingContext?.cities ?? [])
+      .filter((city) => city.minimumSampleMet),
+    [cityOperatingContext],
+  );
+  const eligibleCampaignCities = useMemo(
+    () => allEligibleCampaignCities
+      .filter((city) => city.state === contextRegion),
+    [allEligibleCampaignCities, contextRegion],
+  );
+  const selectedCampaignCity = useMemo(
+    () => eligibleCampaignCities.find((city) => city.cityKey === contextCityKey) ?? null,
+    [contextCityKey, eligibleCampaignCities],
+  );
+  const campaignRegions = useMemo(
+    () => (cityOperatingContext?.regions ?? []).map((item) => item.region),
+    [cityOperatingContext],
+  );
+
+  function changeCampaignLocation(nextScope, nextRegion, nextCityKey = null) {
+    const next = new URLSearchParams(searchParams);
+    next.set("mode", "region");
+    next.set("scope", nextScope);
+    next.set("region", nextRegion);
+    if (nextScope === "city" && nextCityKey) next.set("city", nextCityKey);
+    else next.delete("city");
+    next.delete("members");
+    setSearchParams(next, { replace: true });
+  }
 
   // A. Actual manager judgments from the server, with
   // undecided reviewers counted as their own "미검토" bucket rather than
@@ -264,13 +362,14 @@ function PlaybookPage() {
     return <Skeleton rows={6} columns={3} />;
   }
 
-  async function handleSaveTargetList(decision, pool) {
+  async function handleSaveTargetList(decision, pool, geography = {}) {
     const name = listNameDraft.trim() || `${decision} · ${new Date().toLocaleDateString("ko-KR")}`;
     try {
       const saved = await createTargetList({
         name,
         decision,
         modelVersion: operationsSummary.modelVersion,
+        ...geography,
         members: pool.map((reviewer) => ({
           userId: reviewer.userId,
           sampleId: reviewer.sampleId,
@@ -294,10 +393,19 @@ function PlaybookPage() {
   }
 
   async function saveRegionalPlan(plan) {
-    const list = await handleSaveTargetList(`권역 캠페인 · ${contextRegion}`, campaignCandidates);
+    const geography = {
+      targetScope,
+      regionCode: contextRegion,
+      cityKey: targetScope === "city" ? selectedCampaignCity?.cityKey : null,
+      cityName: targetScope === "city" ? selectedCampaignCity?.city : null,
+    };
+    const scopeLabel = targetScope === "city"
+      ? `도시 캠페인 · ${contextRegion} · ${selectedCampaignCity?.city}`
+      : `권역 캠페인 · ${contextRegion}`;
+    const list = await handleSaveTargetList(scopeLabel, campaignCandidates, geography);
     const savedPlan = await createActionPlan({
       planType: "regional", modelVersion: operationsSummary.modelVersion,
-      regionCode: contextRegion, targetListId: list.listId,
+      ...geography, targetListId: list.listId,
       managerDecision: null, status: "saved", ...plan,
     });
     setActionPlans((current) => [savedPlan, ...current.filter((item) => item.planId !== savedPlan.planId)]);
@@ -370,11 +478,19 @@ function PlaybookPage() {
         <GlobalWorkflowStepper steps={operationWorkflowSteps({ targetHref: regionalQueueHref, evidenceHref: regionalQueueHref })} currentStep={4} />
 
         <RegionalCampaignBuilder
+          key={`${targetScope}:${contextRegion}:${contextCityKey ?? "all"}`}
           region={contextRegion}
-          topCity={campaignCandidates[0]?.topCity}
+          targetScope={targetScope}
+          cityKey={selectedCampaignCity?.cityKey ?? null}
+          cityName={selectedCampaignCity?.city ?? null}
+          regions={campaignRegions}
+          cities={allEligibleCampaignCities}
+          onLocationChange={changeCampaignLocation}
+          topCity={targetScope === "city" ? selectedCampaignCity?.city : campaignCandidates[0]?.topCity}
           candidates={campaignCandidates}
           riskTypes={riskTypes}
           selectedSignal={campaignSignal}
+          weekdayPattern={targetScope === "city" ? selectedCampaignCity?.weekdayPattern : regionalOperatingContext?.weekdayPattern}
           onSignalChange={setCampaignSignal}
           onSave={saveRegionalPlan}
         />
@@ -399,8 +515,11 @@ function PlaybookPage() {
         <GlobalWorkflowStepper steps={operationWorkflowSteps({ targetHref: individualQueueHref, evidenceHref: reviewerHref })} currentStep={4} />
 
         <IndividualInterventionPanel
+          key={contextReviewer.userId}
           reviewer={contextReviewer}
           recommendationData={recommendationData}
+          reviewerRadiusData={reviewerRadiusData}
+          reviewerRadiusStatus={reviewerRadiusStatus}
           strategy={contextStrategy}
           onSave={saveIndividualPlan}
         />
@@ -419,9 +538,9 @@ function PlaybookPage() {
       .filter((reviewer) => reviewer.managerDecision && reviewer.managerDecision !== "이번엔 제외")
       .filter((reviewer) => !plannedReviewerIds.has(reviewer.userId))
       .sort((first, second) => first.priorityRank - second.priorityRank);
-    const regionalDesignQueue = targetLists.filter((list) => list.name.startsWith("권역 캠페인 · ") && !plannedTargetListIds.has(list.listId));
+    const regionalDesignQueue = targetLists.filter((list) => (list.targetScope || list.name.startsWith("권역 캠페인 · ")) && !plannedTargetListIds.has(list.listId));
     const personalQueueItems = personalDesignQueue.map((reviewer) => ({ key: `individual:${reviewer.userId}`, type: "individual", reviewer, title: reviewer.userId, decision: reviewer.managerDecision, signal: reviewer.riskType, href: `/playbook?mode=individual&reviewer=${encodeURIComponent(reviewer.userId)}` }));
-    const regionalQueueItems = regionalDesignQueue.map((list) => { const region = regionFromTargetList(list); return { key: `regional:${list.listId}`, type: "regional", list, title: region, decision: "지역 활성화 캠페인", signal: list.decision, href: `/playbook?mode=region&region=${encodeURIComponent(region)}` }; });
+    const regionalQueueItems = regionalDesignQueue.map((list) => { const region = list.regionCode ?? regionFromTargetList(list); const scope = list.targetScope ?? "region"; const city = scope === "city" && list.cityKey ? `&city=${encodeURIComponent(list.cityKey)}` : ""; return { key: `regional:${list.listId}`, type: "regional", list, title: scope === "city" ? `${region} · ${list.cityName}` : `${region} 전체`, decision: "지역 활성화 캠페인", signal: list.decision, href: `/playbook?mode=region&scope=${scope}&region=${encodeURIComponent(region)}${city}` }; });
     const activeQueueItems = designQueueMode === "individual" ? personalQueueItems : regionalQueueItems;
     const selectedDesign = activeQueueItems.find((item) => item.key === selectedDesignKey) ?? activeQueueItems[0] ?? null;
     const planGroups = new Map();
@@ -477,6 +596,7 @@ function PlaybookPage() {
           candidates={campaignCandidates}
           riskTypes={riskTypes}
           selectedSignal={campaignSignal}
+          weekdayPattern={regionalOperatingContext?.weekdayPattern}
           onSignalChange={setCampaignSignal}
           onSave={() => handleSaveTargetList(`권역 캠페인 · ${contextRegion}`, campaignCandidates)}
         />
@@ -484,8 +604,11 @@ function PlaybookPage() {
 
       {contextReviewer && contextStrategy && (
         <IndividualInterventionPanel
+          key={contextReviewer.userId}
           reviewer={contextReviewer}
           recommendationData={recommendationData}
+          reviewerRadiusData={reviewerRadiusData}
+          reviewerRadiusStatus={reviewerRadiusStatus}
           strategy={contextStrategy}
           onSave={() => handleSaveTargetList(`개인 개입 · ${contextReviewer.userId}`, [contextReviewer])}
         />

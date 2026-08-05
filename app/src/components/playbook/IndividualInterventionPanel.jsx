@@ -19,16 +19,39 @@ function RecommendationFocus({ restaurants, focusedId }) {
   return null;
 }
 
-function IndividualInterventionPanel({ reviewer, recommendationData, strategy, onSave }) {
-  const restaurants = useMemo(
+const REVIEW_RESTART_ACTION = "단골 후보 매장 리뷰 재개 제안";
+
+function IndividualInterventionPanel({ reviewer, recommendationData, reviewerRadiusData, reviewerRadiusStatus, strategy, onSave }) {
+  const recommendationRestaurants = useMemo(
     () => (recommendationData?.recommendations ?? []).filter((item) => Number.isFinite(item.latitude) && Number.isFinite(item.longitude)),
     [recommendationData],
   );
-  const initialRestaurantIds = restaurants.slice(0, 3).map((item) => item.businessId);
+  const restartCandidates = useMemo(() => {
+    if (!reviewerRadiusData?.comparison?.available || !reviewerRadiusData?.selection?.available) return [];
+    const comparisonBusinesses = reviewerRadiusData?.comparison?.businesses ?? [];
+    const selectionBusinessIds = new Set(
+      (reviewerRadiusData?.selection?.businesses ?? []).map((item) => item.businessId),
+    );
+    return comparisonBusinesses
+      .filter((item) => !selectionBusinessIds.has(item.businessId))
+      .sort((first, second) => second.reviewCount - first.reviewCount || String(first.name).localeCompare(String(second.name)))
+      .map((item) => ({
+        ...item,
+        primaryCategory: item.categories?.[0] ?? "음식점",
+        reviewerReviewCount: item.reviewCount,
+        reviewCount: item.datasetReviewCount ?? 0,
+        distanceBand: "historical",
+      }));
+  }, [reviewerRadiusData]);
+  const comparisonYear = reviewerRadiusData?.comparison?.activityYear;
+  const selectionYear = reviewerRadiusData?.selection?.activityYear;
+  const [actionType, setActionType] = useState(strategy.secondary || "운영자 직접 확인");
+  const isRestartAction = actionType === REVIEW_RESTART_ACTION;
+  const restaurants = isRestartAction ? restartCandidates : recommendationRestaurants;
+  const initialRestaurantIds = restaurants.slice(0, isRestartAction ? 2 : 3).map((item) => item.businessId);
   const [focusedId, setFocusedId] = useState(initialRestaurantIds[0] ?? null);
   const [selectedIds, setSelectedIds] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [actionType, setActionType] = useState(strategy.secondary || "운영자 직접 확인");
   const [channels, setChannels] = useState(["app"]);
   const [messageBody, setMessageBody] = useState("");
   const activeSelectedIds = selectedIds ?? initialRestaurantIds;
@@ -36,6 +59,31 @@ function IndividualInterventionPanel({ reviewer, recommendationData, strategy, o
   const radiusContext = recommendationData?.radiusContext;
   const isExploration = reviewer.riskType === "탐색 활동 축소형";
   const effectiveDecision = reviewer.managerDecision ?? reviewer.effectiveDecision;
+  const visibleRestaurants = isRestartAction ? restaurants : restaurants.slice(0, 3);
+  const restartPreviewNames = restartCandidates.slice(0, 2).map((item) => item.name).join(" · ");
+  const remainingRestartCount = Math.max(0, restartCandidates.length - 2);
+  const radiusPeriodsAvailable = Boolean(reviewerRadiusData?.comparison?.available && reviewerRadiusData?.selection?.available);
+  const restartEvidenceStatus = reviewerRadiusStatus === "loading"
+    ? "loading"
+    : reviewerRadiusStatus !== "ready" || !radiusPeriodsAvailable
+      ? "unavailable"
+      : restartCandidates.length === 0
+        ? "empty"
+        : "ready";
+  const restartEvidenceMessage = restartEvidenceStatus === "loading"
+    ? "재개 후보를 불러오는 중입니다."
+    : restartEvidenceStatus === "unavailable"
+      ? "기간별 리뷰 데이터가 부족해 재개 후보를 계산할 수 없습니다."
+      : restartEvidenceStatus === "empty"
+        ? "재개 제안 근거 매장이 없습니다."
+        : `${restartPreviewNames}${remainingRestartCount > 0 ? ` 외 ${remainingRestartCount}곳` : ""}`;
+
+  function chooseAction(nextAction) {
+    setActionType(nextAction);
+    setSelectedIds(null);
+    const nextRestaurants = nextAction === REVIEW_RESTART_ACTION ? restartCandidates : recommendationRestaurants;
+    setFocusedId(nextRestaurants[0]?.businessId ?? null);
+  }
 
   function toggleRestaurant(businessId) {
     setFocusedId(businessId);
@@ -80,8 +128,8 @@ function IndividualInterventionPanel({ reviewer, recommendationData, strategy, o
 
       <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(520px,0.95fr)]">
         <div className="rounded-2xl border border-[#DDE4DF] bg-white p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[10px] font-black tracking-[0.12em] text-[#137A5A]">RECOMMENDATION MAP</p><h2 className="mt-1 text-lg font-black">개인 맞춤 음식점 후보</h2><p className="mt-1 text-xs leading-5 text-[#626D67]">관심 카테고리 기반 사업장 후보이며 리뷰 활동 반경이나 생활권을 뜻하지 않습니다.</p></div><span className="rounded-full bg-[#EEF7F2] px-3 py-1 text-xs font-black text-[#075C45]">{restaurants.length}곳</span></div>
-          {radiusContext && (
+          <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[10px] font-black tracking-[0.12em] text-[#137A5A]">{isRestartAction ? "REVIEW RESTART CANDIDATES" : "RECOMMENDATION MAP"}</p><h2 className="mt-1 text-lg font-black">{isRestartAction ? "리뷰 재개 후보 매장" : "개인 맞춤 음식점 후보"}</h2><p className="mt-1 text-xs leading-5 text-[#626D67]">{isRestartAction ? `${comparisonYear ?? "이전 기간"}년에는 리뷰했지만 ${selectionYear ?? "선정 기간"}년에는 리뷰가 없는 실제 매장입니다.` : "관심 카테고리 기반 사업장 후보이며 리뷰 활동 반경이나 생활권을 뜻하지 않습니다."}</p></div><span className="rounded-full bg-[#EEF7F2] px-3 py-1 text-xs font-black text-[#075C45]">후보 {restaurants.length}곳</span></div>
+          {!isRestartAction && radiusContext && (
             <div className="mt-4 rounded-xl border border-[#B7D8C8] bg-[#F0F7F3] px-4 py-3">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
                 <strong className="text-[#075C45]">주 활동 권역 기준</strong>
@@ -115,25 +163,27 @@ function IndividualInterventionPanel({ reviewer, recommendationData, strategy, o
                         <BusinessPhoto photos={restaurant.photos} alt={`${restaurant.name} 데이터셋 사진`} className="h-24 w-full" compact />
                         <div><strong className="text-sm text-[#17211D]">{restaurant.name}</strong><p className="mt-0.5 text-[11px] text-[#718078]">{restaurant.city}, {restaurant.state} · {restaurant.primaryCategory}</p></div>
                         <DatasetRating stars={restaurant.stars} reviewCount={restaurant.reviewCount} compact />
-                        <DistanceBadge restaurant={restaurant} />
+                        {isRestartAction && <p className="rounded bg-[#FFF7E8] px-2 py-1 text-[10px] font-bold text-[#8A5A12]">{comparisonYear}년 리뷰 {restaurant.reviewerReviewCount}건 · {selectionYear}년 리뷰 없음</p>}
+                        <DistanceBadge restaurant={restaurant} historical={isRestartAction} />
                         <BusinessAttributeBadges attributes={restaurant.displayAttributes} compact showAddress />
                       </div>
                     </Popup>
                   </BusinessMapMarker>
                 ))}
               </MapContainer>
-              <MapLegend className="absolute bottom-6 left-3 z-[500]" items={[{ variant: "recommendation", label: "맞춤 추천 후보" }]} />
+              <MapLegend className="absolute bottom-6 left-3 z-[500]" items={[{ variant: "recommendation", label: isRestartAction ? "리뷰 재개 후보" : "맞춤 추천 후보" }]} />
             </div>
-          ) : <p className="mt-4 rounded-xl bg-[#F7F8F5] p-5 text-sm text-[#626D67]">현재 연결된 추천 음식점 좌표가 없습니다.</p>}
-          <div className="mt-4 grid gap-2 md:grid-cols-3">
-            {restaurants.slice(0, 3).map((restaurant) => (
+          ) : <p className="mt-4 rounded-xl bg-[#F7F8F5] p-5 text-sm text-[#626D67]">{isRestartAction ? "현재 확인된 리뷰 재개 후보 매장이 없습니다." : "현재 연결된 추천 음식점 좌표가 없습니다."}</p>}
+          <div className={`mt-4 grid gap-2 md:grid-cols-3 ${isRestartAction ? "max-h-[460px] overflow-y-auto pr-1" : ""}`}>
+            {visibleRestaurants.map((restaurant) => (
               <button key={restaurant.businessId} type="button" onClick={() => toggleRestaurant(restaurant.businessId)} className={`relative rounded-xl border p-3 text-left transition ${activeSelectedIds.includes(restaurant.businessId) ? "border-[#075C45] bg-[#F0F7F3] shadow-[0_5px_16px_rgba(7,92,69,0.08)]" : "border-[#E2E7E3] hover:border-[#9FBCAE]"}`}>
                 <span className={`absolute right-5 top-5 z-10 grid h-6 w-6 place-items-center rounded-md border text-xs font-black shadow-sm ${activeSelectedIds.includes(restaurant.businessId) ? "border-[#075C45] bg-[#075C45] text-white" : "border-white bg-white text-transparent"}`}>✓</span>
                 <BusinessPhoto photos={restaurant.photos} alt={`${restaurant.name} 데이터셋 사진`} className="mb-2 h-20 w-full" compact />
                 <strong className="block truncate text-xs">{restaurant.name}</strong>
                 <span className="mt-1 block truncate text-[10px] text-[#718078]">{restaurant.primaryCategory} · {restaurant.city}</span>
+                {isRestartAction && <span className="mt-2 block text-[10px] font-bold text-[#8A5A12]">{comparisonYear}년 리뷰 {restaurant.reviewerReviewCount}건 · {selectionYear}년 리뷰 없음</span>}
                 <span className="mt-2 block"><DatasetRating stars={restaurant.stars} reviewCount={restaurant.reviewCount} compact /></span>
-                <span className="mt-2 block"><DistanceBadge restaurant={restaurant} /></span>
+                <span className="mt-2 block"><DistanceBadge restaurant={restaurant} historical={isRestartAction} /></span>
                 <span className="mt-2 block"><BusinessAttributeBadges attributes={restaurant.displayAttributes} compact /></span>
               </button>
             ))}
@@ -144,10 +194,22 @@ function IndividualInterventionPanel({ reviewer, recommendationData, strategy, o
           <div className="border-b border-[#DDE4DF] bg-white px-5 py-4"><p className="text-[10px] font-black tracking-[0.14em] text-[#137A5A]">ACTION PLAN</p><h2 className="mt-1 text-lg font-black text-[#17211D]">{strategy.title}</h2><p className="mt-1 text-[11px] leading-5 text-[#626D67]">관리자 판단 ‘{effectiveDecision}’을 기준으로 실행 가능한 운영안을 구성합니다.</p></div>
           <div className="p-5">
             <NumberedSection number="1" title="왜 이 액션인가"><ul className="space-y-1.5 text-xs leading-5 text-[#4F5D56]"><li>• {reviewer.coreChange}</li><li>• 핵심 위험 신호: {reviewer.riskType}</li><li>• {strategy.description}</li></ul></NumberedSection>
-            <NumberedSection number="2" title="대표 실행안 선택"><div className="grid gap-2 sm:grid-cols-2">{[strategy.secondary || "관리자 검토", "테마별 리스트 큐레이션", "리뷰 리마인더", "운영자 직접 확인"].map((item) => <ChoiceCard key={item} active={actionType === item} onClick={() => setActionType(item)}>{item}</ChoiceCard>)}</div></NumberedSection>
+            <NumberedSection number="2" title="대표 실행안 선택">
+              <div className="grid gap-2 sm:grid-cols-2">
+                {[strategy.secondary || "관리자 검토", "테마별 리스트 큐레이션", "리뷰 리마인더", "운영자 직접 확인"].map((item) => <ChoiceCard key={item} active={actionType === item} onClick={() => chooseAction(item)}>{item}</ChoiceCard>)}
+                <ChoiceCard className="sm:col-span-2" active={isRestartAction} disabled={restartEvidenceStatus !== "ready"} onClick={() => chooseAction(REVIEW_RESTART_ACTION)}>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-2"><strong className="text-xs">{REVIEW_RESTART_ACTION}</strong><span className="rounded-full bg-[#DFF1E8] px-2 py-0.5 text-[9px] text-[#075C45]">신규</span></span>
+                    <span className="mt-1 block truncate text-[10px] font-medium text-[#626D67]">{restartEvidenceMessage}</span>
+                    {restartEvidenceStatus === "ready" && <span className="mt-0.5 block text-[9px] font-medium text-[#718078]">{comparisonYear}년에는 리뷰했지만 {selectionYear}년에는 리뷰 없음</span>}
+                  </span>
+                  <span className="ml-auto shrink-0 rounded-full bg-white px-2 py-1 text-[9px] font-black text-[#075C45]">{restartEvidenceStatus === "loading" ? "확인 중" : restartEvidenceStatus === "unavailable" ? "산정 불가" : `후보 ${restartCandidates.length}곳`}</span>
+                </ChoiceCard>
+              </div>
+            </NumberedSection>
             <NumberedSection number="3" title="채널 선택" note="다중 선택 가능"><div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{[["app", "앱 메시지"], ["email", "이메일"], ["push", "푸시"], ["operator", "운영자 접촉"]].map(([key, label]) => <ChoiceCard key={key} active={channels.includes(key)} onClick={() => setChannels((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])}>{label}</ChoiceCard>)}</div></NumberedSection>
             <NumberedSection number="4" title="선택 콘텐츠" note={`${selectedRestaurants.length}곳 저장`}>
-              {selectedRestaurants.length > 0 ? <div className="space-y-2">{selectedRestaurants.map((restaurant) => <SelectedBusinessRow key={restaurant.businessId} restaurant={restaurant} onRemove={() => toggleRestaurant(restaurant.businessId)} />)}</div> : <p className="rounded-lg bg-[#FFF7E8] px-3 py-3 text-xs font-bold text-[#8A5A08]">왼쪽 후보에서 한 곳 이상 선택하세요.</p>}
+              {selectedRestaurants.length > 0 ? <div className="space-y-2">{selectedRestaurants.map((restaurant) => <SelectedBusinessRow key={restaurant.businessId} restaurant={restaurant} historical={isRestartAction} comparisonYear={comparisonYear} selectionYear={selectionYear} onRemove={() => toggleRestaurant(restaurant.businessId)} />)}</div> : <p className="rounded-lg bg-[#FFF7E8] px-3 py-3 text-xs font-bold text-[#8A5A08]">왼쪽 후보에서 한 곳 이상 선택하세요.</p>}
             </NumberedSection>
             <NumberedSection number="5" title="메시지 초안"><textarea value={messageBody} onChange={(event) => setMessageBody(event.target.value)} placeholder="발송되지 않는 운영 검토용 메시지 초안" className="min-h-20 w-full resize-none rounded-lg border border-[#DDE4DF] p-3 text-xs leading-5 outline-none focus:border-[#075C45]" /></NumberedSection>
             <div className="grid gap-3 pt-4 sm:grid-cols-2">
@@ -165,9 +227,9 @@ function IndividualInterventionPanel({ reviewer, recommendationData, strategy, o
 
 function Badge({ label, value, emphasis }) { return <div className={`rounded-xl px-3 py-2 ${emphasis ? "bg-[#075C45] text-white" : "bg-[#F1F4F1]"}`}><p className={`text-[9px] font-bold ${emphasis ? "text-white/60" : "text-[#718078]"}`}>{label}</p><p className="mt-0.5 whitespace-nowrap text-xs font-black">{value}</p></div>; }
 function NumberedSection({ number, title, note, children }) { return <section className="border-b border-[#EDF0EE] py-4 first:pt-0"><div className="mb-3 flex items-center gap-2"><span className="grid h-6 w-6 place-items-center rounded-full bg-[#E3F1EA] text-[10px] font-black text-[#075C45]">{number}</span><p className="text-xs font-black text-[#17211D]">{title}</p>{note && <span className="ml-auto text-[10px] font-bold text-[#718078]">{note}</span>}</div>{children}</section>; }
-function ChoiceCard({ children, active, onClick }) { return <button type="button" onClick={onClick} className={`flex min-h-10 items-center gap-2 rounded-lg border px-3 text-left text-[10px] font-bold transition ${active ? "border-[#075C45] bg-[#E7F3ED] text-[#075C45]" : "border-[#DDE4DF] bg-white text-[#4F5D56] hover:border-[#9FBCAE]"}`}><span className={`grid h-4 w-4 place-items-center rounded border text-[9px] ${active ? "border-[#075C45] bg-[#075C45] text-white" : "border-[#B9C4BE] text-transparent"}`}>✓</span>{children}</button>; }
+function ChoiceCard({ children, active, disabled = false, className = "", onClick }) { return <button type="button" disabled={disabled} onClick={onClick} className={`flex min-h-10 items-center gap-2 rounded-lg border px-3 text-left text-[10px] font-bold transition disabled:cursor-not-allowed disabled:bg-[#F4F6F4] disabled:text-[#9AA39E] ${active ? "border-[#075C45] bg-[#E7F3ED] text-[#075C45]" : "border-[#DDE4DF] bg-white text-[#4F5D56] hover:border-[#9FBCAE]"} ${className}`}><span className={`grid h-4 w-4 shrink-0 place-items-center rounded border text-[9px] ${active ? "border-[#075C45] bg-[#075C45] text-white" : "border-[#B9C4BE] text-transparent"}`}>✓</span>{children}</button>; }
 function CompactPlan({ title, children }) { return <section className="rounded-xl border border-[#DDE4DF] bg-[#F7FAF8] p-3"><p className="mb-2 text-[10px] font-black text-[#075C45]">{title}</p><div className="text-[10px] leading-4 text-[#4F5D56]">{children}</div></section>; }
-function SelectedBusinessRow({ restaurant, onRemove }) { const url = `https://www.yelp.com/search?find_desc=${encodeURIComponent(restaurant.name)}&find_loc=${encodeURIComponent(`${restaurant.city}, ${restaurant.state}`)}`; return <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E2E7E3] bg-white p-2"><BusinessPhoto photos={restaurant.photos} alt={`${restaurant.name} 데이터셋 사진`} className="h-12 w-16" compact /><div className="min-w-0"><p className="truncate text-xs font-black">{restaurant.name}</p><div className="mt-1 flex flex-wrap items-center gap-2"><DatasetRating stars={restaurant.stars} reviewCount={restaurant.reviewCount} compact /><DistanceBadge restaurant={restaurant} /></div></div><div className="flex flex-col items-end gap-1"><a href={url} target="_blank" rel="noreferrer" className="text-[9px] font-black text-[#075C45] underline">Yelp 검색</a><button type="button" onClick={onRemove} className="text-[9px] font-bold text-[#9F4A38]">제외</button></div></div>; }
-function DistanceBadge({ restaurant }) { const core = restaurant.distanceBand === "core"; return <span className={`inline-flex rounded-full px-2 py-1 text-[9px] font-black ${core ? "bg-[#E7F3ED] text-[#075C45]" : "bg-[#FFF1ED] text-[#9F4A38]"}`}>{restaurant.distanceKm.toLocaleString()}km · {core ? "핵심 활동권" : "확장 후보"}</span>; }
+function SelectedBusinessRow({ restaurant, historical, comparisonYear, selectionYear, onRemove }) { const url = `https://www.yelp.com/search?find_desc=${encodeURIComponent(restaurant.name)}&find_loc=${encodeURIComponent(`${restaurant.city}, ${restaurant.state}`)}`; return <div className="grid grid-cols-[64px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#E2E7E3] bg-white p-2"><BusinessPhoto photos={restaurant.photos} alt={`${restaurant.name} 데이터셋 사진`} className="h-12 w-16" compact /><div className="min-w-0"><p className="truncate text-xs font-black">{restaurant.name}</p>{historical && <p className="mt-1 text-[9px] font-bold text-[#8A5A12]">{comparisonYear}년 리뷰 {restaurant.reviewerReviewCount}건 · {selectionYear}년 리뷰 없음</p>}<div className="mt-1 flex flex-wrap items-center gap-2"><DatasetRating stars={restaurant.stars} reviewCount={restaurant.reviewCount} compact /><DistanceBadge restaurant={restaurant} historical={historical} /></div></div><div className="flex flex-col items-end gap-1"><a href={url} target="_blank" rel="noreferrer" className="text-[9px] font-black text-[#075C45] underline">Yelp 검색</a><button type="button" onClick={onRemove} className="text-[9px] font-bold text-[#9F4A38]">제외</button></div></div>; }
+function DistanceBadge({ restaurant, historical = false }) { const core = restaurant.distanceBand === "core"; return <span className={`inline-flex rounded-full px-2 py-1 text-[9px] font-black ${historical || core ? "bg-[#E7F3ED] text-[#075C45]" : "bg-[#FFF1ED] text-[#9F4A38]"}`}>{restaurant.distanceKm.toLocaleString()}km · {historical ? "이전 활동 중심 기준" : core ? "핵심 활동권" : "확장 후보"}</span>; }
 
 export default IndividualInterventionPanel;

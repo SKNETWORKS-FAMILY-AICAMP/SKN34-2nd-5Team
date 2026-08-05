@@ -17,6 +17,10 @@ def _list_json(row: dict, member_user_ids: list[str]) -> dict:
         "name": row["name"],
         "decision": row["decision"],
         "modelVersion": row["model_version"],
+        "targetScope": row["target_scope"],
+        "regionCode": row["region_code"],
+        "cityKey": row["city_key"],
+        "cityName": row["city_name"],
         "memberUserIds": member_user_ids,
         "memberCount": len(member_user_ids),
         "createdBy": {
@@ -60,6 +64,17 @@ def create_target_list(
     operator: OperatorIdentity,
 ) -> dict:
     members = payload["members"]
+    target_scope = payload.get("target_scope")
+    if target_scope == "region" and not payload.get("region_code"):
+        raise ValueError("A region target list requires a region code.")
+    if target_scope == "city" and not (
+        payload.get("region_code") and payload.get("city_key") and payload.get("city_name")
+    ):
+        raise ValueError("A city target list requires region and city information.")
+    if target_scope is None and any(
+        payload.get(key) for key in ("region_code", "city_key", "city_name")
+    ):
+        raise ValueError("Geographic fields require a target scope.")
     if not members:
         raise ValueError("대상 명단에는 최소 1명이 필요합니다")
 
@@ -73,10 +88,12 @@ def create_target_list(
             text(
                 """
                 INSERT INTO target_lists (
-                    name, decision, model_version,
+                    name, decision, model_version, target_scope,
+                    region_code, city_key, city_name,
                     created_by_subject, created_by_name
                 ) VALUES (
-                    :name, :decision, :model_version,
+                    :name, :decision, :model_version, :target_scope,
+                    :region_code, :city_key, :city_name,
                     :actor_subject, :actor_name
                 )
                 """
@@ -85,6 +102,10 @@ def create_target_list(
                 "name": payload["name"],
                 "decision": payload["decision"],
                 "model_version": payload["model_version"],
+                "target_scope": target_scope,
+                "region_code": payload.get("region_code"),
+                "city_key": payload.get("city_key"),
+                "city_name": payload.get("city_name"),
                 "actor_subject": operator.subject,
                 "actor_name": operator.name,
             },

@@ -286,14 +286,14 @@ function TrustCenterPage() {
             </Panel>
           )}
 
-          {trustData.v04?.available && trustData.overall && (
-            <Panel title="버전 추세 (v04 → v05_05_dl)" info="같은 2018→2019 Test 6,533명 표본에서 이전 운영 모델(v04, 로지스틱)과 현재 운영 모델(v05_05_dl, Lifecycle Fusion H2 딥러닝)을 비교합니다.">
+          {trustData.overall && trustData.v05MlXgb?.available && (
+            <Panel title="버전 추세 (v05_ml_xgb → v05_05_dl)" info="같은 2018→2019 Test 6,533명 표본에서 비교 후보(v05_ml_xgb, XGBoost) 대비 현재 운영 모델(v05_05_dl, Lifecycle Fusion H2 딥러닝)이 얼마나 나은지 비교합니다.">
               <VersionTrend
-                before={trustData.v04.overall}
+                before={trustData.v05MlXgb.overall}
                 after={trustData.overall}
-                beforeLabel="v04"
+                beforeLabel="v05_ml_xgb"
                 afterLabel="v05_05_dl"
-                beforeSnapshot={trustData.snapshots.find((item) => item.modelVersion === "v04")}
+                beforeSnapshot={trustData.snapshots.find((item) => item.modelVersion === "v05_ml_xgb")}
                 afterSnapshot={trustData.snapshots.find((item) => item.modelVersion === "v05_05_dl")}
               />
             </Panel>
@@ -589,7 +589,7 @@ function VersionTrend({ before, after, beforeLabel, afterLabel, beforeSnapshot, 
             <div className="mt-2 h-16 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 8 }}>
-                  <XAxis dataKey="version" axisLine={false} tickLine={false} tick={{ fill: "#626D67", fontSize: 10 }} />
+                  <XAxis dataKey="version" interval={0} axisLine={false} tickLine={false} tick={{ fill: "#626D67", fontSize: 10 }} />
                   <YAxis hide domain={["dataMin - 0.02", "dataMax + 0.02"]} />
                   <Tooltip formatter={(value) => Number(value).toFixed(3)} />
                   <Line type="monotone" dataKey="value" stroke="#2a78d6" strokeWidth={2} dot={{ r: 3 }} />

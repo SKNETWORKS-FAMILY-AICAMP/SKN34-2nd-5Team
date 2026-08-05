@@ -21,6 +21,7 @@ from api.routers import (
     reviewer_details,
     reviewer_radius,
     reviewers,
+    sponsorships,
     trust,
     v05_derived,
 )
@@ -36,6 +37,7 @@ app.include_router(reviewers.router)
 app.include_router(reviewer_details.router)
 app.include_router(reviewer_radius.router)
 app.include_router(v05_derived.router)
+app.include_router(sponsorships.router)
 
 # Vite dev 서버. `npm run dev`는 localhost 외에 LAN 주소(예:
 # http://192.168.0.18:5173)로도 열리는데, 그 주소로 접속하면 브라우저가
@@ -55,7 +57,7 @@ app.add_middleware(
         r"|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}"
         r"):5173$"
     ),
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     allow_credentials=True,
 )

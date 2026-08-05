@@ -296,7 +296,8 @@ def get_trust_data(engine: Engine) -> dict:
                 "FROM model_versions "
                 "WHERE model_version IN "
                 "('v02', 'v03', 'v04', 'v05_05_dl', 'v05_ml_xgb') "
-                "ORDER BY model_version DESC"
+                "ORDER BY FIELD(model_version, "
+                "'v05_05_dl', 'v05_ml_xgb', 'v04', 'v03', 'v02')"
             )
         ).mappings().all()
         version_by_id = {row["model_version"]: row for row in version_rows}

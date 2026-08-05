@@ -229,7 +229,7 @@ function PlanWorkspace({ rows, selected, onSelect, targetLists }) {
       <table className="w-full min-w-[720px] text-left text-xs">
         <thead className="bg-[#F6F8F6] text-[#66736C]"><tr>{["운영안", "구분", "대상", "채널·콘텐츠", "상태", "수정 시각"].map((item) => <th key={item} className="px-4 py-3 font-bold">{item}</th>)}</tr></thead>
         <tbody className="divide-y divide-[#E7ECE8]">{rows.length === 0 ? <tr><td colSpan="6" className="px-4 py-20 text-center text-[#7A8780]">저장된 운영안이 없습니다.</td></tr> : rows.map((row) => {
-          const target = row.reviewerUserId ?? row.regionCode ?? "-";
+          const target = row.reviewerUserId ?? (row.targetScope === "city" ? `${row.regionCode} · ${row.cityName}` : `${row.regionCode ?? "-"} 전체`);
           return <tr key={row.planId} onClick={() => onSelect(row.planId)} className={`cursor-pointer ${row.planId === selected?.planId ? "bg-[#EDF7F2] shadow-[inset_3px_0_0_#07855F]" : "hover:bg-[#FAFBFA]"}`}>
             <Cell strong>{row.actionType}</Cell><Cell>{row.planType === "individual" ? "개인 특별 관리" : "지역 활성화"}</Cell><Cell>{maskId(target)}</Cell><Cell>{channelLabel(row.channels)} · 콘텐츠 {row.businessIds?.length ?? 0}개</Cell><Cell><Status text={row.status} /></Cell><Cell>{formatDate(row.updatedAt)}</Cell>
           </tr>;
@@ -243,10 +243,10 @@ function PlanWorkspace({ rows, selected, onSelect, targetLists }) {
 
 function PlanDetail({ plan, targetList }) {
   if (!plan) return <EmptyDetail title="왼쪽에서 운영안을 선택하세요." />;
-  const target = plan.reviewerUserId ?? plan.regionCode ?? "-";
+  const target = plan.reviewerUserId ?? (plan.targetScope === "city" ? `${plan.regionCode} · ${plan.cityName}` : `${plan.regionCode ?? "-"} 전체`);
   const designHref = plan.planType === "individual"
     ? `/playbook?mode=individual&reviewer=${encodeURIComponent(plan.reviewerUserId)}`
-    : `/playbook?mode=region&region=${encodeURIComponent(plan.regionCode)}`;
+    : `/playbook?mode=region&scope=${plan.targetScope ?? "region"}&region=${encodeURIComponent(plan.regionCode)}${plan.targetScope === "city" && plan.cityKey ? `&city=${encodeURIComponent(plan.cityKey)}` : ""}`;
   return <aside className="min-w-0 p-5">
     <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black tracking-[0.12em] text-[#137A5A]">SELECTED OPERATION PLAN</p><h2 className="mt-1 text-lg font-black">{plan.actionType}</h2><p className="mt-1 text-xs text-[#718078]">{plan.planType === "individual" ? "개인 특별 관리" : "지역 활성화 캠페인"} · {maskId(target)}</p></div><Status text={plan.status} /></div>
     <div className="mt-4 grid grid-cols-3 overflow-hidden rounded-lg border border-[#E2E7E3]"><PanelValue label="관리자 판단" value={plan.managerDecision} tone="green" /><PanelValue label="전달 채널" value={`${plan.channels?.length ?? 0}개`} tone="green" /><PanelValue label="추천 콘텐츠" value={`${plan.businessIds?.length ?? 0}개`} tone="green" /></div>
@@ -286,7 +286,7 @@ function headers(type) {
 
 function HistoryRow({ type, row, highlighted }) {
   if (type === "lists") return <tr><Cell strong>{row.name}</Cell><Cell>{row.decision}</Cell><Cell>{row.memberCount}명</Cell><Cell>{row.createdBy?.name}</Cell><Cell>{formatDate(row.createdAt)}</Cell><Cell><Link className="table-link" to="/playbook">운영안에서 확인 →</Link></Cell></tr>;
-  if (type === "plans") { const target = row.reviewerUserId ?? row.regionCode; const designHref = row.planType === "individual" ? `/playbook?mode=individual&reviewer=${encodeURIComponent(row.reviewerUserId)}` : `/playbook?mode=region&region=${encodeURIComponent(row.regionCode)}`; const channels = row.channels?.length ? row.channels.join(" · ") : "채널 미선택"; return <tr className={highlighted ? "bg-[#E3F1EA]" : ""}><Cell strong>{row.actionType}</Cell><Cell>{row.planType === "individual" ? "개인 특별 관리" : "지역 활성화"}</Cell><Cell>{target}</Cell><Cell>{channels} · 콘텐츠 {row.businessIds?.length ?? 0}개</Cell><Cell><Status text={row.status} /></Cell><Cell>{formatDate(row.updatedAt)}</Cell><Cell><Link className="table-link" to={designHref}>설계 확인 →</Link></Cell></tr>; }
+  if (type === "plans") { const target = row.reviewerUserId ?? (row.targetScope === "city" ? `${row.regionCode} · ${row.cityName}` : `${row.regionCode} 전체`); const designHref = row.planType === "individual" ? `/playbook?mode=individual&reviewer=${encodeURIComponent(row.reviewerUserId)}` : `/playbook?mode=region&scope=${row.targetScope ?? "region"}&region=${encodeURIComponent(row.regionCode)}${row.targetScope === "city" && row.cityKey ? `&city=${encodeURIComponent(row.cityKey)}` : ""}`; const channels = row.channels?.length ? row.channels.join(" · ") : "채널 미선택"; return <tr className={highlighted ? "bg-[#E3F1EA]" : ""}><Cell strong>{row.actionType}</Cell><Cell>{row.planType === "individual" ? "개인 특별 관리" : "지역 활성화"}</Cell><Cell>{target}</Cell><Cell>{channels} · 콘텐츠 {row.businessIds?.length ?? 0}개</Cell><Cell><Status text={row.status} /></Cell><Cell>{formatDate(row.updatedAt)}</Cell><Cell><Link className="table-link" to={designHref}>설계 확인 →</Link></Cell></tr>; }
   if (type === "contacts") return <tr><Cell strong>{maskId(row.reviewerUserId)}</Cell><Cell>{row.channel}</Cell><Cell>{formatDate(row.contactedAt)}</Cell><Cell>{row.note || "-"}</Cell><Cell>{row.actor?.name}</Cell><Cell><Link className="table-link" to={`/reviewers/${row.reviewerUserId}`}>Reviewer 360 →</Link></Cell></tr>;
   return <tr><Cell strong>{maskId(row.reviewerUserId)}</Cell><Cell>{row.action}</Cell><Cell>{row.fromDecision || "-"}</Cell><Cell>{row.toDecision || "-"}</Cell><Cell>{row.actor?.name}</Cell><Cell>{formatDate(row.changedAt)}</Cell></tr>;
 }

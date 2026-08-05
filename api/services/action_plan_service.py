@@ -54,6 +54,9 @@ def _plan_json(row, channels: list[str], businesses: list[str], milestones: list
         "reviewerUserId": row["reviewer_user_id"],
         "sampleId": row["sample_id"],
         "regionCode": row["region_code"],
+        "targetScope": row["target_scope"],
+        "cityKey": row["city_key"],
+        "cityName": row["city_name"],
         "targetListId": int(row["target_list_id"]) if row["target_list_id"] is not None else None,
         "managerDecision": row["manager_decision"],
         "actionType": row["action_type"],
@@ -82,6 +85,21 @@ def _validate(payload: dict) -> None:
         raise ValueError("개인 실행안에는 리뷰어와 표본 정보가 필요합니다.")
     if payload["plan_type"] == "regional" and not payload.get("region_code"):
         raise ValueError("지역 실행안에는 권역 코드가 필요합니다.")
+    if payload["plan_type"] == "individual" and any(
+        payload.get(key) for key in ("target_scope", "city_key", "city_name")
+    ):
+        raise ValueError("개인 실행안에는 지역 범위를 저장할 수 없습니다.")
+    if payload["plan_type"] == "regional":
+        if payload.get("target_scope") not in {"region", "city"}:
+            raise ValueError("지역 실행안에는 대상 범위가 필요합니다.")
+        if payload["target_scope"] == "city" and not (
+            payload.get("city_key") and payload.get("city_name")
+        ):
+            raise ValueError("도시 실행안에는 도시 정보가 필요합니다.")
+        if payload["target_scope"] == "region" and any(
+            payload.get(key) for key in ("city_key", "city_name")
+        ):
+            raise ValueError("권역 전체 실행안에는 도시 정보를 저장할 수 없습니다.")
     if any(item["day_offset"] not in {30, 60, 90} for item in payload["milestones"]):
         raise ValueError("측정 시점은 30일, 60일, 90일만 지원합니다.")
 
@@ -136,11 +154,13 @@ def save_action_plan(engine: Engine, payload: dict, operator: OperatorIdentity, 
             result = connection.execute(text("""
                 INSERT INTO retention_action_plans (
                     plan_type, model_version, reviewer_user_id, sample_id, region_code,
+                    target_scope, city_key, city_name,
                     target_list_id, manager_decision, action_type, message_title,
                     message_body, plan_status, created_by_subject, created_by_name,
                     updated_by_subject, updated_by_name
                 ) VALUES (
                     :plan_type, :model_version, :reviewer_user_id, :sample_id, :region_code,
+                    :target_scope, :city_key, :city_name,
                     :target_list_id, :manager_decision, :action_type, :message_title,
                     :message_body, :status, :actor_subject, :actor_name,
                     :actor_subject, :actor_name
@@ -150,6 +170,8 @@ def save_action_plan(engine: Engine, payload: dict, operator: OperatorIdentity, 
         else:
             connection.execute(text("""
                 UPDATE retention_action_plans SET
+                    region_code = :region_code, target_scope = :target_scope,
+                    city_key = :city_key, city_name = :city_name,
                     target_list_id = :target_list_id, manager_decision = :manager_decision,
                     action_type = :action_type, message_title = :message_title,
                     message_body = :message_body, plan_status = :status,

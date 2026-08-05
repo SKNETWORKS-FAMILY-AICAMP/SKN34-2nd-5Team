@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router";
 
 import {
   approveAdminUser,
@@ -104,6 +105,7 @@ function SettingsPage() {
 
   return (
     <div className="space-y-4">
+      <SettingsSubNav />
       <header className="flex flex-wrap items-end justify-end gap-4">
         <div className="flex flex-wrap gap-2">
           <button
@@ -381,6 +383,17 @@ function PermissionMatrix() {
 }
 
 function SecurityGuide() { return <section className="console-card p-5"><h2 className="font-black">인증·보안 안내</h2><div className="mt-4 grid gap-4 text-xs text-[#66736C] md:grid-cols-3"><Guide title="세션 동작" text="세션은 8시간 유지됩니다. 공용 조회 계정은 여러 기기에서 동시 로그인할 수 있습니다." /><Guide title="권역 계정" text="운영자 계정은 하나의 담당 권역을 가지며, 조회 전용 계정은 전체 권역을 조회합니다." /><Guide title="감사 추적" text="계정 생성·역할·상태 변경은 추가 방식의 감사 이력으로 기록됩니다." /></div></section>; }
+
+export function SettingsSubNav() {
+  const { pathname } = useLocation();
+  const linkClass = (active) => `rounded-full px-4 py-2 text-xs font-bold ${active ? "bg-[#075C45] text-white" : "bg-[#F2F5F3] text-[#526058]"}`;
+  return (
+    <nav className="flex gap-2">
+      <Link to="/settings" className={linkClass(pathname === "/settings")}>사용자 관리</Link>
+      <Link to="/settings/sponsorships" className={linkClass(pathname === "/settings/sponsorships")}>스폰서 매장 관리</Link>
+    </nav>
+  );
+}
 
 function PanelHeader({ title, onCancel }) { return <div className="flex items-center justify-between"><div><p className="console-kicker">ACCOUNT PROVISIONING</p><h2 className="mt-1 text-lg font-black">{title}</h2></div><button type="button" onClick={onCancel} className="table-link">취소</button></div>; }
 function Field({ label, children }) { return <label className="block text-xs font-bold text-[#59675F]">{label}<div className="mt-2">{children}</div></label>; }

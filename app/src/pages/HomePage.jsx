@@ -83,7 +83,9 @@ function insightFor(entity) {
   if (supply === "down" && newcomers === "down") return {
     tone: "danger", icon: "↘", title: "공급과 신규 유입이 함께 약화된 복합 위험",
     description: "기존 리뷰 활동과 신규 핵심 리뷰어 유입이 동시에 감소했습니다.",
-    action: "핵심 리뷰어 검토와 지역 활성화 캠페인을 함께 준비하세요.",
+    action: entity.reviewerNetMigration < 0
+      ? `공급 감소 중 일부는 핵심 리뷰어 ${Math.abs(entity.reviewerNetMigration).toLocaleString()}명의 순유출로 확인됩니다. 핵심 리뷰어 검토와 지역 활성화 캠페인을 함께 준비하세요.`
+      : "핵심 리뷰어 검토와 지역 활성화 캠페인을 함께 준비하세요.",
   };
   if (supply === "down" && newcomers === "up") return {
     tone: "danger", icon: "↘", title: "신규 유입보다 기존 리뷰 활동이 약화",
@@ -412,6 +414,7 @@ function panelFor(layer, entity, insight, queueHref, campaignHref, scope) {
     alertNote: `리뷰 공급 ${supplyStatusText(entity.reviewSupplyChangeRate)} · 신규 유입 ${signedPercent(entity.newPowerReviewerChangeRate)}`,
     metrics: [
       { type: "trend", label: "리뷰 공급 변화", note: supplyPeriodNote(entity.reviewSupplyChangeRate), value: signedPercent(entity.reviewSupplyChangeRate), danger: entity.reviewSupplyChangeRate < -0.05 },
+      { type: "reviewer", label: "핵심 리뷰어 순유출입", note: `2017 → 2018 · 유출 ${entity.reviewerOutflowCount.toLocaleString()}명 · 유입 ${entity.reviewerInflowCount.toLocaleString()}명`, value: `${entity.reviewerNetMigration >= 0 ? "+" : ""}${entity.reviewerNetMigration.toLocaleString()}명`, danger: entity.reviewerNetMigration < 0 },
       {
         type: "reviewer",
         label: "활동 리뷰어",

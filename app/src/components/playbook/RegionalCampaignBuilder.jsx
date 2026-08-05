@@ -46,14 +46,20 @@ function Step({ number, label, value, active, complete, onClick }) {
 
 function RegionalCampaignBuilder({
   region,
-  topCity,
+  targetScope,
+  cityKey,
+  cityName,
+  regions,
+  cities,
+  onLocationChange,
   candidates,
   riskTypes,
   selectedSignal,
+  weekdayPattern,
   onSignalChange,
   onSave,
 }) {
-  const [activeStep, setActiveStep] = useState(3);
+  const [activeStep, setActiveStep] = useState(1);
   const [restaurantData, setRestaurantData] = useState(null);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState(null);
   const [selectedRestaurantIds, setSelectedRestaurantIds] = useState(() => new Set());
@@ -71,7 +77,7 @@ function RegionalCampaignBuilder({
     if (!sampleIdsKey) {
       return undefined;
     }
-    loadRegionalCampaignRestaurants(region, sampleIdsKey.split(","))
+    loadRegionalCampaignRestaurants(region, sampleIdsKey.split(","), targetScope, cityKey)
       .then((data) => {
         if (!cancelled) {
           setRestaurantData({ ...data, requestKey: sampleIdsKey });
@@ -84,7 +90,33 @@ function RegionalCampaignBuilder({
     return () => {
       cancelled = true;
     };
-  }, [region, sampleIdsKey]);
+  }, [cityKey, region, sampleIdsKey, targetScope]);
+
+  const citiesForRegion = useMemo(
+    () => cities.filter((city) => city.state === region),
+    [cities, region],
+  );
+  const scopeLabel = targetScope === "city"
+    ? `${region} · ${cityName ?? "도시 선택 필요"}`
+    : `${region} 전체`;
+
+  function changeScope(nextScope) {
+    if (nextScope === "region") {
+      onLocationChange("region", region, null);
+      return;
+    }
+    const nextCity = citiesForRegion.find((city) => city.cityKey === cityKey) ?? citiesForRegion[0];
+    onLocationChange("city", region, nextCity?.cityKey ?? null);
+  }
+
+  function changeRegion(nextRegion) {
+    if (targetScope === "region") {
+      onLocationChange("region", nextRegion, null);
+      return;
+    }
+    const firstCity = cities.find((city) => city.state === nextRegion);
+    onLocationChange("city", nextRegion, firstCity?.cityKey ?? null);
+  }
 
   const restaurants = useMemo(() => {
     if (restaurantData?.requestKey !== sampleIdsKey) return [];
@@ -96,6 +128,10 @@ function RegionalCampaignBuilder({
     });
     return [...uniqueByBusinessId.values()];
   }, [restaurantData, sampleIdsKey]);
+  const sponsors = useMemo(() => {
+    if (restaurantData?.requestKey !== sampleIdsKey) return [];
+    return restaurantData.sponsoredRestaurants ?? [];
+  }, [restaurantData, sampleIdsKey]);
   const selectedRestaurant = restaurants.find(
     (restaurant) => restaurant.businessId === selectedRestaurantId,
   ) ?? restaurants[0];
@@ -105,6 +141,17 @@ function RegionalCampaignBuilder({
   const goal = selectedSignal === "탐색 활동 축소형"
     ? "새로운 음식점 탐색과 리뷰 작성의 재개"
     : "리뷰 활동 재개와 운영 검토 대상의 우선순위 확인";
+  const weekendIntensity = weekdayPattern?.weekendIntensity ?? null;
+  const weekdayIntensity = weekendIntensity == null ? null : 1 - weekendIntensity;
+  const baselineDelta = weekdayPattern?.baselineDeltaPercentagePoints ?? null;
+  const weekdayPatternValue = weekendIntensity == null
+    ? "집계 준비 중"
+    : `주말 ${(weekendIntensity * 100).toFixed(1)}% · 평일 ${(weekdayIntensity * 100).toFixed(1)}%`;
+  const weekdayGuidance = baselineDelta == null
+    ? null
+    : Math.abs(baselineDelta) < 0.1
+      ? "전체 권역과 비슷한 요일 강도입니다."
+      : `전체 권역보다 주말 리뷰 강도가 ${Math.abs(baselineDelta).toFixed(1)}%p ${baselineDelta > 0 ? "높습니다" : "낮습니다"}.`;
 
   function toggleRestaurant(businessId) {
     setSelectedRestaurantIds((current) => {
@@ -140,7 +187,7 @@ function RegionalCampaignBuilder({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-[10px] font-black tracking-[0.14em] text-[#137A5A]">CAMPAIGN WORKSPACE</p>
-          <h2 className="mt-1 text-xl font-black text-[#17211D]">{region} · {topCity ?? "대표 활동 도시"}</h2>
+          <h2 className="mt-1 text-xl font-black text-[#17211D]">{scopeLabel}</h2>
           <p className="mt-1 max-w-2xl text-xs leading-5 text-[#626D67]">
             실제 CRM 후보와 이미 산출된 음식점 추천을 사용합니다. 발송 기능이 아닌 운영 검토·명단 저장 단계입니다.
           </p>
@@ -151,7 +198,7 @@ function RegionalCampaignBuilder({
       </div>
 
       <div className="mt-4 grid gap-2 md:grid-cols-4">
-        <Step number="1" label="권역" value={`${region} · ${topCity ?? "—"}`} active={activeStep === 1} complete={activeStep > 1} onClick={() => setActiveStep(1)} />
+        <Step number="1" label="대상 지역" value={scopeLabel} active={activeStep === 1} complete={activeStep > 1} onClick={() => setActiveStep(1)} />
         <Step number="2" label="대상 조건" value={`${selectedSignal} · ${candidates.length.toLocaleString()}명`} active={activeStep === 2} complete={activeStep > 2} onClick={() => setActiveStep(2)} />
         <Step number="3" label="콘텐츠 선택" value={`${selectedRestaurantIds.size} / ${restaurants.length}곳`} active={activeStep === 3} complete={activeStep > 3} onClick={() => setActiveStep(3)} />
         <Step number="4" label="검토·저장" value="30 · 60 · 90일" active={activeStep === 4} complete={false} onClick={() => setActiveStep(4)} />
@@ -160,7 +207,44 @@ function RegionalCampaignBuilder({
       <div className="mt-3 min-h-[430px] rounded-2xl border border-[#DDE4DF] bg-white p-4 shadow-[0_8px_24px_rgba(23,33,29,0.04)]">
         {activeStep === 1 && (
           <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-            <div><p className="text-xs font-black tracking-[0.12em] text-[#137A5A]">STEP 1</p><h3 className="mt-2 text-xl font-black">캠페인 권역 확인</h3><p className="mt-2 text-sm leading-6 text-[#626D67]">{region} 권역에서 기록된 리뷰 활동을 기준으로 후보를 좁혔습니다. 대표 도시는 거주지가 아니라 지도 설명을 위한 보조 정보입니다.</p><div className="mt-6 grid gap-3 sm:grid-cols-3"><Insight title="권역" value={`${region} · ${topCity ?? "대표 활동 도시"}`} /><Insight title="CRM 후보" value={`${candidates.length.toLocaleString()}명`} /><Insight title="캠페인 성격" value="운영 가설 · A/B 검증 필요" /></div></div>
+            <div>
+              <p className="text-xs font-black tracking-[0.12em] text-[#137A5A]">STEP 1</p>
+              <h3 className="mt-2 text-xl font-black">캠페인 대상 지역 선택</h3>
+              <p className="mt-2 text-sm leading-6 text-[#626D67]">권역 전체 또는 표본 기준을 충족한 도시를 선택합니다. 선택 범위는 CRM 후보, 요일 집계, 음식점 후보와 저장 운영안에 동일하게 적용됩니다.</p>
+              <div className="mt-5 grid gap-3 rounded-xl border border-[#DDE4DF] bg-[#FAFBFA] p-4 md:grid-cols-[220px_1fr_1fr]">
+                <div>
+                  <span className="text-[11px] font-black text-[#59675F]">대상 범위</span>
+                  <div className="mt-2 grid grid-cols-2 rounded-lg border border-[#C9D5CE] bg-white p-1">
+                    <button type="button" onClick={() => changeScope("region")} className={`min-h-9 rounded-md text-xs font-black ${targetScope === "region" ? "bg-[#075C45] text-white" : "text-[#65726B]"}`}>권역 전체</button>
+                    <button type="button" onClick={() => changeScope("city")} className={`min-h-9 rounded-md text-xs font-black ${targetScope === "city" ? "bg-[#075C45] text-white" : "text-[#65726B]"}`}>도시</button>
+                  </div>
+                </div>
+                <label className="text-[11px] font-black text-[#59675F]">권역
+                  <select value={region} onChange={(event) => changeRegion(event.target.value)} className="mt-2 min-h-11 w-full rounded-lg border border-[#C9D5CE] bg-white px-3 text-sm">
+                    {regions.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </label>
+                <label className="text-[11px] font-black text-[#59675F]">도시
+                  <select value={cityKey ?? ""} disabled={targetScope !== "city" || citiesForRegion.length === 0} onChange={(event) => onLocationChange("city", region, event.target.value)} className="mt-2 min-h-11 w-full rounded-lg border border-[#C9D5CE] bg-white px-3 text-sm disabled:bg-[#EEF1EF] disabled:text-[#9AA39E]">
+                    {targetScope !== "city" && <option value="">권역 전체 적용</option>}
+                    {targetScope === "city" && citiesForRegion.length === 0 && <option value="">선택 가능한 도시 없음</option>}
+                    {citiesForRegion.map((city) => <option key={city.cityKey} value={city.cityKey}>{city.city} · CRM {city.crmTargets.toLocaleString()}명</option>)}
+                  </select>
+                </label>
+              </div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <Insight title="대상 지역" value={scopeLabel} />
+                <Insight title="CRM 후보" value={`${candidates.length.toLocaleString()}명`} />
+                <Insight title="캠페인 성격" value="운영 가설 · A/B 검증 필요" />
+                <Insight title="리뷰 요일 강도" value={weekdayPatternValue} />
+              </div>
+              {weekdayPattern && (
+                <div className="mt-4 rounded-xl border border-[#CFE3D8] bg-[#F0F7F3] px-4 py-3 text-sm leading-6 text-[#365D4D]">
+                  <strong className="text-[#075C45]">{weekdayPattern.peakDay}요일 리뷰가 가장 많습니다.</strong>{" "}
+                  {weekdayGuidance} 캠페인 시작일을 정할 때 참고하되, 캠페인 성과를 예측하는 지표는 아닙니다.
+                </div>
+              )}
+            </div>
             <div className="rounded-xl bg-[#F0F7F3] p-5"><p className="text-sm font-black text-[#075C45]">선정 원칙</p><ul className="mt-3 space-y-3 text-xs leading-5 text-[#4B665B]"><li>• 활동 권역과 CRM 상위 20% 조건을 사용합니다.</li><li>• 관리자가 ‘이번엔 제외’로 판단한 리뷰어는 제외합니다.</li><li>• 효과 수치를 사전에 약속하지 않고 비교 관찰합니다.</li></ul></div>
           </div>
         )}
@@ -209,6 +293,30 @@ function RegionalCampaignBuilder({
               ) : <p className="mt-4 rounded-xl bg-[#F7F8F5] p-5 text-sm text-[#626D67]">현재 후보 집단에 연결된 음식점 추천 결과가 없습니다.</p>}
             </div>
             <div className="max-h-[430px] space-y-1.5 overflow-y-auto pr-1">
+              {sponsors.length > 0 && (
+                <>
+                  <p className="px-1 text-[9px] font-black tracking-[0.1em] text-[#8A6116]">스폰서 매장 · {sponsors.length}곳</p>
+                  {sponsors.map((sponsor) => (
+                    <article key={sponsor.businessId} className="rounded-lg border border-[#EF9F27] bg-[#FAEEDA] p-2.5">
+                      <div className="flex items-start gap-3">
+                        <div className="grid min-w-0 flex-1 grid-cols-[76px_minmax(0,1fr)] gap-3 text-left">
+                          <BusinessPhoto photos={sponsor.photos} alt={`${sponsor.name} 데이터셋 사진`} className="h-[68px] w-[76px]" compact />
+                          <span className="min-w-0">
+                            <span className="flex items-center gap-1.5">
+                              <strong className="truncate text-sm">{sponsor.name}</strong>
+                              <span className="shrink-0 rounded bg-[#EF9F27] px-1.5 py-0.5 text-[9px] font-bold text-[#412402]">스폰서</span>
+                            </span>
+                            <span className="mt-1 block text-[11px] text-[#8A6116]">{sponsor.city}, {sponsor.state} · {sponsor.primaryCategory}</span>
+                            <span className="mt-0.5 block text-[10px] text-[#63380C]">캠페인 노출 기간 ~ {sponsor.sponsorshipEndDate}</span>
+                            <span className="mt-2 block"><DatasetRating stars={sponsor.stars} reviewCount={sponsor.reviewCount} compact /></span>
+                          </span>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                  <p className="px-1 pb-1 pt-1 text-[9px] font-black tracking-[0.1em] text-[#626D67]">알고리즘 추천 매장 · {selectedRestaurantIds.size} / {restaurants.length}곳 선택</p>
+                </>
+              )}
               {restaurants.map((restaurant) => (
                 <article key={restaurant.businessId} className={`rounded-lg border p-2.5 transition ${restaurant.businessId === selectedRestaurant?.businessId ? "border-[#075C45] bg-[#F2F8F5] shadow-[0_5px_16px_rgba(7,92,69,0.08)]" : "border-[#E2E7E3]"}`}>
                   <div className="flex items-start gap-3">
@@ -216,8 +324,16 @@ function RegionalCampaignBuilder({
                     <button type="button" onClick={() => setSelectedRestaurantId(restaurant.businessId)} className="grid min-w-0 flex-1 grid-cols-[76px_minmax(0,1fr)] gap-3 text-left">
                       <BusinessPhoto photos={restaurant.photos} alt={`${restaurant.name} 데이터셋 사진`} className="h-[68px] w-[76px]" compact />
                       <span className="min-w-0">
-                      <strong className="block truncate text-sm">{restaurant.name}</strong>
+                      <span className="flex items-center gap-1.5">
+                        <strong className="truncate text-sm">{restaurant.name}</strong>
+                        {restaurant.reviewSupplyChangeRate != null && restaurant.reviewSupplyChangeRate < -0.15 && (
+                          <span className="shrink-0 rounded bg-[#F0997B] px-1.5 py-0.5 text-[9px] font-bold text-[#4A1B0C]">리뷰 공급 감소</span>
+                        )}
+                      </span>
                       <span className="mt-1 block text-[11px] text-[#718078]">{restaurant.city}, {restaurant.state} · {restaurant.primaryCategory}</span>
+                      {restaurant.reviewSupplyChangeRate != null && restaurant.reviewSupplyChangeRate < -0.15 && (
+                        <span className="mt-0.5 block text-[10px] text-[#9F4A38]">이 매장 리뷰 {(restaurant.reviewSupplyChangeRate * 100).toFixed(0)}% (2017 → 2018)</span>
+                      )}
                       <span className="mt-2 block"><DatasetRating stars={restaurant.stars} reviewCount={restaurant.reviewCount} compact /></span>
                       </span>
                     </button>
@@ -231,8 +347,13 @@ function RegionalCampaignBuilder({
         {activeStep === 4 && (
           <div>
             <p className="text-xs font-black tracking-[0.12em] text-[#137A5A]">STEP 4</p><h3 className="mt-2 text-xl font-black">검토 및 저장</h3>
-            <div className="mt-5 grid gap-3 md:grid-cols-4"><Insight title="권역" value={`${region} · ${topCity ?? "—"}`} /><Insight title="위험 조건" value={selectedSignal} /><Insight title="대상 리뷰어" value={`${candidates.length.toLocaleString()}명`} /><Insight title="선택 음식점" value={`${selectedRestaurantIds.size}곳`} /></div>
-            <div className="mt-5 grid gap-4 lg:grid-cols-2"><label className="text-xs font-bold text-[#59675F]">캠페인 목적<select value={campaignPurpose} onChange={(event) => setCampaignPurpose(event.target.value)} className="mt-2 min-h-11 w-full rounded-lg border border-[#DDE4DF] bg-white px-3"><option>핵심 리뷰어 재활성화</option><option>신규 핵심 리뷰어 유입</option><option>지역 콘텐츠 다양화</option></select></label><label className="text-xs font-bold text-[#59675F]">메시지 제목<input value={messageTitle} onChange={(event) => setMessageTitle(event.target.value)} placeholder="운영 검토용 제목" className="mt-2 min-h-11 w-full rounded-lg border border-[#DDE4DF] px-3" /></label></div>
+            <div className="mt-5 grid gap-3 md:grid-cols-4"><Insight title="대상 지역" value={scopeLabel} /><Insight title="위험 조건" value={selectedSignal} /><Insight title="대상 리뷰어" value={`${candidates.length.toLocaleString()}명`} /><Insight title="선택 음식점" value={`${selectedRestaurantIds.size}곳`} /></div>
+            <div className="mt-5 grid gap-4 lg:grid-cols-2"><label className="text-xs font-bold text-[#59675F]">캠페인 목적<select value={campaignPurpose} onChange={(event) => setCampaignPurpose(event.target.value)} className="mt-2 min-h-11 w-full rounded-lg border border-[#DDE4DF] bg-white px-3"><option>핵심 리뷰어 재활성화</option><option>신규 핵심 리뷰어 유입</option><option>지역 콘텐츠 다양화</option><option>지역 쿠폰 이벤트 검토</option></select></label><label className="text-xs font-bold text-[#59675F]">메시지 제목<input value={messageTitle} onChange={(event) => setMessageTitle(event.target.value)} placeholder="운영 검토용 제목" className="mt-2 min-h-11 w-full rounded-lg border border-[#DDE4DF] px-3" /></label></div>
+            {campaignPurpose === "지역 쿠폰 이벤트 검토" && (
+              <p className="mt-4 rounded-lg bg-[#FFF7E8] px-4 py-3 text-xs leading-5 text-[#8A5A12]">
+                이 캠페인은 쿠폰을 발급하지 않습니다. 저장된 명단은 B2C팀 전달용 운영 검토 자료입니다.
+              </p>
+            )}
             <label className="mt-4 block text-xs font-bold text-[#59675F]">메시지 초안<textarea value={messageBody} onChange={(event) => setMessageBody(event.target.value)} placeholder="실제 발송되지 않는 운영 검토용 초안" className="mt-2 min-h-24 w-full rounded-lg border border-[#DDE4DF] p-3" /></label>
             <div className="mt-6 grid gap-5 lg:grid-cols-2"><div className="rounded-xl border border-[#DDE4DF] p-5"><p className="text-sm font-black">기대효과</p><p className="mt-3 text-sm leading-6 text-[#626D67]">{goal} 여부를 검증합니다. 리뷰 증가나 복귀를 확정 효과로 표현하지 않습니다.</p><p className="mt-4 rounded-lg bg-[#FCEFEA] p-3 text-xs leading-5 text-[#9F4A38]">캠페인 명단 저장은 메시지 발송이 아니며 실제 실행 전 운영자 검토가 필요합니다.</p></div><div className="rounded-xl border border-[#DDE4DF] p-5"><p className="text-sm font-black">측정 계획</p><div className="mt-4 grid grid-cols-3 gap-2">{[["30일", "작성자 수"], ["60일", "리뷰 수"], ["90일", "활동 리뷰어"]].map(([period, metric]) => <div key={period} className="rounded-lg bg-[#F0F7F3] p-3 text-center"><strong className="text-sm text-[#075C45]">{period}</strong><span className="mt-1 block text-[11px] text-[#626D67]">{metric}</span></div>)}</div><p className="mt-3 text-xs leading-5 text-[#718078]">가능하면 비교군과 신규 음식점 리뷰를 함께 관찰합니다.</p></div></div>
           </div>

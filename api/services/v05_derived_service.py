@@ -18,9 +18,12 @@ from api.services.business_attribute_service import get_business_display_attribu
 from api.services.business_photo_service import get_business_photos
 
 
-MODEL_VERSION = "v04"
+MODEL_VERSION = "v05_05_dl"
 SELECTION_YEAR = 2018
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+WEEKDAY_LABELS = {
+    1: "월", 2: "화", 3: "수", 4: "목", 5: "금", 6: "토", 7: "일",
+}
 
 
 @lru_cache(maxsize=1)
@@ -199,11 +202,76 @@ def get_regional_derived_context(
             ),
             {"model_version": MODEL_VERSION, "selection_year": selection_year},
         ).all()
+        weekday_rows = []
+        if _tables_available(connection, ("regional_weekday_pattern",)):
+            weekday_rows = connection.execute(
+                text(
+                    """
+                    SELECT state, iso_weekday, review_count
+                    FROM regional_weekday_pattern
+                    WHERE model_version = :model_version
+                      AND activity_year = :selection_year
+                    ORDER BY state, iso_weekday
+                    """
+                ),
+                {"model_version": MODEL_VERSION, "selection_year": selection_year},
+            ).mappings().all()
 
     newcomers = {state: int(count) for state, count in newcomer_rows}
+    weekday_by_region: dict[str, list[dict]] = {}
+    for row in weekday_rows:
+        weekday_by_region.setdefault(str(row["state"]), []).append(
+            {
+                "isoWeekday": int(row["iso_weekday"]),
+                "label": WEEKDAY_LABELS[int(row["iso_weekday"])],
+                "reviewCount": int(row["review_count"]),
+            }
+        )
+
+    global_by_day = {
+        day: sum(
+            item["reviewCount"]
+            for rows in weekday_by_region.values()
+            for item in rows
+            if item["isoWeekday"] == day
+        )
+        for day in WEEKDAY_LABELS
+    }
+
+    def pattern_payload(state: str) -> dict | None:
+        days = weekday_by_region.get(state, [])
+        if len(days) != 7:
+            return None
+
+        def intensity(counts: dict[int, int]) -> tuple[float, float, float]:
+            weekday_average = sum(counts[day] for day in range(1, 6)) / 5
+            weekend_average = sum(counts[day] for day in (6, 7)) / 2
+            denominator = weekday_average + weekend_average
+            normalized = weekend_average / denominator if denominator else 0.0
+            return weekday_average, weekend_average, normalized
+
+        counts = {item["isoWeekday"]: item["reviewCount"] for item in days}
+        weekday_average, weekend_average, weekend_intensity = intensity(counts)
+        _, _, baseline_intensity = intensity(global_by_day)
+        peak_day = max(days, key=lambda item: (item["reviewCount"], -item["isoWeekday"]))
+        return {
+            "days": days,
+            "weekdayDailyAverage": round(weekday_average, 1),
+            "weekendDailyAverage": round(weekend_average, 1),
+            "weekendIntensity": round(weekend_intensity, 4),
+            "baselineWeekendIntensity": round(baseline_intensity, 4),
+            "baselineDeltaPercentagePoints": round(
+                (weekend_intensity - baseline_intensity) * 100, 1
+            ),
+            "peakDay": peak_day["label"],
+            "calculationNote": "2018년 통합 미식 리뷰의 요일별 일평균 강도",
+        }
+
     return {
         "available": bool(supply_rows),
         "reason": None if supply_rows else "no_rows_for_selection_year",
+        "modelVersion": MODEL_VERSION,
+        "businessScope": "restaurants_and_selected_culinary",
         "selectionYear": selection_year,
         "regions": [
             {
@@ -227,6 +295,7 @@ def get_regional_derived_context(
                     else None
                 ),
                 "newPowerReviewers": newcomers.get(row["state"], 0),
+                "weekdayPattern": pattern_payload(str(row["state"])),
             }
             for row in supply_rows
         ],

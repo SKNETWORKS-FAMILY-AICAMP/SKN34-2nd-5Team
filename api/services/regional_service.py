@@ -29,13 +29,17 @@ from api.services.business_attribute_service import get_business_display_attribu
 from api.services.business_photo_service import get_business_photos
 
 PREDICTION_MODEL_VERSION = "v05_05_dl"
-DERIVED_MODEL_VERSION = "v04"
+DERIVED_MODEL_VERSION = "v05_05_dl"
 MINIMUM_REVIEWERS = 30
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _normalize_city(value: str) -> str:
     return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
+def _city_key(value: str) -> str:
+    return value.strip().lower()
 
 
 @lru_cache(maxsize=1)
@@ -80,8 +84,111 @@ def _load_business_coordinates() -> dict[str, tuple[float, float]]:
     }
 
 
+@lru_cache(maxsize=1)
+def _load_business_core_info() -> dict[str, dict]:
+    interim = PROJECT_ROOT / "data" / "interim"
+    columns = ["business_id", "name", "city", "state", "stars", "review_count", "categories"]
+    frame = pd.concat(
+        [
+            pd.read_parquet(interim / "restaurant_businesses.parquet", columns=columns),
+            pd.read_parquet(interim / "additional_culinary_businesses_v02.parquet", columns=columns),
+        ],
+        ignore_index=True,
+    ).drop_duplicates("business_id", keep="first")
+    info = {}
+    for row in frame.itertuples(index=False):
+        primary_category = str(row.categories).split(",")[0].strip() if pd.notna(row.categories) else None
+        info[str(row.business_id)] = {
+            "name": row.name,
+            "city": row.city,
+            "state": row.state,
+            "stars": float(row.stars) if pd.notna(row.stars) else None,
+            "reviewCount": int(row.review_count) if pd.notna(row.review_count) else 0,
+            "primaryCategory": primary_category,
+        }
+    return info
+
+
+def _active_sponsors(
+    engine: Engine, region: str, city_key: str | None = None, limit: int = 4
+) -> list[dict]:
+    with engine.connect() as connection:
+        found = int(
+            connection.execute(
+                text(
+                    "SELECT COUNT(*) FROM information_schema.tables "
+                    "WHERE table_schema = DATABASE() AND table_name = 'business_sponsorships'"
+                )
+            ).scalar_one()
+        )
+        if not found:
+            return []
+        rows = connection.execute(
+            text(
+                """
+                SELECT business_id, end_date
+                FROM business_sponsorships
+                WHERE region_state = :region
+                  AND status IN ('scheduled', 'active', 'approved')
+                  AND CURDATE() BETWEEN start_date AND end_date
+                ORDER BY priority_tier ASC, start_date ASC
+                """
+            ),
+            {"region": region},
+        ).mappings().all()
+
+    core_info = _load_business_core_info()
+    if city_key is not None:
+        rows = [
+            row for row in rows
+            if (info := core_info.get(str(row["business_id"]))) is not None
+            and _city_key(str(info["city"])) == city_key
+        ]
+    rows = rows[:limit]
+    coordinates = _load_business_coordinates()
+    display_attributes = get_business_display_attributes(
+        engine, [str(row["business_id"]) for row in rows]
+    )
+    business_photos = get_business_photos(
+        engine, [str(row["business_id"]) for row in rows]
+    )
+    sponsors = []
+    for row in rows:
+        business_id = str(row["business_id"])
+        info = core_info.get(business_id)
+        if info is None:
+            continue
+        latitude, longitude = coordinates.get(business_id, (None, None))
+        query = quote_plus(f'{info["name"]} {info["city"]} {info["state"]}')
+        sponsors.append(
+            {
+                "businessId": business_id,
+                "name": info["name"],
+                "city": info["city"],
+                "state": info["state"],
+                "primaryCategory": info["primaryCategory"],
+                "stars": info["stars"],
+                "reviewCount": info["reviewCount"],
+                "matchedReviewerCount": 0,
+                "latitude": latitude,
+                "longitude": longitude,
+                "yelpSearchUrl": f"https://www.yelp.com/search?find_desc={query}",
+                "displayAttributes": display_attributes.get(business_id),
+                "photos": business_photos.get(business_id, []),
+                "reviewSupplyChangeRate": None,
+                "sponsored": True,
+                "sponsorshipEndDate": row["end_date"].isoformat(),
+            }
+        )
+    return sponsors
+
+
 def get_regional_campaign_restaurants(
-    engine: Engine, region: str, sample_ids: list[str]
+    engine: Engine,
+    region: str,
+    sample_ids: list[str],
+    target_scope: str = "region",
+    city_key: str | None = None,
 ) -> dict:
     """Aggregate already-derived individual recommendations for a campaign pool.
 
@@ -89,9 +196,16 @@ def get_regional_campaign_restaurants(
     This makes the restaurant candidates change with the campaign selection
     without reimplementing risk classification in SQL.
     """
+    if target_scope not in {"region", "city"}:
+        raise ValueError("Unsupported campaign target scope.")
+    normalized_city = _city_key(city_key or "") or None
+    if target_scope == "city" and normalized_city is None:
+        raise ValueError("A city campaign requires a city key.")
+    if target_scope == "region":
+        normalized_city = None
     unique_sample_ids = list(dict.fromkeys(sample_ids))[:5000]
     if not unique_sample_ids:
-        return {"available": False, "region": region, "restaurants": []}
+        return {"available": False, "region": region, "restaurants": [], "sponsoredRestaurants": []}
 
     statement = text(
         """
@@ -100,13 +214,20 @@ def get_regional_campaign_restaurants(
                recommendation.primary_category, recommendation.stars,
                recommendation.review_count,
                COUNT(DISTINCT recommendation.sample_id) AS matched_reviewer_count,
-               MIN(recommendation.recommendation_rank) AS best_rank
+               MIN(recommendation.recommendation_rank) AS best_rank,
+               MAX(supply.yoy_review_change_rate) AS review_supply_change_rate
         FROM reviewer_restaurant_recommendation AS recommendation
         INNER JOIN reviewer_region AS reviewer_region
           ON reviewer_region.sample_id = recommendation.sample_id
          AND reviewer_region.model_version = recommendation.model_version
+        LEFT JOIN business_review_supply AS supply
+          ON supply.model_version = recommendation.model_version
+         AND supply.business_id = recommendation.business_id
+         AND supply.is_selection_year = 1
         WHERE recommendation.model_version = :model_version
           AND reviewer_region.state = :region
+          AND (:target_scope = 'region' OR LOWER(TRIM(reviewer_region.top_city)) = :city_key)
+          AND (:target_scope = 'region' OR LOWER(TRIM(recommendation.city)) = :city_key)
           AND recommendation.sample_id IN :sample_ids
         GROUP BY recommendation.business_id, recommendation.business_name,
                  recommendation.city, recommendation.state,
@@ -122,6 +243,8 @@ def get_regional_campaign_restaurants(
             {
                 "model_version": DERIVED_MODEL_VERSION,
                 "region": region,
+                "target_scope": target_scope,
+                "city_key": normalized_city,
                 "sample_ids": unique_sample_ids,
             },
         ).mappings().all()
@@ -152,9 +275,27 @@ def get_regional_campaign_restaurants(
                 "yelpSearchUrl": f"https://www.yelp.com/search?find_desc={query}",
                 "displayAttributes": display_attributes.get(str(row["business_id"])),
                 "photos": business_photos.get(str(row["business_id"]), []),
+                "reviewSupplyChangeRate": (
+                    float(row["review_supply_change_rate"])
+                    if row["review_supply_change_rate"] is not None
+                    else None
+                ),
+                "sponsored": False,
             }
         )
-    return {"available": bool(restaurants), "region": region, "restaurants": restaurants}
+
+    sponsors = _active_sponsors(engine, region, normalized_city)
+    sponsor_ids = {sponsor["businessId"] for sponsor in sponsors}
+    restaurants = [item for item in restaurants if item["businessId"] not in sponsor_ids]
+
+    return {
+        "available": bool(restaurants) or bool(sponsors),
+        "region": region,
+        "targetScope": target_scope,
+        "cityKey": normalized_city,
+        "restaurants": restaurants,
+        "sponsoredRestaurants": sponsors,
+    }
 
 
 def get_regional_summary(engine: Engine) -> dict:

@@ -207,7 +207,7 @@ def build_api_router() -> APIRouter:
             session_token=session_token,
             csrf_token=csrf_token,
         )
-        redirect_to = "/auth/admin" if user.is_admin else settings.after_login_url
+        redirect_to = settings.after_login_url
         return LoginResponse(
             message="로그인되었습니다.",
             user=_user_response(user),

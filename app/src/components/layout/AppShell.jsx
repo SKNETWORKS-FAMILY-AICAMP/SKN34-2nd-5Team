@@ -7,7 +7,7 @@ import AppTopbar from "./AppTopbar";
 function AppShell({ children }) {
   const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem("reviewer-ops-sidebar") === "collapsed");
   const { pathname } = useLocation();
-  const usesWhiteCanvas = pathname === "/" || pathname === "/trust" || pathname === "/settings" || pathname.startsWith("/reviewers");
+  const usesWhiteCanvas = pathname === "/" || pathname === "/trust" || pathname.startsWith("/settings") || pathname.startsWith("/reviewers") || pathname.startsWith("/playbook") || pathname.startsWith("/operations-history");
 
   function toggleSidebar() {
     setCollapsed((current) => {

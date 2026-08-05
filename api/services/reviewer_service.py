@@ -13,6 +13,14 @@ decision_reason, decision_owner, decided_at, playbook_id, review_due_at)은
 덮어써 버리는 사고를 원천 차단한다.
 docs/ui/REACT_V04_DB_INTEGRATION_PLAN.md 6-1절 "이번 작업에서의 주의" 참고.
 
+reviewer_region_history는 2010~2018년 전체 이력(37,953행)이 model_version='v04'
+로만 적재되어 있다. v05_05_dl의 cohort_samples는 2018년 Test 코호트 6,533명뿐이라
+FK(reviewer_region_history.(model_version, sample_id) -> cohort_samples)가
+과거 연도 이력을 v05_05_dl로 복제 적재하는 것 자체를 막는다. 그래서 신규 유입
+판정(첫 파워 리뷰어 진입연도)에 쓰는 이 서브쿼리만 model_version을 'v04'로
+고정한다 — regional_newcomer를 항상 model_version='v04'로 조회하는
+v05_derived_service.py와 같은 패턴("v04 정의를 바꾸지 않는 파생 데이터").
+
 `risk_type`이라는 이름이 operator_decisions에도 있어 혼동하기 쉬운데,
 아래 쿼리는 그 컬럼을 아예 선택하지 않으므로 enrich_profiles()가 계산하는
 risk_type(리뷰어 위험유형 분류)만 남는다.
@@ -52,16 +60,13 @@ def get_reviewers(engine: Engine) -> list[dict]:
         rows = conn.execute(
             text(
                 f"SELECT {queue_columns}, region.state AS region_state, region.top_city, "
-                "entry.first_power_year "
+                "entry.first_selection_year AS first_power_year "
                 "FROM vw_reviewer_work_queue AS queue "
                 "LEFT JOIN reviewer_region AS region "
                 "ON region.sample_id = queue.sample_id AND region.model_version = :v "
-                "LEFT JOIN ("
-                "  SELECT user_id, MIN(selection_year) AS first_power_year "
-                "  FROM reviewer_region_history "
-                "  WHERE model_version = :v "
-                "  GROUP BY user_id"
-                ") AS entry ON entry.user_id = queue.user_id "
+                "LEFT JOIN reviewer_operating_entry AS entry "
+                "ON entry.model_version = queue.model_version "
+                "AND entry.sample_id = queue.sample_id "
                 "WHERE queue.model_version = :v"
             ),
             {"v": MODEL_VERSION},

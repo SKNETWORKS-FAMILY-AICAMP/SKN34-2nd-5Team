@@ -1,4 +1,14 @@
+import { SESSION_EXPIRED_EVENT } from "./sessionEvents";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+
+// AuthProvider's cached `user` only gets re-checked on mount (see
+// AuthProvider.jsx), so a session that expires mid-visit leaves the
+// sidebar showing "logged in" while every write here starts failing with
+// 401. Broadcasting lets AuthProvider re-run its /auth/api/me check without
+// this module importing React/auth context (it's called from plain JS
+// service functions, not hooks) — ProtectedRoute then redirects to
+// /auth/login once the refreshed status comes back "unauthenticated".
 
 async function request(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -18,7 +28,12 @@ async function request(path, options = {}) {
     } catch {
       // Keep the status-based message when the response is not JSON.
     }
-    throw new Error(message);
+    if (response.status === 401) {
+      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT));
+    }
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
   }
   return response.json();
 }

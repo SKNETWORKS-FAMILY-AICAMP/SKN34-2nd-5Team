@@ -107,7 +107,7 @@ http://localhost:5173/auth/login
   -> 로그인 성공 후 React 운영 화면 또는 관리자 화면
 ```
 
-관리자 계정은 로그인 성공 후 `/auth/admin`으로 이동한다. 승인된 일반 사용자는 `AUTH_AFTER_LOGIN_URL` 설정에 따라 React 운영 화면으로 돌아간다.
+관리자와 승인된 일반 사용자는 로그인 성공 후 `AUTH_AFTER_LOGIN_URL` 설정에 따라 React 운영 화면으로 돌아간다. 현재 기본 운영 설정은 공통 홈 화면인 `/`이다. 관리자 승인 화면은 `/auth/admin`에서 계속 이용할 수 있다.
 
 ## 6. 자주 발생하는 문제
 

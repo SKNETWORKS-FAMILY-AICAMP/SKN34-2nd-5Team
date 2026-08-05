@@ -14,8 +14,9 @@ from sqlalchemy.engine import Connection, Engine
 
 
 PREDICTION_MODEL_VERSION = "v05_05_dl"
-DERIVED_MODEL_VERSION = "v04"
+DERIVED_MODEL_VERSION = "v05_05_dl"
 SELECTION_YEAR = 2018
+WEEKDAY_LABELS = {1: "월", 2: "화", 3: "수", 4: "목", 5: "금", 6: "토", 7: "일"}
 MIN_ACTIVE_REVIEWERS = 30
 MIN_ANNUAL_REVIEWS = 100
 MIN_MAP_RADIUS_KM = 10.0
@@ -70,6 +71,42 @@ def _volume_band(value: int, thresholds: tuple[int, int]) -> str:
     return "large"
 
 
+def _weekday_pattern(days: list[dict], baseline_days: list[dict]) -> dict | None:
+    if not days:
+        return None
+
+    def intensity(source: list[dict]) -> float | None:
+        counts = {int(row["iso_weekday"]): int(row["review_count"]) for row in source}
+        if not all(day in counts for day in range(1, 8)):
+            return None
+        weekday_average = sum(counts[day] for day in range(1, 6)) / 5
+        weekend_average = sum(counts[day] for day in (6, 7)) / 2
+        denominator = weekday_average + weekend_average
+        return weekend_average / denominator if denominator else None
+
+    weekend_intensity = intensity(days)
+    baseline_intensity = intensity(baseline_days)
+    peak = max(days, key=lambda row: int(row["review_count"]))
+    return {
+        "days": [
+            {
+                "isoWeekday": int(row["iso_weekday"]),
+                "label": WEEKDAY_LABELS[int(row["iso_weekday"])],
+                "reviewCount": int(row["review_count"]),
+            }
+            for row in days
+        ],
+        "peakDay": WEEKDAY_LABELS[int(peak["iso_weekday"])],
+        "weekendIntensity": weekend_intensity,
+        "baselineWeekendIntensity": baseline_intensity,
+        "baselineDeltaPercentagePoints": (
+            round((weekend_intensity - baseline_intensity) * 100, 1)
+            if weekend_intensity is not None and baseline_intensity is not None
+            else None
+        ),
+    }
+
+
 def get_city_operating_context(
     engine: Engine, selection_year: int = SELECTION_YEAR
 ) -> dict:
@@ -78,6 +115,7 @@ def get_city_operating_context(
         "city_newcomer",
         "regional_review_supply",
         "regional_newcomer",
+        "city_reviewer_migration",
     )
     with engine.connect() as connection:
         if not _tables_available(connection, tables):
@@ -111,7 +149,10 @@ def get_city_operating_context(
                         COALESCE(previous_entry.new_power_reviewers, 0)
                             AS previous_year_new_power_reviewers,
                         COALESCE(crm.core_reviewers, 0) AS core_reviewers,
-                        COALESCE(crm.crm_targets, 0) AS crm_targets
+                        COALESCE(crm.crm_targets, 0) AS crm_targets,
+                        COALESCE(migration.outflow_count, 0) AS reviewer_outflow_count,
+                        COALESCE(migration.inflow_count, 0) AS reviewer_inflow_count,
+                        COALESCE(migration.net_migration, 0) AS reviewer_net_migration
                     FROM city_review_supply AS supply
                     LEFT JOIN city_newcomer AS current_entry
                       ON current_entry.model_version = supply.model_version
@@ -123,6 +164,11 @@ def get_city_operating_context(
                      AND previous_entry.selection_year = supply.activity_year - 1
                      AND previous_entry.state = supply.state
                      AND previous_entry.city_key = supply.city_key
+                    LEFT JOIN city_reviewer_migration AS migration
+                      ON migration.model_version = supply.model_version
+                     AND migration.selection_year = supply.activity_year
+                     AND migration.state = supply.state
+                     AND migration.city_key = supply.city_key
                     LEFT JOIN (
                         SELECT
                             region.state,
@@ -207,6 +253,38 @@ def get_city_operating_context(
                 },
             ).mappings()
         ]
+        city_weekday_rows = []
+        regional_weekday_rows = []
+        if _tables_available(connection, ("city_weekday_pattern", "regional_weekday_pattern")):
+            city_weekday_rows = [
+                dict(row) for row in connection.execute(
+                    text(
+                        "SELECT state, city_key, iso_weekday, review_count "
+                        "FROM city_weekday_pattern "
+                        "WHERE model_version = :model_version AND activity_year = :selection_year "
+                        "ORDER BY state, city_key, iso_weekday"
+                    ),
+                    {"model_version": DERIVED_MODEL_VERSION, "selection_year": selection_year},
+                ).mappings()
+            ]
+            regional_weekday_rows = [
+                dict(row) for row in connection.execute(
+                    text(
+                        "SELECT state, iso_weekday, review_count "
+                        "FROM regional_weekday_pattern "
+                        "WHERE model_version = :model_version AND activity_year = :selection_year "
+                        "ORDER BY state, iso_weekday"
+                    ),
+                    {"model_version": DERIVED_MODEL_VERSION, "selection_year": selection_year},
+                ).mappings()
+            ]
+
+    city_weekdays: dict[tuple[str, str], list[dict]] = {}
+    for row in city_weekday_rows:
+        city_weekdays.setdefault((row["state"], row["city_key"]), []).append(row)
+    regional_weekdays: dict[str, list[dict]] = {}
+    for row in regional_weekday_rows:
+        regional_weekdays.setdefault(row["state"], []).append(row)
 
     thresholds = _volume_thresholds(rows)
     eligible_rows = [
@@ -300,6 +378,9 @@ def get_city_operating_context(
                 "newPowerReviewerChangeRate": newcomer_change_rate,
                 "coreReviewers": int(row["core_reviewers"]),
                 "crmTargets": int(row["crm_targets"]),
+                "reviewerOutflowCount": int(row["reviewer_outflow_count"]),
+                "reviewerInflowCount": int(row["reviewer_inflow_count"]),
+                "reviewerNetMigration": int(row["reviewer_net_migration"]),
                 "minimumSampleMet": minimum_sample_met,
                 "supplyStatus": _supply_status(review_rate, minimum_sample_met),
                 "supplyVolumeBand": _volume_band(int(row["review_count"]), thresholds),
@@ -307,16 +388,22 @@ def get_city_operating_context(
                 "supplyRank": supply_ranks.get((row["state"], row["city_key"])),
                 "coreReviewerRank": core_ranks.get((row["state"], row["city_key"])),
                 "newcomerRank": newcomer_ranks.get((row["state"], row["city_key"])),
+                "weekdayPattern": _weekday_pattern(
+                    city_weekdays.get((row["state"], row["city_key"]), []),
+                    regional_weekdays.get(row["state"], []),
+                ),
             }
         )
 
     city_counts: dict[str, dict[str, int]] = {}
     for city in cities:
         state_counts = city_counts.setdefault(
-            city["state"], {"total": 0, "eligible": 0}
+            city["state"], {"total": 0, "eligible": 0, "outflow": 0, "inflow": 0}
         )
         state_counts["total"] += 1
         state_counts["eligible"] += int(city["minimumSampleMet"])
+        state_counts["outflow"] += city["reviewerOutflowCount"]
+        state_counts["inflow"] += city["reviewerInflowCount"]
 
     eligible_region_rows = [
         row for row in region_rows if row["yoy_review_change_rate"] is not None
@@ -361,7 +448,9 @@ def get_city_operating_context(
             if previous_newcomers > 0
             else None
         )
-        counts = city_counts.get(row["state"], {"total": 0, "eligible": 0})
+        counts = city_counts.get(
+            row["state"], {"total": 0, "eligible": 0, "outflow": 0, "inflow": 0}
+        )
         regions.append(
             {
                 "region": row["state"],
@@ -389,6 +478,9 @@ def get_city_operating_context(
                 "newPowerReviewerChangeRate": newcomer_change_rate,
                 "coreReviewers": int(row["core_reviewers"]),
                 "crmTargets": int(row["crm_targets"]),
+                "reviewerOutflowCount": counts["outflow"],
+                "reviewerInflowCount": counts["inflow"],
+                "reviewerNetMigration": counts["inflow"] - counts["outflow"],
                 "cityCount": counts["total"],
                 "eligibleCityCount": counts["eligible"],
                 "supplyRank": region_supply_ranks.get(row["state"]),

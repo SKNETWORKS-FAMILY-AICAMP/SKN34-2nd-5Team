@@ -284,7 +284,7 @@ def create_cohort_master():
     
     # 선행 파일 경로
     RESTAURANT_REVIEW_PATH = INTERIM_DIR / "restaurant_reviews.parquet"
-    ADDITIONAL_REVIEW_PATH = INTERIM_DIR / "additional_culinary_reviews.parquet"
+    ADDITIONAL_REVIEW_PATH = INTERIM_DIR / "additional_culinary_reviews_v02.parquet"
 
     # 2. DuckDB SQL을 활용한 고속 집계 (메모리 최적화)
     print("DuckDB를 활용하여 대용량 리뷰 데이터 병합 및 연도별 집계를 시작합니다...")
@@ -462,7 +462,7 @@ def create_modeling_dataset_with_config():
     
     # 기타 선행 데이터 파일 경로
     REST_REVIEW_PATH = PROJECT_ROOT / "data" / "interim" / "restaurant_reviews.parquet"
-    ADD_REVIEW_PATH = PROJECT_ROOT / "data" / "interim" / "additional_culinary_reviews.parquet"
+    ADD_REVIEW_PATH = PROJECT_ROOT / "data" / "interim" / "additional_culinary_reviews_v02.parquet"
 
     # =========================================================================
     # 2. 코호트 마스터 로드
@@ -479,8 +479,25 @@ def create_modeling_dataset_with_config():
     # =========================================================================
     print("User 데이터 로드 및 엘리트/가입 연차 피처 생성 중...")
     USER_JSON_PATH = PROJECT_ROOT / "data" / "raw" / "yelp_academic_dataset_user.json"
-    user_df = pd.read_json(USER_JSON_PATH, lines=True)[['user_id', 'yelping_since', 'elite']]
-    
+    connection = duckdb.connect()
+    try:
+        user_df = connection.execute(
+            f"""
+            SELECT user_id, yelping_since, elite
+            FROM read_json(
+                '{USER_JSON_PATH.resolve().as_posix()}',
+                format = 'newline_delimited',
+                columns = {{
+                    user_id: 'VARCHAR',
+                    yelping_since: 'VARCHAR',
+                    elite: 'VARCHAR'
+                }}
+            )
+            """
+        ).fetchdf()
+    finally:
+        connection.close()
+
     user_df['yelping_since'] = pd.to_datetime(user_df['yelping_since'])
     user_df['join_year'] = user_df['yelping_since'].dt.year
 

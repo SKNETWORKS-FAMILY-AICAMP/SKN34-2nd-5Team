@@ -981,7 +981,7 @@ def train_evaluate_and_profile(setup_vars, data_vars):
 
 ## 최종 Test 성능
 
-| 지표 | v03 참고 | v04 |
+| 지표 | v03 참고 | v05_ml |
 |---|---:|---:|
 | Macro F1 | {v03_metrics['macro_f1']:.4f} | {test_metrics['macro_f1']:.4f} |
 | Macro PR-AUC | {v03_metrics['macro_pr_auc']:.4f} | {test_metrics['macro_pr_auc']:.4f} |
@@ -994,7 +994,6 @@ def train_evaluate_and_profile(setup_vars, data_vars):
 | 약화 | {test_metrics['weakened_precision']:.2%} | {test_metrics['weakened_recall']:.2%} | {test_metrics['weakened_f1']:.4f} | {test_metrics['weakened_pr_auc']:.4f} |
 | 중단 | {test_metrics['stopped_precision']:.2%} | {test_metrics['stopped_recall']:.2%} | {test_metrics['stopped_f1']:.4f} | {test_metrics['stopped_pr_auc']:.4f} |
 
-v03과 v04는 코호트와 시간 구조가 다르므로 성능 수치는 단순 우열이 아니라 참고 비교로만 사용한다.
 
 ## 통합 상위 20% 정책
 
@@ -1013,7 +1012,7 @@ v03과 v04는 코호트와 시간 구조가 다르므로 성능 수치는 단순
 - 클래스 점수는 보정된 실제 확률이 아니다.
 - 2017년 활동이 없는 후보는 결측 표시를 통해 학습하며, 초기 연도 데이터 희소성 영향이 남을 수 있다.
 - CRM 개입 효과와 복귀 결과는 현재 데이터에 없다.
-- v04 모델의 운영 기본값 전환은 별도 승인 후 수행한다.
+- v05_ml 모델의 운영 기본값 전환은 별도 승인 후 수행한다.
 '''
     setup_vars['PERFORMANCE_REPORT_PATH'].write_text(report, encoding='utf-8')
 

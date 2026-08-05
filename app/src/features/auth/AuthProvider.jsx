@@ -6,6 +6,7 @@ import {
   login as loginRequest,
   logout as logoutRequest,
 } from "./authApi";
+import { SESSION_EXPIRED_EVENT } from "../../services/sessionEvents";
 
 // status: "loading" while /auth/api/me is in flight (see REACT_INTEGRATION.md
 // §8 step "확인이 끝날 때까지 보호 화면을 먼저 렌더링하지 말고 로딩 상태를
@@ -43,6 +44,21 @@ export function AuthProvider({ children }) {
   function refresh() {
     setRefreshToken((token) => token + 1);
   }
+
+  // A session can expire between page load and a later write (retention
+  // decisions, interactions, …) without any client-side signal — this
+  // state only re-checks /auth/api/me on mount otherwise. decisionService.js
+  // dispatches this event on any 401 so the sidebar/ProtectedRoute stop
+  // showing a stale "logged in" state once the real session is gone.
+  useEffect(() => {
+    function handleSessionExpired() {
+      refresh();
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => {
+      window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    };
+  }, []);
 
   async function login(identifier, password) {
     const result = await loginRequest(identifier, password);

@@ -46,9 +46,7 @@ function setNavigationState(isAuthenticated, user = null) {
   guestNavigation.hidden = isAuthenticated;
   memberNavigation.hidden = !isAuthenticated;
   if (homeLink) {
-    homeLink.href = isAuthenticated
-      ? (user?.is_admin ? "/auth/admin" : "/auth/profile")
-      : "/auth/login";
+    homeLink.href = isAuthenticated ? "/" : "/auth/login";
   }
 }
 
@@ -57,7 +55,7 @@ async function syncNavigationState() {
     const user = await apiFetch("/auth/api/me");
     setNavigationState(true, user);
     if (page === "login" || page === "signup") {
-      window.location.replace(user.is_admin ? "/auth/admin" : "/auth/profile");
+      window.location.replace("/");
     }
   } catch {
     setNavigationState(false);

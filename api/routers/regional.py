@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from api.db import get_engine
@@ -17,6 +17,8 @@ router = APIRouter(prefix="/api", tags=["regional"])
 class RegionalCampaignRestaurantRequest(BaseModel):
     region: str = Field(min_length=2, max_length=8)
     sample_ids: list[str] = Field(min_length=1, max_length=5000)
+    target_scope: str = Field(default="region", pattern="^(region|city)$")
+    city_key: str | None = Field(default=None, max_length=128)
 
 
 @router.get("/regional")
@@ -38,6 +40,8 @@ def regional_radius() -> dict:
 
 @router.post("/regional/campaign-restaurants")
 def regional_campaign_restaurants(body: RegionalCampaignRestaurantRequest) -> dict:
+    if body.target_scope == "city" and not body.city_key:
+        raise HTTPException(status_code=422, detail="도시 캠페인에는 city_key가 필요합니다.")
     return get_regional_campaign_restaurants(
-        get_engine(), body.region, body.sample_ids
+        get_engine(), body.region, body.sample_ids, body.target_scope, body.city_key
     )
