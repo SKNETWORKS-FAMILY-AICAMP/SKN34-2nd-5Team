@@ -1,8 +1,12 @@
 # React 데이터 출처와 정적 정합성 산출물 (v04)
 
+> **문서 상태: 비교·롤백 기준**
+> v04 모델 산출물과 React/API 정합성 경로를 재현하기 위한 문서다. 현재 운영 모델은
+> `v05_05_dl`이며 최신 제품 상태는 [현재 인수인계](../07_history_and_handoff/CODEX_HANDOFF.md)를 따른다.
+
 `app/`(React)가 FastAPI와 MySQL을 통해 v04 모델 산출물을 어떻게 소비하는지,
 정합성 확인·복구용 정적 JSON은 어떤 원천에서 만들어지는지 정의한다. Streamlit 쪽
-데이터 계약은 [`STREAMLIT_DATA_CONTRACT.md`](STREAMLIT_DATA_CONTRACT.md) 참고 —
+데이터 계약은 [`STREAMLIT_DATA_CONTRACT.md`](../04_architecture_and_guides/STREAMLIT_DATA_CONTRACT.md) 참고 —
 이 문서는 같은 v04 산출물의 React/API 데이터 경로를 설명하는 짝문서다.
 
 현재 런타임 경로는 `app/` → `api/` → MySQL `yelp_data`다. React는 화면 데이터를
@@ -30,16 +34,16 @@ API 응답 정합성 확인과 복구를 위한 산출물로 보존한다. 권�
 
 이 문서는 **파생** 쪽을 중심으로 다룬다 — pass-through는 컬럼명만 다를 뿐 별도
 로직이 없다. API 필드 조달 계약은
-[`REACT_V04_DB_INTEGRATION_PLAN.md`](ui/REACT_V04_DB_INTEGRATION_PLAN.md)를 따른다.
+[`REACT_V04_DB_INTEGRATION_PLAN.md`](REACT_V04_DB_INTEGRATION_PLAN.md)를 따른다.
 
 ---
 
 ## 2. 콘텐츠 위험 — 권역별 집계
 
-화면: `/regional` ([RegionalRiskPage.jsx](../app/src/pages/RegionalRiskPage.jsx))
-파이프라인: [`derived_reviewer_activity.py`](../pipeline/v04/derived_reviewer_activity.py)
-- 런타임: [`regional_service.py`](../api/services/regional_service.py) + `vw_regional_risk_summary`
-- 정적 정합성 export: [`export_regional()`](../scripts/export_frontend_data.py)
+화면: `/regional` ([RegionalRiskPage.jsx](../../app/src/pages/RegionalRiskPage.jsx))
+파이프라인: [`derived_reviewer_activity.py`](../../pipeline/v04/derived_reviewer_activity.py)
+- 런타임: [`regional_service.py`](../../api/services/regional_service.py) + `vw_regional_risk_summary`
+- 정적 정합성 export: [`export_regional()`](../../scripts/export_frontend_data.py)
 
 ### 2-1. 원천 데이터
 
@@ -51,7 +55,7 @@ API 응답 정합성 확인과 복구를 위한 산출물로 보존한다. 권�
 `reviewer_region_v04.parquet`의 원천은
 `restaurant_reviews.parquet`, `additional_culinary_reviews.parquet`,
 `restaurant_businesses.parquet`이다. 상세 계약은
-[`DERIVED_REVIEWER_DATA_CONTRACT_v04.md`](../database/docs/DERIVED_REVIEWER_DATA_CONTRACT_v04.md)를
+[`DERIVED_REVIEWER_DATA_CONTRACT_v04.md`](../../database/docs/DERIVED_REVIEWER_DATA_CONTRACT_v04.md)를
 따른다.
 
 ### 2-2. 처리 단계
@@ -87,7 +91,7 @@ API 응답 정합성 확인과 복구를 위한 산출물로 보존한다. 권�
 - 리뷰 공급 변화(review supply change) 지표는 한때 넣었다가 제거했다 — 코호트 자격
   조건(`recent_review_count`에만 최소 리뷰 수 하한이 있고 `baseline`에는 없음) 때문에
   전 권역에서 예외 없이 "증가"로만 나오는 구조적 아티팩트였다. 자세한 경위는
-  [`REACT_V04_PARITY_PLAN.md`](ui/REACT_V04_PARITY_PLAN.md)의 "리뷰 공급 변화 지표
+  [`REACT_V04_PARITY_PLAN.md`](REACT_V04_PARITY_PLAN.md)의 "리뷰 공급 변화 지표
   제거" 절 참고.
 
 ---
@@ -95,7 +99,7 @@ API 응답 정합성 확인과 복구를 위한 산출물로 보존한다. 권�
 ## 3. 리뷰 수 이중 소스 — 두 화면에 공통되는 버그와 수정
 
 권역과 월별 활동은
-[`derived_reviewer_activity.py`](../pipeline/v04/derived_reviewer_activity.py)의
+[`derived_reviewer_activity.py`](../../pipeline/v04/derived_reviewer_activity.py)의
 동일한 리뷰 결합 함수를 공유한다. export 스크립트는 원본 리뷰를 다시 읽지 않는다.
 
 **발견 경위**: 월별 타임라인을 만들면서 `restaurant_reviews.parquet` 하나만으로 리뷰어별
@@ -119,10 +123,10 @@ API 응답 정합성 확인과 복구를 위한 산출물로 보존한다. 권�
 ## 4. 리뷰어 상세 — 월별 타임라인
 
 화면: `/reviewers/:reviewerId`의 "월별 타임라인" 탭
-([ReviewerDetailPage.jsx](../app/src/pages/ReviewerDetailPage.jsx),
-[MonthlyActivityChart.jsx](../app/src/components/reviewer-detail/MonthlyActivityChart.jsx))
-- 런타임: [`reviewer_detail_service.py`](../api/services/reviewer_detail_service.py) + `reviewer_monthly_activity`
-- 정적 정합성 export: [`export_monthly_activity()`](../scripts/export_frontend_data.py)
+([ReviewerDetailPage.jsx](../../app/src/pages/ReviewerDetailPage.jsx),
+[MonthlyActivityChart.jsx](../../app/src/components/reviewer-detail/MonthlyActivityChart.jsx))
+- 런타임: [`reviewer_detail_service.py`](../../api/services/reviewer_detail_service.py) + `reviewer_monthly_activity`
+- 정적 정합성 export: [`export_monthly_activity()`](../../scripts/export_frontend_data.py)
 
 ### 4-1. 원천 데이터
 
@@ -133,7 +137,7 @@ API 응답 정합성 확인과 복구를 위한 산출물로 보존한다. 권�
 
 이 화면은 원래 Streamlit이 `data/processed/predictions/reviewer_monthly_activity_v01.parquet`라는
 별도 계약 파일을 기다리다가, 그 파일이 저장소에 없어서 빈 상태로 두고 있던 자리다
-([`app/views/reviewer_360.py:278-294`](../archive/app_streamlit_v04/views/reviewer_360.py)).
+([`app/views/reviewer_360.py:278-294`](../../archive/app_streamlit_v04/views/reviewer_360.py)).
 그 계약을 v04 `sample_id` 단위로 정식 구현한 파일이
 `reviewer_monthly_activity_v04.parquet`이다. 현재 React는 API가 DB에 적재된 월별
 활동을 직렬화한 응답을 사용하고, export 스크립트는 같은 계약의 정적 기준값을 만든다.
@@ -164,9 +168,9 @@ Streamlit 화면 연결은 이 문서의 범위에 포함하지 않는다.
 ## 5. Trust Center — v02/v03 이전 모델 비교
 
 화면: `/trust`의 "성능과 Top-K", "피처 근거" 탭 안 접기(expander) 섹션
-([TrustCenterPage.jsx](../app/src/pages/TrustCenterPage.jsx))
-- 런타임: [`trust_service.py`](../api/services/trust_service.py) + 모델 평가 테이블
-- 정적 정합성 export: [`export_trust()`](../scripts/export_frontend_data.py),
+([TrustCenterPage.jsx](../../app/src/pages/TrustCenterPage.jsx))
+- 런타임: [`trust_service.py`](../../api/services/trust_service.py) + 모델 평가 테이블
+- 정적 정합성 export: [`export_trust()`](../../scripts/export_frontend_data.py),
 `_multiclass_trust_block()`, `_v02_block()`, `_v03_top20()`
 
 ### 5-1. 원천 데이터

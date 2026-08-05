@@ -126,7 +126,7 @@ data/processed/predictions/reviewer_monthly_activity_v01.parquet
 reports/tables/regional_risk_summary_v01.csv
 ```
 
-정확한 컬럼은 [docs/STREAMLIT_DATA_CONTRACT.md](docs/STREAMLIT_DATA_CONTRACT.md)를
+정확한 컬럼은 [STREAMLIT_DATA_CONTRACT.md](../../docs/04_architecture_and_guides/STREAMLIT_DATA_CONTRACT.md)를
 확인한다.
 
 ## 표현 원칙

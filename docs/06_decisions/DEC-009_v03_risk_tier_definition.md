@@ -1,5 +1,8 @@
 # DEC-009. v03 통합 우선순위 축 재정의
 
+> **문서 상태: 현재 기준**
+> 상위 20% 검토 범위와 약화·중단 우세 분리는 현재 운영 정책에서도 유지한다.
+
 | 항목 | 내용 |
 |---|---|
 | 상태 | 승인 |
@@ -90,7 +93,7 @@ DEC-006의 4단계 등급과 5/20/40% 컷값은 v02 이진 모델 비교 기준�
 ## 8. 관련 문서
 
 - `AGENTS.md`
-- `docs/decisions/DEC-006_crm_targeting_policy.md` (v02 비교 기준으로 보존)
-- `docs/decisions/DEC-008_retention_state_definition.md`
-- `docs/CODEX_HANDOFF.md`
-- `docs/STREAMLIT_DATA_CONTRACT.md`
+- `docs/06_decisions/DEC-006_crm_targeting_policy.md` (v02 비교 기준으로 보존)
+- `docs/06_decisions/DEC-008_retention_state_definition.md`
+- `docs/07_history_and_handoff/CODEX_HANDOFF.md`
+- `docs/04_architecture_and_guides/STREAMLIT_DATA_CONTRACT.md`

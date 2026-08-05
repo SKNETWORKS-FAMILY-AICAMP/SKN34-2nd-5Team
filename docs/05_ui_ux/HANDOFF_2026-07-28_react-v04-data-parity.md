@@ -1,3 +1,6 @@
+> **문서 상태: 역사 기록**
+> 2026-07-28 React·Streamlit 패리티 작업 당시의 인수인계다.
+
 > **경로 변경 안내(2026-07-28 이후)**: 이 문서는 작성 시점 기준 경로(`app/` = Streamlit,
 > `frontend/` = React)로 쓰였다. 이후 `frontend/` → `app/`, 기존 `app/` →
 > `archive/app_streamlit_v04/`로 이름이 바뀌었다. 아래 본문은 작성 당시 경로 그대로 둔다.
@@ -29,7 +32,7 @@ React 프론트엔드(`frontend/`)는 원래 합성 mock 데이터로 동작했�
 
 mock 파일은 전부 삭제함(`frontend/src/mocks/*`, 그리고 이제 고아가 된 컴포넌트들 `PlaybookCard`, `PlaybookFilters`, `RegionalFilters`, `MonthlyActivityChart`, `ModelPerformanceChart`, `RoadmapTimeline`, `ValidationChecklist`).
 
-`docs/ui/REACT_V04_PARITY_PLAN.md`에 계획이 정리돼 있고, 화면별로 무엇을 왜 바꿨는지 섹션이 있음(지역 정의 근거 포함). 추가 작업 전에 꼭 읽어볼 것.
+`docs/05_ui_ux/REACT_V04_PARITY_PLAN.md`에 계획이 정리돼 있고, 화면별로 무엇을 왜 바꿨는지 섹션이 있음(지역 정의 근거 포함). 추가 작업 전에 꼭 읽어볼 것.
 
 ## 아직 처리 안 된 후속 사항
 

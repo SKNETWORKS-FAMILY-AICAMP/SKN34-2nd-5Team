@@ -1,5 +1,8 @@
 # DEC-012. 리뷰 공급 회복 중심 운영 흐름과 최종 정보 구조
 
+> **문서 상태: 현재 기준**
+> 최종 제품 정의와 운영 흐름에 적용한다.
+
 ## 문서 정보
 
 | 항목 | 내용 |
@@ -9,7 +12,7 @@
 | 적용 버전 | v05 최종 발표 버전 |
 | 결정 대상 | 제품 정의, 핵심 업무 흐름, 최종 화면 정보 구조 |
 | 관련 결정 | DEC-006, DEC-010, DEC-011 |
-| 상세 실행 명세 | [V05_FINAL_PRODUCT_UX_SPEC.md](../ui/V05_FINAL_PRODUCT_UX_SPEC.md) |
+| 상세 실행 명세 | [V05_FINAL_PRODUCT_UX_SPEC.md](../05_ui_ux/V05_FINAL_PRODUCT_UX_SPEC.md) |
 
 ## 1. 배경
 
@@ -139,7 +142,7 @@ Reviewer 360과 권역 캠페인은 독립 기능이 아니라 `리뷰 공급 �
 
 ## 7. 기존 문서와의 관계
 
-- 본 결정은 [V05_WORK_SPEC.md](../ui/V05_WORK_SPEC.md)의 기존 화면 IA와 대표 장면
+- 본 결정은 [V05_WORK_SPEC.md](../05_ui_ux/V05_WORK_SPEC.md)의 기존 화면 IA와 대표 장면
   결론을 대체한다.
 - `V05_WORK_SPEC.md`의 데이터 계약, API 계약, 저장 원칙과 완료 이력은 계속 유효하다.
 - `V05_UPGRADE_EXPLORATION.md`는 아이디어 탐색 기록으로만 유지한다.

@@ -221,7 +221,7 @@ mysql --default-character-set=utf8mb4 yelp_data `
 
 ## 9. 관련 문서
 
-- [`docs/ui/V05_WORK_SPEC.md`](../docs/ui/V05_WORK_SPEC.md)
-- [`docs/ui/V05_IMPLEMENTATION_REPORT.md`](../docs/ui/V05_IMPLEMENTATION_REPORT.md)
-- [`docs/CODEX_HANDOFF.md`](../docs/CODEX_HANDOFF.md)
+- [`docs/05_ui_ux/V05_WORK_SPEC.md`](../docs/05_ui_ux/V05_WORK_SPEC.md)
+- [`docs/05_ui_ux/V05_IMPLEMENTATION_REPORT.md`](../docs/05_ui_ux/V05_IMPLEMENTATION_REPORT.md)
+- [`docs/07_history_and_handoff/CODEX_HANDOFF.md`](../docs/07_history_and_handoff/CODEX_HANDOFF.md)
 - [`docs/06_decisions/DEC-014_unified_operating_context.md`](../docs/06_decisions/DEC-014_unified_operating_context.md)

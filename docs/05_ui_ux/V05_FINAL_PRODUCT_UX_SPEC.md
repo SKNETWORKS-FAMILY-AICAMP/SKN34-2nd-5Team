@@ -1,16 +1,19 @@
 # v05 최종 제품 UX 실행 명세
 
+> **문서 상태: 현재 기준**
+> 최종 화면 정보 구조와 제품 표현에 적용한다.
+
 ## 0. 문서 권한과 사용법
 
 이 문서는 v05 최종 발표 버전의 **화면 구현 단일 기준**이다. 제품 방향은
-[DEC-012](../decisions/DEC-012_review_supply_recovery_operating_flow.md)를 따르고,
+[DEC-012](../06_decisions/DEC-012_review_supply_recovery_operating_flow.md)를 따르고,
 데이터·모델 보호 원칙은 루트 `AGENTS.md`를 따른다.
 
 충돌 시 우선순위:
 
 1. `AGENTS.md`
-2. `docs/decisions/`
-3. `docs/CODEX_HANDOFF.md`
+2. `docs/06_decisions/`
+3. `docs/07_history_and_handoff/CODEX_HANDOFF.md`
 4. 본 문서
 5. `V05_WORK_SPEC.md`, `V05_UPGRADE_EXPLORATION.md` 및 기타 UI 문서
 
@@ -21,7 +24,7 @@
 
 ## 1. 제품 한 줄 정의
 
-> 지역별 리뷰 공급 변화를 감지하고 원인을 분석한 뒤, 파워 리뷰어 특별 관리 또는
+> 지역별 리뷰 공급 변화를 감지하고 원인을 분석한 뒤, 핵심 리뷰어 특별 관리 또는
 > 지역 활성화 캠페인으로 연결하는 리뷰 생태계 운영 서비스.
 
 ## 2. 핵심 사용자와 질문
@@ -42,7 +45,7 @@
 |---:|---|---|---|
 | 1 | 개요 | `/` | 공급 위험과 오늘의 우선 조치 요약 |
 | 2 | 콘텐츠 공급 위험 | `/regional` | 권역 선택과 원인 분석 |
-| 3 | 파워 리뷰어 관리 | `/reviewers?mode=individual&status=미검토&sort=우선순위` | 우선 검토 큐 |
+| 3 | 핵심 리뷰어 관리 | `/reviewers?mode=individual&status=미검토&sort=우선순위` | 우선 검토 큐 |
 | 4 | 신규 파워 유입 | `/regional?layer=newcomers` | 권역별 신규 유입 분석 |
 | 5 | 지역 활성화 캠페인 | `/playbook?mode=region` | 지역 이벤트·콘텐츠 캠페인 |
 | 6 | 개인 특별 관리안 | `/playbook?mode=individual` | 실행안·채널·콘텐츠 선택 |
@@ -51,7 +54,7 @@
 | 9 | 설정 | 인증 관리자 화면 또는 향후 확정 | 사용자·권한·운영 설정 |
 
 `/regional/home`, `/individual/home`은 호환 경로로 유지하되 사이드바에서 중복 노출하지
-않는다. `Reviewer 360`은 파워 리뷰어 관리에서 선택한 대상의 상세 화면이므로 별도
+않는다. `Reviewer 360`은 핵심 리뷰어 관리에서 선택한 대상의 상세 화면이므로 별도
 최상위 메뉴로 중복 노출하지 않는 것을 기본으로 한다.
 
 ## 4. 공통 디자인 계약
@@ -123,7 +126,7 @@
 - 리뷰 공급 변화율
 - 활동 리뷰어 수
 - CRM 검토 후보 수
-- 신규 파워 리뷰어 수
+- 신규 핵심 리뷰어 수
 - 오늘의 미검토 수와 판단 완료 수
 
 #### 주요 행동
@@ -169,7 +172,7 @@
 - 리뷰 공급 변화
 - 활동 리뷰어
 - CRM 통합 검토 대상
-- 신규 파워 리뷰어
+- 신규 핵심 리뷰어
 - 데이터 기반 원인 요약
 
 #### 하단 분석
@@ -193,7 +196,7 @@
 - 파생 없음: `분석 데이터 없음`과 필요한 파생명을 명시
 - 지도 경계 없음: 점 지도 폴백 여부를 사용자와 먼저 결정
 
-### 6.3 파워 리뷰어 관리 `/reviewers`
+### 6.3 핵심 리뷰어 관리 `/reviewers`
 
 #### 목적
 
@@ -334,7 +337,7 @@
 - 특정 카테고리 리뷰 챌린지
 - 사진 리뷰 참여 이벤트
 - 신규 음식점 큐레이션
-- 휴면 파워 리뷰어 지역 초대
+- 휴면 핵심 리뷰어 지역 초대
 - 지역별 테마 리스트 제작
 - 콘텐츠 공급 부족 카테고리 집중 캠페인
 
@@ -484,8 +487,8 @@
 ## 12. 다음 작업용 기본 프롬프트
 
 ```text
-AGENTS.md, docs/decisions/DEC-012_review_supply_recovery_operating_flow.md,
-docs/ui/V05_FINAL_PRODUCT_UX_SPEC.md를 먼저 전부 읽어라.
+AGENTS.md, docs/06_decisions/DEC-012_review_supply_recovery_operating_flow.md,
+docs/05_ui_ux/V05_FINAL_PRODUCT_UX_SPEC.md를 먼저 전부 읽어라.
 
 현재 미완료 화면 하나만 명세의 목적·데이터·레이아웃·상호작용·완료 조건대로 구현하라.
 채팅 기억으로 임의 재설계하지 말고, 가짜 수치와 미구현 기능을 만들지 마라.

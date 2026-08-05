@@ -1,10 +1,14 @@
 # Streamlit 데이터 계약
 
+> **문서 상태: 비교·롤백 기준**
+> 이전 v04 Streamlit 앱과 정적 산출물의 재현·정합성 검증에 사용한다. 현재 운영
+> 서비스는 React → FastAPI → MySQL 경로와 `v05_05_dl` 모델을 사용한다.
+
 Reviewer Retention Console이 읽는 v04 데이터 산출물과 운영 화면의 노출
 범위를 정의한다.
 
 React(`app/`)가 이 산출물을 어떻게 읽고 파생하는지는
-[`REACT_DATA_SOURCES_v04.md`](REACT_DATA_SOURCES_v04.md) 참고.
+[`REACT_DATA_SOURCES_v04.md`](../05_ui_ux/REACT_DATA_SOURCES_v04.md) 참고.
 
 ## 1. v04 핵심 산출물 묶음
 
@@ -173,12 +177,13 @@ data/processed/reviewer_monthly_activity_v04.parquet
 ```
 
 상세 컬럼·기간·검증 조건은
-[`DERIVED_REVIEWER_DATA_CONTRACT_v04.md`](../database/docs/DERIVED_REVIEWER_DATA_CONTRACT_v04.md)를
+[`DERIVED_REVIEWER_DATA_CONTRACT_v04.md`](../../database/docs/DERIVED_REVIEWER_DATA_CONTRACT_v04.md)를
 따른다. 파일이 없으면 가짜 지역·월별 수치를 생성하지 않는다. 지역은
 거주지가 아니라 음식점 리뷰 활동 지역이다.
 
-현재 React는 두 파일을 JSON으로 변환해 사용한다. 기존 Streamlit 지역·월별
-화면 연결은 별도 작업으로 유지한다.
+현재 React는 API를 통해 DB에 적재된 권역·월별 데이터를 조회한다. JSON 변환본은
+정합성 확인·복구용 산출물이며 런타임 자동 폴백이 아니다. 기존 Streamlit 지역·월별
+화면은 비교·롤백 기준으로 보존한다.
 
 ## 7. 실행 모드
 

@@ -1,8 +1,12 @@
 # v05 작업 명세 (프런트 주도 · 전량 정리)
 
+> **문서 상태: 역사 기록**
+> 2026-07-31 작업 범위와 당시 완료 상태를 보존한다. 현재 구현·QA 상태는
+> [현재 인수인계](../07_history_and_handoff/CODEX_HANDOFF.md)를 따른다.
+
 > **최종 제품 방향 우선순위 안내 (2026-08-02)**
 > 최종 제품 흐름과 화면 정보 구조는
-> [DEC-012](../decisions/DEC-012_review_supply_recovery_operating_flow.md)와
+> [DEC-012](../06_decisions/DEC-012_review_supply_recovery_operating_flow.md)와
 > [V05_FINAL_PRODUCT_UX_SPEC.md](V05_FINAL_PRODUCT_UX_SPEC.md)를 우선한다.
 > 본 문서의 데이터·API·저장 계약과 완료 이력은 계속 유효하지만, `운영 홈 / 권역 운영 /
 > 개인 운영`을 분리한 기존 IA와 대표 화면 결론은 최종 UX 명세로 대체한다.
@@ -213,7 +217,7 @@ selection 6,533행 / comparison 4,841행. 기존 43개 피처의 고유 음식�
 
 ### 2.7 반경 가설의 검증 결과 (중요)
 
-[docs/05_feature_validation_report.md](../05_feature_validation_report.md) §7:
+[feature_validation_report.md](../03_data_and_models/feature_validation_report.md) §7:
 
 - 유지 P90 반경 중앙값 14.29km / 이탈 10.31km
 - 반경 축소 중앙값 유지 0.63km / 이탈 2.95km

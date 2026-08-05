@@ -1,5 +1,9 @@
 # DEC-002. 음식점 분석 범위 결정
 
+> **문서 상태: 후속 결정으로 대체됨**
+> Restaurants 단독 범위는 [DEC-007](DEC-007_culinary_business_scope.md)의
+> Restaurants + 선별 미식 방문형 업체 범위로 확장됐다.
+
 ## 결정 내용
 
 본 프로젝트의 메인 분석 대상은 Business 데이터의 `categories`에

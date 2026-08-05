@@ -1,5 +1,8 @@
 # 프로젝트 요구사항 명세서
 
+> **문서 상태: 호환 안내**
+> 이 파일은 이전 링크를 유지하기 위한 안내 문서입니다.
+
 프로젝트의 최신 요구사항은 아래 공식 문서에서 관리합니다.
 
 - [최신 프로젝트 요구사항 명세서](01_business/project_requirements.md)
@@ -12,4 +15,4 @@
 - [DEC-012: 리뷰 공급 회복 중심 운영 흐름](06_decisions/DEC-012_review_supply_recovery_operating_flow.md)
 - [DEC-014: v05_05_dl 통합 미식 운영 컨텍스트](06_decisions/DEC-014_unified_operating_context.md)
 
-> 이 파일은 기존 링크 호환을 위한 안내 문서입니다. 요구사항을 수정할 때는 `docs/01_business/project_requirements.md`만 갱신합니다.
+> 요구사항을 수정할 때는 `docs/01_business/project_requirements.md`만 갱신합니다.

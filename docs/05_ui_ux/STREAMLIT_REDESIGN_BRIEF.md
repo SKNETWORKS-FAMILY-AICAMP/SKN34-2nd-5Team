@@ -1,5 +1,8 @@
 # Streamlit Redesign Brief
 
+> **문서 상태: 역사 기록**
+> 이전 Streamlit UI 탐색 문서이며 현재 운영 화면은 React다.
+
 ## 현재 문제
 
 - 모든 페이지가 비슷한 대시보드 구조를 사용함

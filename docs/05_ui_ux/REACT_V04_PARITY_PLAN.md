@@ -1,5 +1,8 @@
 # React ↔ Streamlit v04 화면 통합 계획
 
+> **문서 상태: 비교·롤백 기준**
+> 이전 Streamlit 대비 React 패리티 범위와 당시 판단을 보존한다.
+
 > **경로 변경 안내(2026-07-28 이후)**: 이 문서는 작성 시점 기준 경로(`app/` = Streamlit,
 > `frontend/` = React)로 쓰였다. 이후 `frontend/` → `app/`, 기존 `app/` →
 > `archive/app_streamlit_v04/`로 이름이 바뀌었다. 아래 본문은 작성 당시 경로 그대로 둔다.

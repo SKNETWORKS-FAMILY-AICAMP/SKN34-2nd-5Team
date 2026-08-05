@@ -1,5 +1,9 @@
 # React ↔ MySQL(`yelp_data`) 연결 계획 및 구현 기록 (v04)
 
+> **문서 상태: 비교·롤백 기준**
+> v04 API·DB 전환의 설계와 구현 이력을 보존한다. 현재 상태는
+> [현재 인수인계](../07_history_and_handoff/CODEX_HANDOFF.md)를 따른다.
+
 > 상태: 2026-07-30 구현 완료. 현재 React 런타임은 `api/`를 통해 MySQL을 조회하며,
 > 정적 JSON은 정합성 확인·복구용으로만 보존한다.
 
@@ -7,7 +11,7 @@ React가 지금까지 읽던 정적 JSON(`app/src/data/*.json`,
 `app/public/data/reviewer-details.json`)을 서비스 계층을 통한 DB 조회로
 바꾸기 위한 데이터 조달 계약과 아키텍처 결정을 기록한다.
 
-기존 JSON 파이프라인은 [`REACT_DATA_SOURCES_v04.md`](../REACT_DATA_SOURCES_v04.md)에,
+기존 JSON 파이프라인은 [`REACT_DATA_SOURCES_v04.md`](REACT_DATA_SOURCES_v04.md)에,
 DB 스키마와 적재 절차는 [`database/README.md`](../../database/README.md)와
 [`database/docs/erd_v04.md`](../../database/docs/erd_v04.md)에 있다. 이 문서는
 그 둘을 잇는 짝문서다.
@@ -264,8 +268,8 @@ DB에 `operator_decisions` 테이블이 준비되어 있고 0행이지만, 이�
 
 [`REACT_V04_PARITY_PLAN.md`](REACT_V04_PARITY_PLAN.md) 0절이 이미 같은 결정을
 기록하고 있어, 이는 새 결정이 아니라 기존 결정의 유지다. 로드맵 수준의 항목은
-[`BUSINESS_SCENARIOS.md`](../BUSINESS_SCENARIOS.md) 5절의 "실제 개입 이력 및
-성과 관리"와 [`DEC-011`](../decisions/DEC-011_retention_operating_playbook_policy.md)의
+[`BUSINESS_SCENARIOS.md`](../01_business/business_scenarios.md) 5절의 운영 흐름과
+[`DEC-011`](../06_decisions/DEC-011_retention_operating_playbook_policy.md)의
 "제외 사유·담당자·재검토 시점의 영구 이력 저장"에 있다. 이 절은 그 방향을
 실제로 구현할 때 마주치는 **기술적 제약**을 남기는 데 목적이 있다.
 
@@ -351,7 +355,7 @@ export 스크립트를 그냥 import만 하는 것(API가 하는 일)만으로�
 
 ## 7. 참고
 
-- [`REACT_DATA_SOURCES_v04.md`](../REACT_DATA_SOURCES_v04.md) — 현재 데이터 출처와 정적 정합성 export
+- [`REACT_DATA_SOURCES_v04.md`](REACT_DATA_SOURCES_v04.md) — 현재 데이터 출처와 정적 정합성 export
 - [`database/README.md`](../../database/README.md) — DB 구성·적재 절차
 - [`database/docs/erd_v04.md`](../../database/docs/erd_v04.md) — 테이블 관계와 키 설계
 - [`database/docs/YELP_DATA_COMPLETE_LOAD_CONTRACT.md`](../../database/docs/YELP_DATA_COMPLETE_LOAD_CONTRACT.md) — 전체 적재 계약
