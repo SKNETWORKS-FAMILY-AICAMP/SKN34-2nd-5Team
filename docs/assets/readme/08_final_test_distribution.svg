@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="760" viewBox="0 0 1600 760" role="img" aria-labelledby="title desc">
+  <title id="title">Final Test 6,533명의 리텐션 상태 분포</title>
+  <desc id="desc">유지는 2,584명 39.55퍼센트, 약화는 3,065명 46.91퍼센트, 중단은 884명 13.53퍼센트다.</desc>
+  <rect width="1600" height="760" fill="#ffffff"/>
+
+  <text x="80" y="86" fill="#073f31" font-family="Arial, 'Noto Sans KR', sans-serif" font-size="42" font-weight="700">Final Test 리텐션 상태 분포</text>
+  <text x="80" y="130" fill="#5b625f" font-family="Arial, 'Noto Sans KR', sans-serif" font-size="22">학습에 포함하지 않은 2018년 선정 코호트 6,533명의 2019년 실제 활동 상태입니다.</text>
+  <line x1="80" y1="158" x2="465" y2="158" stroke="#ff4f00" stroke-width="4"/>
+
+  <g font-family="Arial, 'Noto Sans KR', sans-serif">
+    <text x="80" y="252" fill="#073f31" font-size="27" font-weight="700">유지</text>
+    <text x="80" y="286" fill="#68716d" font-size="17">리뷰 10건 이상 · 활동 3개월 이상</text>
+    <rect x="410" y="222" width="770" height="72" rx="10" fill="#e8f3ee"/>
+    <rect x="410" y="222" width="649" height="72" rx="10" fill="#13805f"/>
+    <text x="1085" y="267" fill="#073f31" font-size="25" font-weight="700">2,584명</text>
+    <text x="1320" y="267" fill="#075c45" font-size="34" font-weight="700">39.55%</text>
+
+    <text x="80" y="405" fill="#073f31" font-size="27" font-weight="700">약화</text>
+    <text x="80" y="439" fill="#68716d" font-size="17">활동은 있으나 유지 조건 미충족</text>
+    <rect x="410" y="375" width="770" height="72" rx="10" fill="#fff0e9"/>
+    <rect x="410" y="375" width="770" height="72" rx="10" fill="#ff6b2c"/>
+    <text x="1205" y="420" fill="#5e2a15" font-size="25" font-weight="700">3,065명</text>
+    <text x="1395" y="420" fill="#d13f00" font-size="34" font-weight="700">46.91%</text>
+
+    <text x="80" y="558" fill="#073f31" font-size="27" font-weight="700">중단</text>
+    <text x="80" y="592" fill="#68716d" font-size="17">음식 관련 리뷰 0건</text>
+    <rect x="410" y="528" width="770" height="72" rx="10" fill="#edf0ef"/>
+    <rect x="410" y="528" width="222" height="72" rx="10" fill="#596560"/>
+    <text x="658" y="573" fill="#38413d" font-size="25" font-weight="700">884명</text>
+    <text x="1320" y="573" fill="#38413d" font-size="34" font-weight="700">13.53%</text>
+
+    <line x1="80" y1="654" x2="1520" y2="654" stroke="#dce4e1" stroke-width="2"/>
+    <text x="80" y="702" fill="#4d5854" font-size="19">유지 2,584명 + 약화 3,065명 + 중단 884명 = 6,533명</text>
+    <text x="80" y="733" fill="#68716d" font-size="17">※ 비율 합계는 소수점 둘째 자리 반올림으로 99.99%가 될 수 있습니다.</text>
+  </g>
+</svg>

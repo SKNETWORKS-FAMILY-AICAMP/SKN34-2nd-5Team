@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Yelp Reviewer Retention Ops 데이터 범위와 검증 코호트</title>
+  <desc id="desc">음식 관련 업체 58,156개와 리뷰 4,950,264건에서 전체 코호트 37,953건을 구성했다. 개발 코호트는 31,420건이고 이 중 OOF 평가 표본은 24,596건이다. Final Test는 분리된 6,533건이다.</desc>
+  <rect width="1600" height="900" fill="#ffffff"/>
+
+  <text x="80" y="86" fill="#073f31" font-family="Arial, 'Noto Sans KR', sans-serif" font-size="42" font-weight="700">데이터 범위와 검증 코호트</text>
+  <text x="80" y="130" fill="#5b625f" font-family="Arial, 'Noto Sans KR', sans-serif" font-size="22">원천 데이터의 음식 범위를 확정하고, 시간 순서를 지킨 개발·평가 코호트로 분리했습니다.</text>
+  <line x1="80" y1="158" x2="430" y2="158" stroke="#ff4f00" stroke-width="4"/>
+
+  <g font-family="Arial, 'Noto Sans KR', sans-serif">
+    <rect x="80" y="205" width="440" height="175" rx="18" fill="#f4f8f6" stroke="#c7d8d1" stroke-width="2"/>
+    <text x="115" y="252" fill="#54605b" font-size="20">음식·미식 관련 업체</text>
+    <text x="115" y="327" fill="#075c45" font-size="56" font-weight="700">58,156</text>
+    <text x="330" y="327" fill="#54605b" font-size="22">개</text>
+
+    <rect x="580" y="205" width="440" height="175" rx="18" fill="#fff6f1" stroke="#f4c9b4" stroke-width="2"/>
+    <text x="615" y="252" fill="#625a56" font-size="20">음식 관련 리뷰</text>
+    <text x="615" y="327" fill="#e74300" font-size="56" font-weight="700">4,950,264</text>
+    <text x="905" y="327" fill="#625a56" font-size="22">건</text>
+
+    <rect x="1080" y="205" width="440" height="175" rx="18" fill="#f4f8f6" stroke="#c7d8d1" stroke-width="2"/>
+    <text x="1115" y="252" fill="#54605b" font-size="20">사용자 × 선정 연도 코호트</text>
+    <text x="1115" y="327" fill="#075c45" font-size="56" font-weight="700">37,953</text>
+    <text x="1330" y="327" fill="#54605b" font-size="22">건</text>
+  </g>
+
+  <g font-family="Arial, 'Noto Sans KR', sans-serif">
+    <text x="80" y="455" fill="#073f31" font-size="28" font-weight="700">전체 코호트 37,953건의 시간 분할</text>
+    <text x="80" y="494" fill="#5b625f" font-size="19">Final Test는 모델 선택과 임계값 결정에 사용하지 않은 이후 시점 표본입니다.</text>
+
+    <rect x="80" y="535" width="1160" height="96" rx="12" fill="#075c45"/>
+    <rect x="1240" y="535" width="280" height="96" rx="12" fill="#ff5a1f"/>
+    <text x="112" y="578" fill="#ffffff" font-size="23" font-weight="700">개발 코호트</text>
+    <text x="112" y="611" fill="#ffffff" font-size="22">2010–2017 선정 · 31,420건 (82.79%)</text>
+    <text x="1272" y="578" fill="#ffffff" font-size="23" font-weight="700">Final Test</text>
+    <text x="1272" y="611" fill="#ffffff" font-size="20">2018 선정 · 6,533건</text>
+
+    <path d="M80 682 H1240" stroke="#b8c9c2" stroke-width="2"/>
+    <rect x="80" y="667" width="252" height="30" rx="8" fill="#9bb7ad"/>
+    <rect x="332" y="667" width="908" height="30" rx="8" fill="#32a47f"/>
+    <line x1="1240" y1="647" x2="1240" y2="717" stroke="#ff5a1f" stroke-width="3"/>
+
+    <text x="80" y="744" fill="#46504c" font-size="20" font-weight="700">2010–2012 · 6,824건</text>
+    <text x="80" y="774" fill="#6b7470" font-size="18">초기 Expanding-Time Fold 학습 전용</text>
+
+    <text x="385" y="744" fill="#075c45" font-size="20" font-weight="700">2013–2017 · OOF 평가 24,596건</text>
+    <text x="385" y="774" fill="#6b7470" font-size="18">Expanding-Time 5-Fold × 3 seeds 공통 평가 표본</text>
+
+    <text x="1265" y="744" fill="#d33d00" font-size="20" font-weight="700">2018 → 2019</text>
+    <text x="1265" y="774" fill="#6b7470" font-size="18">피처 마감 → 사후 검증</text>
+
+    <rect x="80" y="825" width="1440" height="1" fill="#dce4e1"/>
+    <text x="80" y="862" fill="#4d5854" font-size="18">※ OOF 24,596건은 전체 코호트에 더하는 별도 표본이 아니라 개발 코호트 31,420건 안의 평가 부분집합입니다.</text>
+  </g>
+</svg>
