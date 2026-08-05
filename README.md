@@ -464,13 +464,16 @@ python pipeline/v05_05_dl/evaluate_test.py
 
 ## 향후 개선 방향
 
+![Yelp Reviewer Retention Ops 향후 로드맵](docs/assets/readme/15_future_roadmap.png)
+
+현재는 기능 확장보다 운영 기준선을 안정화하는 작업을 우선합니다.
+
 - 비인증 API 접근, 권역 우회, HTTPS와 스누즈 영속성 등 P0 결함 수정
 - 동일 배포본 기준 전체 QA 재실행과 배포 게이트 자동화
 - 모델 가중치·메타데이터의 공식 보관 위치, 체크섬과 버전 정책 확정
-- `v05_05_dl` Permutation Importance 등 검증 가능한 정량 설명 산출물 추가
-- 외부 CRM 발송, 접촉 결과와 30·60·90일 실제 성과 데이터 연동
-- 재검토 알림과 운영 결과 수집을 자동 운영 주기로 확장
 - 모바일 `/trust` 가로 넘침과 접근 가능한 이름 등 반응형·접근성 보완
+
+이후 실행·성과 데이터 계약, 월 단위 조기경보, 약화·중단 상태별 운영, 효과 실험과 지속 개선 순으로 확장합니다. 단계별 목표와 완료 기준은 [서비스 제품화 및 적용 로드맵](docs/08_future_roadmap/06_service_productization_and_application.md)에서 확인할 수 있습니다.
 
 ---
 
