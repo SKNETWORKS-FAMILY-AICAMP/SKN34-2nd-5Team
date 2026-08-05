@@ -53,11 +53,11 @@
 ## 3. 최종 모델 선정 및 구조 명세: `v05_05_dl`
 
 ### 3.1 최종 모델 채택 사유
-1. **전체 성능 1위 달성**: OOF Macro F1 **`0.5763`**, OOF Macro PR-AUC **`0.5980`**으로 ML 최고 모델(XGBoost 0.5660) 및 모든 DL 후보군을 제치고 **전체 1위 성과 달성**.
-2. **압도적인 CRM 타겟팅 정밀도 (Precision@1000 = 90.60%)**:
-   - 위험 점수 상위 1,000명 중 **906명이 실제 이탈 위험군(`weakened` 또는 `stopped`)**에 해당하여 마케팅 예산 낭비를 극소화함.
-3. **중증 오분류 최소화 (2.19%)**:
-   - 활동을 잘 유지하고 있는 `retained` 유저를 완전 이탈(`stopped`)로 오진하여 불필요한 리텐션 프로모션을 제공하는 치명적 오류를 **538건(2.19%)**으로 최저 수준 관리.
+1. **후보 모델 중 가장 높은 OOF 성능**: OOF Macro F1 **`0.5763`**, OOF Macro PR-AUC **`0.5980`**으로 비교한 ML·DL 후보 중 가장 높은 값을 기록함.
+2. **CRM 검토 큐 정밀도 (Precision@1000 = 90.60%)**:
+   - 위험 점수 상위 1,000명 중 **906명이 실제 위험군(`weakened` 또는 `stopped`)**으로 확인되어 제한된 검토 인원을 우선순위화하는 근거로 사용할 수 있음.
+3. **중증 오분류 수락 기준 충족 (2.19%)**:
+   - `retained`를 `stopped`로 분류한 중증 오분류는 **538건(2.19%)**으로, 사전에 정한 OOF 수락 기준 2.5% 이하를 충족함.
 
 ### 3.2 `v05_05_dl (Lifecycle Fusion H2)` 아키텍처 구조
 - **시계열 Branch**: 24개월간의 월별 리뷰 수, 활성 여부, 방문 업체 수, 평균 간격을 GRU(Hidden 64)로 인코딩하여 동적 활동 변화 추이 학습.
@@ -66,7 +66,17 @@
   - 1단계: 정상 유지(`retained`) vs 위험군(`at-risk`) 분류
   - 2단계: 위험군 내부에서 활동 약화(`weakened`) vs 활동 중단(`stopped`) 분류
 
-### 3.3 최종 모델 테스트 결과 [작성 필요]
+### 3.3 최종 모델 테스트 결과
+
+학습에 사용하지 않은 2018년 선정 코호트(6,533명, 2019년 상태 평가)에 대한 Final Test 결과입니다. 가중치와 임계값은 OOF 검증까지만 사용해 사전에 고정했으며, Test 평가 전 별도의 재조정을 하지 않았습니다.
+
+| 평가 지표 (Metric) | Metric Score |
+| --- | --- |
+| Test Macro F1 | 0.5731 |
+| Test Macro PR-AUC | 0.5962 |
+| Weakened Recall | 0.6786 |
+| Stopped Recall | 0.3756 |
+| Precision@1000 | 0.8990 |
 
 ---
 
@@ -87,19 +97,28 @@
 
 ---
 
-## 5. XAI(설명 가능성) 및 주요 신호 비즈니스 해석 [수정 필요, 중요도 Top10 변수 표 + 해석 3줄]
+## 5. XAI(설명 가능성) 및 주요 신호 비즈니스 해석
 
-`v05_05_dl` 모델의 Fusion Layer 가중치 및 변수 기여도 분석 결과는 다음과 같습니다.
+`v05_05_dl`에 대한 Permutation Importance 등 변수별 정량 기여도 산출물은 아직 없어 Top10 변수 중요도 표는 제공하지 않습니다. 아래는 모델 구조와 평가 결과를 바탕으로 한 핵심 신호 해석입니다.
 
-### 5.1 핵심 신호 해석 (3줄 요약)
-1. **월별 활동 시퀀스(GRU)의 우수성**: 단순 정적 통계량보다 최근 24개월간의 월별 방문 업체 수 및 리뷰 작성 간격의 변화 곡선이 이탈 예측에 가장 결정적인 신호로 작용함.
-2. **라이프사이클 방어 효과**: 과거 Elite 등급 선정 연도 수(`past_elite_years`) 및 최근 연속 유지 기간(`consecutive_elite_years`)이 긴 유주일수록 일시적 활동 약화(`weakened`) 상태에 빠지더라도 완전 이탈(`stopped`)로 전환되지 않고 회복될 가능성이 높음.
-3. **위험 상위 1,000명 액션 플랜**: Precision@1000이 90.60%에 달하므로, 모델이 정렬한 위험 점수 상위 1,000명 유저에게 개인화된 미식 미션 및 전담 케어 프로모션을 집행할 경우 최적의 ROI를 달성할 수 있음.
+### 5.1 핵심 입력 신호와 운영 해석 (3줄 요약)
+1. **월별 활동 시퀀스**: 모델은 최근 24개월의 월별 리뷰 수, 활동 여부, 방문 업체 수와 평균 작성 간격을 함께 입력받아 시간에 따른 활동 변화를 학습함. 변수별 기여도 순위는 별도 중요도 분석 전에는 단정하지 않음.
+2. **라이프사이클 정보**: 과거 Elite 선정 연도 수와 최근 연속 유지 기간 등 5개 특성은 리뷰어의 활동 이력을 보완하는 입력으로 사용함. 각 특성의 독립적인 효과와 방향은 현재 평가 결과만으로 확정하지 않음.
+3. **위험 상위 1,000명 검토**: OOF Precision@1000 90.60%는 제한된 운영 인력으로 우선 검토 대상을 정하는 근거다. 캠페인 효과와 ROI는 실제 실행·성과 데이터가 없으므로 별도 검증이 필요함.
 
 ---
 
 ## 6. 최종 모델 직렬화 및 파일 배포 구조
 
-- **최종 모델 파이토치 가중치 파일**: `models/v05_05_dl_lifecycle_fusion_h2.pt`
-- **모델 메타데이터 JSON**: `models/v05_05_dl_metadata.json`
-- **최종 CRM 타겟팅 예측 결과**: `data/processed/predictions/v05_05_dl_target_profiles.parquet`
+최종 모델은 단일 파일이 아니라 `models/experiments/v05_05_dl/` 아래의 3-seed 앙상블 산출물 묶음입니다(총 약 246KB). 이 폴더는 `.gitignore`로 관리되는 로컬 파이프라인 산출물이라 git에는 포함되지 않으며, 아래 재생성 절차로 다시 만들 수 있습니다.
+
+- **모델 가중치 (3-seed 앙상블)**: `models/experiments/v05_05_dl/seed_42_state_dict.pt`, `seed_2026_state_dict.pt`, `seed_3405_state_dict.pt`
+- **전처리 객체**: `models/experiments/v05_05_dl/preprocessing.joblib`
+- **모델 메타데이터 JSON**: `models/experiments/v05_05_dl/metadata.json`
+- **최종 CRM 타겟팅 예측 결과**: `data/processed/predictions/test_retention_profiles_v05_05_dl.parquet`
+- **체크섬 (SHA-256, `reports/experiments/v05_05_dl/test_metrics.json`의 `model_artifacts` 기준)**:
+  - `preprocessing.joblib`: `b22dc7360a989b03dae1801ffc1c9ac6776bf74e0329d600c6b7c635e6acea1f`
+  - `seed_42_state_dict.pt`: `6f97cb1efee0821d6121beca6064b8ac66ddf99a39a5e992655691a53d20f0bb`
+  - `seed_2026_state_dict.pt`: `852e264af18f299ab1e17f72fdc22dee3601f95d50dbdf86ba38d1cb6947767d`
+  - `seed_3405_state_dict.pt`: `e4556b26924b2ca18b326481070abd95a56784ca323bb3d9510d42090290b8b3`
+- **재생성 절차**: `pipeline/v05_05_dl/train.py` 실행 (seed·하이퍼파라미터는 `pipeline/v05_05_dl/config.json` 고정값 사용, 모델 구조는 `train.py`의 `LifecycleFusionH2` 클래스, 추론·앙상블 로직은 `pipeline/v05_05_dl/evaluate_test.py` 참고)
