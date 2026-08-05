@@ -31,6 +31,8 @@ Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **파워 지위 유�
 
 > 어느 지역의 리뷰 공급이 약해졌고, 누구를 먼저 검토하며, 어떤 근거로 무엇을 실행할 것인가?
 
+**핵심 사용자**는 콘텐츠·커뮤니티 운영자와 리뷰어 CRM 담당자입니다. 분석가용 성능 대시보드에 머무르지 않고, 운영자가 대상과 근거를 검토하고 판단·명단·운영안을 기록하는 흐름을 우선합니다.
+
 | 운영 문제 | 프로젝트의 접근 |
 |---|---|
 | 활동 약화와 중단을 사후에 발견 | 시점 안전 피처로 다음 연도 유지·약화·중단을 예측 |
@@ -48,7 +50,12 @@ Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **파워 지위 유�
 | 개발 코호트 | 선정 연도 2010~2017, 31,420건 |
 | OOF 검증 | Expanding-Time 5-Fold × 3 seeds, 24,596건 |
 | Final Test | 2018년 선정 코호트 6,533명 |
+| OOF Macro F1 / Macro PR-AUC | **0.5763 / 0.5980** |
+| OOF Precision@1000 | **90.60%** |
+| Final Test Macro F1 / Macro PR-AUC | **0.5731 / 0.5962** |
+| Final Test Precision@1000 | **89.90%** |
 | Primary CRM 검토 범위 | 위험 순위 상위 20%, 1,307명 |
+| Top 20% Precision / Lift | **89.29% / 1.48배** |
 | 운영 서비스 | React → FastAPI → MySQL |
 
 ## 데이터 흐름
@@ -56,6 +63,48 @@ Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **파워 지위 유�
 <p align="center">
   <img src="docs/assets/readme/01_data_flow.png" alt="Yelp Reviewer Retention Ops 데이터 흐름" width="100%">
 </p>
+
+이미지가 표시되지 않는 환경에서도 전체 데이터 경로를 확인할 수 있도록 실제 파이프라인을 요약하면 다음과 같습니다.
+
+```mermaid
+flowchart LR
+    RAW["Yelp Open Dataset<br/>User · Review · Business"] --> SCOPE["미식 범위 확정<br/>업체 58,156개 · 리뷰 4,950,264건"]
+    SCOPE --> COHORT["롤링 코호트 37,953건<br/>개발 31,420 · Final Test 6,533"]
+    COHORT --> WINDOW["선정 시점 이전 24개월<br/>미래 정보 차단"]
+    WINDOW --> ML["ML 후보 입력<br/>45개 정적 피처"]
+    WINDOW --> DL["DL 입력<br/>Core4 시퀀스 · Lifecycle 5개"]
+    ML --> SELECT["Expanding-Time OOF<br/>후보 비교 · 임계값 고정"]
+    DL --> SELECT
+    SELECT --> MODEL["v05_05_dl<br/>3-seed 앙상블"]
+    MODEL --> TEST["분리된 2018 Final Test<br/>6,533명"]
+    TEST --> OUTPUT["예측 프로필 · 평가 지표"]
+    OUTPUT --> DB["MySQL yelp_data"]
+    DB <--> API["FastAPI"]
+    API <--> UI["React 운영 서비스"]
+```
+
+### 데이터 범위와 품질
+
+| 단계 | 적용 내용 | 검증 결과 |
+|---|---|---|
+| 원천 데이터 | Yelp Open Dataset의 `User`·`Review`·`Business` JSON | 세 데이터셋 기본키 중복·결측 없음 |
+| 데이터 연결 | `user_id`, `business_id`로 리뷰와 사용자·업체 결합 | Review–Business 100%, Review–User 99.999528% |
+| 미연결 처리 | User와 연결되지 않는 리뷰 | 전체 6,990,280건 중 33건 제외 |
+| 미식 범위 | Restaurants + 승인된 미식 방문형 업종 | 업체 58,156개, 리뷰 4,950,264건 |
+| 롤링 코호트 | 선정 연도별 파워 리뷰어 표본 | 개발 31,420건 + Final Test 6,533건 = 37,953건 |
+
+Restaurants 52,268개에 DEC-007에서 승인한 미식 방문형 업체 5,888개를 더해 최종 범위를 구성했습니다. `Food` 전체는 Grocery·Drugstores 등 프로젝트 목적과 맞지 않는 업종이 포함되므로 사용하지 않습니다.
+
+### 전처리와 모델 입력
+
+| 구분 | 입력 구조 | 처리 방식 | 역할 |
+|---|---|---|---|
+| ML 후보 | 24개월 활동을 집계한 45개 정적 피처 | Core43에 추세·최근성 피처를 검토하고 결측 처리를 학습 파이프라인에 포함 | XGBoost·LightGBM·선형·앙상블 후보 비교 |
+| DL 시계열 Branch | `24개월 × Core4` | 월별 리뷰 수·활성 여부·고유 음식점 수·평균 작성 간격에 train 기준 `log1p`·표준화 적용 | 시간에 따른 활동 변화 학습 |
+| DL Lifecycle Branch | 정적 5개 피처 | 계정 연차·과거 Elite 이력·선정 연도 상태를 train 기준 표준화 | 리뷰어 활동 이력 보완 |
+| 라벨 | 선정 연도 다음 해의 유지·약화·중단 | 모델 입력과 분리해 정답 생성·평가에만 사용 | 3클래스 분류 |
+
+개발 피처 생성 단계에는 2018년 Final Test 행과 2019년 라벨을 불러오지 않습니다. Final Test 피처 metadata에도 `target_columns_loaded: []`와 피처 마감일 `2018-12-31`을 기록해 시간 누수를 검사합니다.
 
 ```text
 2017년 비교
@@ -89,6 +138,29 @@ Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **파워 지위 유�
 | Lifecycle Branch | 계정 연차·과거 Elite 연도 수·선정 연도 Elite 여부·마지막 Elite 경과·최근 연속 유지의 5개 특성을 MLP Hidden 16으로 인코딩 |
 | Hierarchical H2 Head | 유지 vs 위험군을 구분한 뒤 위험군을 약화 vs 중단으로 분류 |
 | Ensemble | seed 42·2026·3405의 3개 모델 점수를 평균 |
+
+### 후보 모델 비교와 최종 선정
+
+동일한 OOF 표본 24,596건에서 ML·DL 후보를 비교했습니다. 아래 표는 최종 선택에 직접 참고한 대표 후보입니다.
+
+| 후보 | 입력 구조 | OOF Macro F1 | OOF Macro PR-AUC | Precision@1000 | 중증 오분류 |
+|---|---|---:|---:|---:|---:|
+| XGBoost | v05_2 정적 45개 피처 | 0.5660 | — | — | — |
+| `v05_03_dl` | Core43 + Monthly24 GRU | 0.5695 | 0.5939 | — | — |
+| `v05_04_04_dl` | Core56 Compact MLP | 0.5697 | 0.5902 | — | — |
+| **`v05_05_dl`** | **Monthly Core4 + Lifecycle 5개 + H2** | **0.5763** | **0.5980** | **90.60%** | **2.19%** |
+| `v05_06_dl` | TCN + Lifecycle 5개 + H2 | 0.5751 | 0.5925 | 90.04% | 2.64% |
+
+`v05_05_dl`은 주요 후보 중 Macro F1과 Macro PR-AUC가 가장 높았고, Precision@1000과 중증 오분류 수락 기준을 함께 충족해 최종 모델로 선정했습니다. Weakened 하위유형 보조학습 ablation은 Macro F1이 0.0002 높았지만 신뢰구간에 0이 포함됐고 복잡도가 증가해 기본 구조를 유지했습니다.
+
+### 평가 지표를 선택한 이유
+
+| 지표 | 사용하는 이유 |
+|---|---|
+| Macro F1 | 유지·약화·중단 세 클래스를 동일 비중으로 평가하는 주 지표 |
+| Macro PR-AUC | 클래스 불균형 환경에서 세 클래스의 정밀도·재현율 균형을 확인 |
+| Precision@1000 | 제한된 운영 인력이 상위 1,000명을 검토할 때 실제 위험군 비율을 평가 |
+| 중증 오분류 | `retained`를 `stopped`로 분류해 불필요한 강한 개입을 유발할 위험을 별도 관리 |
 
 ### OOF 검증
 
