@@ -234,23 +234,25 @@ Yelp 원천 데이터에서 음식 관련 범위를 확정하고, 시점 안전 
 
 ### EDA·데이터 조건과 전처리 반영
 
-| 데이터에서 확인한 조건 | 전처리·검증 반영 |
-|---|---|
-| 사용자별 활동 이력이 시간 순서로 누적됨 | 선정 연도 기준 Expanding-Time 5-Fold 적용 |
-| 예측 시점 이후 활동은 미래 정보 | 관찰 종료 이후 데이터와 정답 컬럼을 입력에서 격리 |
-| 최근 활동량·활성 월·탐색 폭의 변화가 중요 | 과거 12개월과 최근 12개월의 변화·비율·추세 피처 생성 |
-| 비율 계산에서 분모 0과 활동 부재가 발생 | 의미에 맞는 0·-1 처리와 Train 기준 imputer 적용 |
-| DL은 월별 순서와 장기 이력을 함께 사용해야 함 | 24개월 Core4 시퀀스와 Lifecycle 5개 정적 신호로 분리 |
-| 클래스 규모가 동일하지 않음 | Accuracy 단독 사용을 피하고 Macro F1·PR-AUC·클래스별 지표 평가 |
+<p align="center">
+  <img src="docs/assets/readme/11_preprocessing_decisions.png" alt="EDA 데이터 조건과 전처리·검증 결정" width="72%">
+</p>
+
+시간 순서를 보존한 검증, 예측 시점 이후 정보 격리, 활동 변화 피처와 의미 기반 결측 처리를 적용했습니다. DL 입력은 월별 변화와 장기 이력을 결합할 수 있도록 `24개월 × Core4` 시퀀스와 Lifecycle 5개 정적 피처로 분리했습니다.
+
+### 피처 상관관계 검토
+
+<p align="center">
+  <img src="docs/assets/readme/09_feature_correlation_review.png" alt="피처 그룹별 주요 고상관 변수와 최종 반영 판단" width="100%">
+</p>
+
+ML Core45에서는 고상관을 곧바로 제거 기준으로 사용하지 않고 OOF 성능·중요도·해석성을 함께 검토했습니다. 트리 기반 후보는 전체 피처를 유지해 비교했으며, 최종 DL은 이 검토와 별도로 `Monthly Core4 + Lifecycle 5개` 입력 구조를 사용합니다.
 
 ### 모델 입력 비교
 
-| 구분 | 입력 구조 | 처리 방식 | 역할 |
-|---|---|---|---|
-| ML 후보 | Core43 기반 최종 45개 정적·집계 피처 | 결측 처리, 변화·추세 피처 생성 | XGBoost·LightGBM 등 후보 비교 |
-| DL 시계열 Branch | `24개월 × Core4` | Train 기준 `log1p`·표준화 | 월별 활동 변화 학습 |
-| DL Lifecycle Branch | 정적 5개 피처 | Train 기준 표준화 | 계정·과거 Elite 이력 보완 |
-| 정답 라벨 | 다음 연도의 유지·약화·중단 | 입력과 분리해 평가 시점에만 사용 | 3클래스 분류 |
+<p align="center">
+  <img src="docs/assets/readme/12_model_input_comparison.png" alt="ML 후보와 최종 DL 모델 입력 구조 비교" width="82%">
+</p>
 
 상세 피처와 처리 기준은 [데이터 전처리 결과서](docs/02_reports/01_data_preprocessing_report.md)를 참고하세요.
 
@@ -270,24 +272,26 @@ Yelp 원천 데이터에서 음식 관련 범위를 확정하고, 시점 안전 
 
 ### `v05_05_dl` 구조
 
-| 구성 | 입력·역할 |
-|---|---|
-| 시계열 Branch | 월별 리뷰 수·활동 여부·고유 음식점 수·평균 작성 간격의 24개월 시퀀스를 GRU Hidden 64로 인코딩 |
-| Lifecycle Branch | 계정 연차·과거 Elite 연도 수·선정 연도 Elite 여부·마지막 Elite 경과·최근 연속 선정의 5개 특성을 MLP Hidden 16으로 인코딩 |
-| Hierarchical H2 Head | 유지와 위험군을 먼저 구분한 뒤 위험군을 약화와 중단으로 분류 |
-| Ensemble | seed 42·2026·3405의 3개 모델 점수를 평균 |
+<p align="center">
+  <img src="docs/assets/readme/13_model_architecture.png" alt="v05_05_dl GRU·Lifecycle Fusion·Hierarchical H2 구조" width="82%">
+</p>
+
+GRU가 24개월 활동 시퀀스를, Lifecycle MLP가 장기 이력을 인코딩합니다. 결합 표현은 유지와 위험군을 먼저 구분한 뒤 위험군을 약화와 중단으로 나누며, seed 42·2026·3405의 모델 점수를 평균해 최종 위험 순위를 생성합니다.
 
 ### 후보 모델 비교
 
 동일한 OOF 표본 24,596건에서 ML·DL 후보를 비교했습니다.
 
-| 후보 | 입력 구조 | OOF Macro F1 | OOF Macro PR-AUC | Precision@1000 | 중증 오분류 |
-|---|---|---:|---:|---:|---:|
-| XGBoost | v05_2 정적 45개 피처 | 0.5660 | — | — | — |
-| `v05_03_dl` | Core43 + Monthly24 GRU | 0.5695 | 0.5939 | — | — |
-| `v05_04_04_dl` | Core56 Compact MLP | 0.5697 | 0.5902 | — | — |
-| **`v05_05_dl`** | **Monthly Core4 + Lifecycle 5개 + H2** | **0.5763** | **0.5980** | **90.60%** | **2.19%** |
-| `v05_06_dl` | TCN + Lifecycle 5개 + H2 | 0.5751 | 0.5925 | 90.04% | 2.64% |
+<p align="center">
+  <img src="docs/assets/readme/14_model_candidate_performance.png" alt="ML·DL 후보의 OOF Macro F1과 Macro PR-AUC 비교" width="82%">
+</p>
+
+| 운영 지표 | `v05_05_dl` | `v05_06_dl` |
+|---|---:|---:|
+| Precision@1000 | **90.60%** | 90.04% |
+| 중증 오분류 | **2.19% · 538건** | 2.64% · 650건 |
+
+`v05_05_dl`은 Macro F1과 Macro PR-AUC가 모두 가장 높고 운영 지표도 더 안정적이어서 최종 모델로 선정했습니다.
 
 ### OOF 수락 기준
 
@@ -302,9 +306,17 @@ Yelp 원천 데이터에서 음식 관련 범위를 확정하고, 시점 안전 
 
 Final Test는 모델 선정에 사용하지 않은 2018년 선정 코호트로 수행했습니다. 가중치와 임계값은 OOF 검증까지만 사용해 고정했으며, 사전에 Final Test 합격 임계값을 확정하지 않았으므로 OOF 기준을 소급 적용해 PASS·FAIL로 판정하지 않습니다.
 
-| Macro F1 | Macro PR-AUC | Precision@1000 | 중증 오분류 | Top 20% Precision / Recall / Lift |
-|---:|---:|---:|---:|---:|
-| **0.5731** | **0.5962** | **89.90%** | **1.81%** | **89.29% / 29.55% / 1.48배** |
+<p align="center">
+  <img src="docs/assets/readme/10_oof_final_test_comparison.png" alt="OOF와 Final Test 주요 성능 비교" width="100%">
+</p>
+
+Macro F1과 Macro PR-AUC의 변화 폭은 작았지만, `Stopped Recall`은 43.25%에서 37.56%로 5.69%p 감소해 완전 중단 리뷰어 탐지에는 개선 여지가 있습니다. 중증 오분류율은 2.19%에서 1.81%로 낮아졌습니다.
+
+| Final Test 운영 순위 지표 | 결과 |
+|---|---:|
+| Top 20% Precision | **89.29%** |
+| Top 20% Recall | **29.55%** |
+| Top 20% Lift | **1.48배** |
 
 현재 `v05_05_dl`의 변수별 정량 중요도 산출물은 없습니다. 월별 시퀀스와 Lifecycle 특성은 모델 입력이지만 각 특성의 독립적인 인과 효과를 의미하지 않습니다.
 
