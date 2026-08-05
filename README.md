@@ -11,6 +11,7 @@ Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **파워 지위 유�
 
 ![Model](https://img.shields.io/badge/Model-v05__05__dl-075C45?style=for-the-badge)
 ![Final Test](https://img.shields.io/badge/Final_Test-6%2C533명-075C45?style=for-the-badge)
+![Deployment](https://img.shields.io/badge/Service_Deployment-COMPLETE-075C45?style=for-the-badge)
 ![Release](https://img.shields.io/badge/Release_Approval-HOLD-E1513A?style=for-the-badge)
 
 </div>
@@ -135,7 +136,7 @@ README의 WBS는 작업 수행과 최종 검증·승인을 분리해 표시합�
 | 모델 개발·평가 |  | 🟩 | 🟩 | 🟩 | 🟩 | 완료 | 산출물 보관 정책 확인 필요 |
 | React·API·DB 통합 |  | 🟩 | 🟩 | 🟩 | 🟩 | 완료 | 핵심 연결 확인 |
 | 운영 기능 구현 |  |  | 🟩 | 🟩 | 🟩 | 완료 | 일부 QA 미통과 |
-| 최종 문서화 |  |  |  |  | 🟩 | 진행 중 | README 완료 후 재검토 |
+| 최종 문서화 |  |  |  |  | 🟩 | 완료 | README·필수 문서 반영 완료 |
 | 배포·회귀 QA |  |  |  | 🟩 | 🟩 | 서비스 배포 | **최종 승인 보류** |
 
 **범례:** 🟩 해당 기간 수행 · 빈칸 수행 기간 아님
@@ -162,6 +163,21 @@ README의 WBS는 작업 수행과 최종 검증·승인을 분리해 표시합�
 
 ## 프로젝트 구조
 
+### 핵심 실행 경로
+
+| 구분 | 핵심 경로 | 역할 |
+|---|---|---|
+| 운영 데이터 | `app/` → `api/` → MySQL `yelp_data` | React 화면에서 예측·권역·운영 기록 조회 및 저장 |
+| 인증·승인 | `app/` → `auth_service/` → MySQL `reviewer_retention_auth` | 로그인, 세션, 사용자 승인과 권한 관리 |
+| 공통 판단 로직 | `shared/retention/` → `api/`·이전 앱·export | 위험 유형, 판단 근거, 운영안과 응답 정규화의 기준 구현 |
+| 모델 재생성 | `pipeline/` → `models/`·`reports/` → DB/API | 피처 생성, 학습, 평가 및 운영 산출물 갱신 |
+| 프로젝트 문서 | `docs/` | 요구사항, WBS, 결과서, QA, 의사결정과 실행 가이드 |
+
+> 현재 React 서비스의 운영 데이터는 정적 JSON이 아니라 `app/` → `api/` → MySQL `yelp_data` 경로로 제공됩니다.
+
+<details>
+<summary><strong>전체 디렉터리 구조 보기</strong></summary>
+
 ```text
 SKN34-2nd-5Team/
 ├─ app/                    # React 운영 서비스
@@ -180,7 +196,9 @@ SKN34-2nd-5Team/
 └─ archive/                # 이전 Streamlit 프로토타입 보존
 ```
 
-현재 React 런타임은 정적 JSON이 아니라 `api/`를 통해 MySQL을 조회합니다. 위험 유형·근거·전략 판단과 응답 정규화의 기준 구현은 `shared/retention/`입니다.
+</details>
+
+위험 유형·근거·전략 판단과 응답 정규화의 기준 구현은 `shared/retention/`입니다.
 
 ---
 
