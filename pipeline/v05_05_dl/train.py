@@ -39,7 +39,7 @@ from torch.utils.data import DataLoader, TensorDataset
 ROOT = Path(__file__).resolve().parents[2]
 VERSION = "v05_05_dl"
 CONFIG_PATH = Path(__file__).with_name("config.json")
-SOURCE_PATH = ROOT / "data" / "processed" / "modeling_dataset_rolling_v05_2.parquet"
+SOURCE_PATH = ROOT / "data" / "processed" / "modeling_dataset_rolling_v05_ml.parquet"
 LIFECYCLE_PATH = ROOT / "data" / "processed" / "experiments" / "lifecycle_features_v05_05.parquet"
 SEQUENCE_PATH = ROOT / "data" / "processed" / "experiments" / "monthly_core4_sequence_v05_05.parquet"
 BUILD_METADATA_PATH = ROOT / "reports" / "experiments" / VERSION / "feature_build_metadata.json"

@@ -43,7 +43,7 @@ CLASS_LABELS_KO = {
 }
 
 CONFIG_PATH = Path(__file__).with_name("config.json")
-SOURCE_PATH = ROOT / "data" / "processed" / "modeling_dataset_rolling_v05_2.parquet"
+SOURCE_PATH = ROOT / "data" / "processed" / "modeling_dataset_rolling_v05_ml.parquet"
 TEST_LIFECYCLE_PATH = (
     ROOT / "data" / "processed" / "experiments" / "test_lifecycle_features_v05_05.parquet"
 )

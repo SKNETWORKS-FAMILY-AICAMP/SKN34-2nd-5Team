@@ -21,7 +21,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 VERSION = "v05_05_dl"
 CONFIG_PATH = Path(__file__).with_name("config.json")
-SOURCE_PATH = ROOT / "data" / "processed" / "modeling_dataset_rolling_v05_2.parquet"
+SOURCE_PATH = ROOT / "data" / "processed" / "modeling_dataset_rolling_v05_ml.parquet"
 RESTAURANT_REVIEWS_PATH = ROOT / "data" / "interim" / "restaurant_reviews.parquet"
 CULINARY_REVIEWS_PATH = ROOT / "data" / "interim" / "additional_culinary_reviews_v02.parquet"
 OUTPUT_DIR = ROOT / "data" / "processed" / "experiments"
