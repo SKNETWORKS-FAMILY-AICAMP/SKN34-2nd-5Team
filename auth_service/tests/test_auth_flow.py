@@ -64,7 +64,7 @@ def test_pending_user_can_be_refreshed_approved_and_logged_in(app_and_client):
 
     admin_login = login(client, "presentation_admin", "admin-password-123")
     assert admin_login.status_code == 200
-    assert admin_login.json()["redirect_to"] == "/auth/admin"
+    assert admin_login.json()["redirect_to"] == "/auth/profile"
 
     refreshed = client.get("/auth/api/admin/users?status=PENDING")
     assert refreshed.status_code == 200
