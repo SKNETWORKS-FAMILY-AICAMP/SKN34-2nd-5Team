@@ -4,8 +4,8 @@
 
 ### 핵심 리뷰어의 활동 위험을 탐지하고, 운영자의 판단과 다음 행동까지 연결하는 리텐션 운영 서비스
 
-Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **음식 리뷰 활동 유지 · 약화 · 중단**을 예측하고,<br>
-권역 탐색부터 대상 선정, Reviewer 360, 운영안 저장과 재검토 기록까지 하나의 운영 흐름으로 제공합니다.
+Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **음식 리뷰 활동 유지·약화·중단**을 예측하고,<br>
+권역 탐색부터 대상 선정, Reviewer 360 검토, 운영안 저장과 재검토 기록까지 하나의 운영 흐름으로 제공합니다.
 
 <br>
 
@@ -27,63 +27,6 @@ Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **음식 리뷰 활�
 | 운영·QA 담당자 | [요구사항](#요구사항-명세서-미리보기) → [업무 흐름](#업무-흐름) → [검증·배포 상태](#현재-검증배포-상태) → [범위와 한계](#범위와-한계) |
 
 ---
-<div align="center">
-
-## 팀 소개
-
-<table align="center" style="border: none; border-collapse: collapse;">
-  <tr>
-    <td align="center" valign="top" style="padding: 5px;">
-      <!-- 김동섭 (ChatGPT) -->
-      <table border="1" cellpadding="8" style="border-collapse: collapse; width: 220px;">
-        <tr><td align="center" height="90"><img src="icons8-chatgpt-96.png" alt="김동섭" width="70"></td></tr>
-        <tr><td align="center"><strong>김동섭</strong></td></tr>
-        <tr><td align="center"><a href="https://github.com/GitHub_계정"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
-        <tr><td align="center"><small>운영 UX·제품 문구·사용자 QA<br>Streamlit→React 전환 참여<br>v05 DL 실험·Final Test</small></td></tr>
-      </table>
-    </td>
-    <td align="center" valign="middle" style="padding: 0 10px;"><b>────</b></td>
-    <td align="center" valign="top" style="padding: 5px;">
-      <!-- 이홍규 팀장 (뇌) -->
-      <table border="1" cellpadding="8" style="border-collapse: collapse; width: 220px;">
-        <tr><td align="center" height="90"><img src="image.png" alt="이홍규 (팀장)" width="70"></td></tr>
-        <tr><td align="center"><strong>이홍규 (팀장)</strong></td></tr>
-        <tr><td align="center"><a href="https://github.com/GitHub_계정"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
-        <tr><td align="center"><small>v04 프로토타입 제작<br>공통 데이터 계약·서비스 통합<br>UI, UX, 제품 문서 통합</small></td></tr>
-      </table>
-    </td>
-    <td align="center" valign="middle" style="padding: 0 10px;"><b>────</b></td>
-    <td align="center" valign="top" style="padding: 5px;">
-      <!-- 김기호 (Gemini) -->
-      <table border="1" cellpadding="8" style="border-collapse: collapse; width: 220px;">
-        <tr><td align="center" height="90"><img src="gemini-color.png" alt="김기호" width="70"></td></tr>
-        <tr><td align="center"><strong>김기호</strong></td></tr>
-        <tr><td align="center"><a href="https://github.com/GitHub_계정"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
-        <tr><td align="center"><small>ML 피처 엔지니어링<br>데이터 전처리, 모델 학습 및 검증<br>데이터 전처리/모델 학습 결과서 작성</small></td></tr>
-      </table>
-    </td>
-  </tr>
-  <tr>
-    <td colspan="2"></td>
-    <td align="center" valign="middle"><b>│<br>│</b></td>
-    <td colspan="2"></td>
-  </tr>
-  <tr>
-    <td colspan="2"></td>
-    <td align="center" valign="top" style="padding: 5px;">
-      <!-- 최인영 (Claude) -->
-      <table border="1" cellpadding="8" style="border-collapse: collapse; width: 220px;">
-        <tr><td align="center" height="90"><img src="icons8-클로드-아이-96.png" alt="최인영" width="70"></td></tr>
-        <tr><td align="center"><strong>최인영</strong></td></tr>
-        <tr><td align="center"><a href="https://github.com/GitHub_계정"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
-        <tr><td align="center"><small>MySQL DB 계층·ERD·적재·스키마 검증<br>인증·관리자 기능, AWS 배포<br>XGBoost 선별 지원</small></td></tr>
-      </table>
-    </td>
-    <td colspan="2"></td>
-  </tr>
-</table>
-
-</div>
 
 ## 목차
 
@@ -109,16 +52,63 @@ Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **음식 리뷰 활�
 
 ---
 
+<div align="center">
+
 ## 팀 소개
 
-| 팀원 | 주요 수행 영역 |
-|---|---|
-| 최인영 | MySQL DB 계층·ERD·적재·스키마 검증, 인증·관리자 기능, AWS 배포, 발표자료 및 발표 |
-| 김기호 | v04 전처리·피처 파이프라인, v05 ML 학습·평가, 데이터 전처리·모델 학습 결과서 |
-| 김동섭 | Streamlit→React 전환 참여, v05 DL 실험·Final Test, 테스트시나리오 생성 및 QA|
-| 이홍규 | 팀장, v04 프로토타입 제작, 공통 데이터 계약·서비스 통합, UI, UX, 제품 문서 통합 |
+<table align="center" style="border: none; border-collapse: collapse;">
+  <tr>
+    <td align="center" valign="top" style="padding: 5px;">
+      <!-- 김동섭 (ChatGPT) -->
+      <table border="1" cellpadding="8" style="border-collapse: collapse; width: 220px;">
+        <tr><td align="center" height="90"><img src="docs/assets/readme/introduce_dongseop.png" alt="김동섭" width="70"></td></tr>
+        <tr><td align="center"><strong>김동섭</strong></td></tr>
+        <tr><td align="center"><a href="https://github.com/GitHub_계정"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
+        <tr><td align="center"><small>Streamlit→React 전환<br>v05 DL 실험·Final Test<br>테스트시나리오 생성 및 QA</small></td></tr>
+      </table>
+    </td>
+    <td align="center" valign="middle" style="padding: 0 10px;"><b>────</b></td>
+    <td align="center" valign="top" style="padding: 5px;">
+      <!-- 이홍규 팀장 (뇌) -->
+      <table border="1" cellpadding="8" style="border-collapse: collapse; width: 220px;">
+        <tr><td align="center" height="90"><img src="docs/assets/readme/introduce_honggyu.png" alt="이홍규 (팀장)" width="70"></td></tr>
+        <tr><td align="center"><strong>이홍규 (팀장)</strong></td></tr>
+        <tr><td align="center"><a href="https://github.com/GitHub_계정"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
+        <tr><td align="center"><small>v04 프로토타입 설계·구현<br>공통 데이터 계약·서비스 통합<br>운영 UI·UX 및 제품 문서 체계화</small></td></tr>
+      </table>
+    </td>
+    <td align="center" valign="middle" style="padding: 0 10px;"><b>────</b></td>
+    <td align="center" valign="top" style="padding: 5px;">
+      <!-- 김기호 (Gemini) -->
+      <table border="1" cellpadding="8" style="border-collapse: collapse; width: 220px;">
+        <tr><td align="center" height="90"><img src="docs/assets/readme/introduce_kiho.png" alt="김기호" width="70"></td></tr>
+        <tr><td align="center"><strong>김기호</strong></td></tr>
+        <tr><td align="center"><a href="https://github.com/GitHub_계정"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
+        <tr><td align="center"><small>ML 피처 엔지니어링<br>데이터 전처리, 모델 학습 및 검증<br>데이터 전처리/모델 학습 결과서 작성</small></td></tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2"></td>
+    <td align="center" valign="middle"><b>│<br>│</b></td>
+    <td colspan="2"></td>
+  </tr>
+  <tr>
+    <td colspan="2"></td>
+    <td align="center" valign="top" style="padding: 5px;">
+      <!-- 최인영 (Claude) -->
+      <table border="1" cellpadding="8" style="border-collapse: collapse; width: 220px;">
+        <tr><td align="center" height="90"><img src="docs/assets/readme/introduce_inyoung.png" alt="최인영" width="70"></td></tr>
+        <tr><td align="center"><strong>최인영</strong></td></tr>
+        <tr><td align="center"><a href="https://github.com/GitHub_계정"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
+        <tr><td align="center"><small>AWS Lightsail MySQL 구축<br> 및 데이터 적재, 배포<br> 인프라 설계, 발표</small></td></tr>
+      </table>
+    </td>
+    <td colspan="2"></td>
+  </tr>
+</table>
 
-상세 역할, 실제 참여 범위, 선행 관계와 산출물은 [전체 WBS](docs/01_business/WBS.md)에서 확인할 수 있습니다.
+</div>
 
 ---
 
@@ -139,7 +129,7 @@ Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **음식 리뷰 활�
 
 > `risk_score`는 보정된 이탈 확률이 아니라 **상대적인 위험 순위를 정하기 위한 모델 점수**입니다. 모델은 운영자의 결정을 대신하지 않습니다.
 
-**Primary CRM 선정 흐름:** 각 seed에서 산출한 약화·중단 위험 점수를 3개 seed에서 평균해 `risk_score`를 생성합니다. Final Test 6,533명을 이 점수의 내림차순으로 정렬하고, 상위 20%인 1,307명을 Primary CRM 검토 대상으로 지정합니다.
+**Primary CRM 선정 흐름:** 세 개 seed에서 산출한 약화·중단 위험 점수를 평균해 `risk_score`를 생성합니다. Final Test 6,533명을 이 점수의 내림차순으로 정렬하고, 상위 20%인 1,307명을 Primary CRM 검토 대상으로 지정합니다.
 
 ### 핵심 결과
 
@@ -530,7 +520,7 @@ python pipeline/v05_05_dl/evaluate_test.py
 | v05 모델 서비스 연동 | 완료 — `v05_05_dl` 운영 표시 확인 |
 | 최종 배포 승인 | **보류** |
 
-주요 배포 차단 항목은 비인증 API 접근, 운영자 권역 정책 우회, HTTPS 미적용, 스누즈 복원 실패, 배포 식별자 부재와 미완료 회귀입니다. 상세 근거는 [모델 배포·테스트 결과서](docs/02_reports/03_model_deployment_test_report.md)와 [QA 실행 결과](docs/qa/ADMIN_UI_QA_EXECUTION_2026-08-05.md)에 기록했습니다.
+주요 배포 차단 항목은 비인증 API 접근 허용, 운영자 권역 정책 우회 가능, HTTPS 미적용, 스누즈 복원 실패, 배포 식별자 부재와 회귀 테스트 미완료입니다. 상세 근거는 [모델 배포·테스트 결과서](docs/02_reports/03_model_deployment_test_report.md)와 [QA 실행 결과](docs/qa/ADMIN_UI_QA_EXECUTION_2026-08-05.md)에 기록했습니다.
 
 ---
 
@@ -546,6 +536,17 @@ python pipeline/v05_05_dl/evaluate_test.py
 | 포트가 이미 사용 중임 | 5173·8000·8100 포트의 기존 프로세스를 확인한 후 종료하거나 실행 포트를 변경 |
 
 상세 환경 변수와 실행 순서는 [로컬 실행 가이드](docs/04_architecture_and_guides/LOCAL_RUN_GUIDE.md)를 참고하세요.
+
+### 팀 개발 트러블슈팅 미리보기
+
+| 작성자 | 문제 상황 | 해결 방향 | 핵심 교훈 |
+|---|---|---|---|
+| 김기호 | 피처를 경량화한 XGBoost의 성능이 전체 피처 모델보다 하락 | 동일한 시간 분할에서 후보를 재평가하고 Core45 기반 `v05_2`를 ML 비교 모델로 유지 | 피처 제거는 단순 통계보다 상호작용과 검증 성과를 기준으로 결정 |
+| 김동섭 | 피처를 81개로 확장했지만 주요 DL 성능이 하락 | Core43·확장 피처·24개월 GRU 결합 모델을 통제 비교 | 피처 개수보다 기존 정보와 다른 신호를 제공하는지가 중요 |
+| 이홍규 | 월별 활동량이 모델 프로필보다 작게 집계 | 누락된 추가 음식 리뷰 원천을 결합하고 6,533명 전수 합계 검증 | 같은 지표도 원천과 집계 범위를 데이터 계약으로 맞춰야 함 |
+| 최인영 | AWS 배포 후 React에서 `Failed to fetch` 발생 | React를 상대 경로 `/api`로 전환하고 Nginx가 FastAPI로 프록시하도록 구성 | 로컬·배포 주소 차이는 하드코딩보다 공개 경로 계약으로 관리 |
+
+팀원별 문제 상황·원인·해결 방법·결과·회고 13건은 [팀 트러블슈팅 전체 기록](docs/07_history_and_handoff/TEAM_TROUBLESHOOTING.csv)에서 확인할 수 있습니다.
 
 ---
 
@@ -579,6 +580,7 @@ python pipeline/v05_05_dl/evaluate_test.py
 | [QA 케이스](docs/qa/ADMIN_UI_QA_CASES.md) | 관리자 UI 135개 테스트 시나리오 |
 | [QA 실행 결과](docs/qa/ADMIN_UI_QA_EXECUTION_2026-08-05.md) | PASS·FAIL·미실행 결과와 결함 |
 | [의사결정 기록](docs/06_decisions/) | 데이터·코호트·모델·운영 정책 결정 |
+| [팀 트러블슈팅 기록](docs/07_history_and_handoff/TEAM_TROUBLESHOOTING.csv) | 팀원별 문제 상황, 원인, 해결 방법, 결과와 회고 13건 |
 
 ---
 
@@ -594,25 +596,17 @@ python pipeline/v05_05_dl/evaluate_test.py
 
 ---
 
-## 회고
+## 💬 회고
 
-### 잘한 점
-
-- 랜덤 분할 대신 선정 연도 기준 Expanding-Time 검증과 분리된 Final Test를 사용해 시간 누수를 통제했습니다.
-- 분석 결과를 대시보드에서 끝내지 않고 탐지→선택→판단→운영안 저장→재검토의 운영 흐름으로 연결했습니다.
-- 모델 점수, 공간 정보와 운영안의 한계를 문서와 화면에서 명확히 구분했습니다.
-
-### 아쉬웠던 점
-
-- 통합 QA와 보안·권한 검증이 프로젝트 후반에 집중돼 P0 결함을 수정하고 전체 회귀할 시간이 부족했습니다.
-- 최종 모델 산출물의 공식 보관 위치와 체크섬·버전 정책을 개발 초기에 확정하지 못했습니다.
-- 요구사항, QA와 결과서가 병렬로 갱신되면서 일부 상태와 테스트 결과의 최종 동기화가 필요해졌습니다.
-
-### 다음 프로젝트에서 개선할 점
-
-- 요구사항 수락 기준과 배포 게이트를 개발 시작 시점부터 자동 테스트와 연결합니다.
-- 모델·DB·API·UI 산출물의 버전과 소유자를 하나의 릴리스 체크리스트로 관리합니다.
-- 주요 사용자 흐름과 권한 경계를 기능 구현과 동시에 반복 검증하고, 마지막 날에는 신규 기능보다 전체 회귀에 집중합니다.
+> **최인영** : AWS Lightsail 서비스를 처음 다뤄봤지만 DB 구축과 배포에 만족스럽게 성공하여 인프라에 대한 기초를 수월하게 학습할 수 있었습니다.
+>
+> **김기호** : AI 모델 개발에서 복잡한 구조나 튜닝보다 선행되어야 할 핵심은 '양질의 데이터'와 '도메인 기반의 정밀한 피처 엔지니어링'임을 깊이 체감한 프로젝트였습니다.
+>
+> **김동섭** : 핵심 리뷰어의 활동 변화를 정의하고, 시간 누수를 방지한 데이터 분할과 피처 설계를 통해 이탈 위험 예측 모델을 개발한 과정이 인상 깊었다. 모델 성능을 개선하는 것뿐만 아니라 예측 근거를 해석하고, 모델의 예측 결과를 실제 서비스 화면에 적용하는 경험을 쌓을 수 있었으며, 팀원들과 데이터·모델·서비스를 함께 검증하며 협업의 중요성을 배웠고, 향후에는 모델의 안정성과 실무 활용성을 더욱 높이고 싶습니다.
+>
+> **이홍규** :  모델 결과를 보여주는 데 그치지 않고, 공통 데이터 계약과 운영 UX를 정리해 탐지부터 재검토까지 이어지는 서비스 형태로 연결한 점이 가장 의미 있었습니다.
+>서비스 범위가 빠르게 확장되면서 통합 QA와 보안·권한 검증, 모델 산출물 관리 기준을 충분히 앞당기지 못한 점은 아쉬움으로 남았습니다.
+>다음 프로젝트에서는 수락 기준과 자동 테스트, 릴리스 체크리스트를 초기부터 연결해 구현 완료와 운영 준비를 함께 관리해보고 싶습니다.
 
 ---
 
