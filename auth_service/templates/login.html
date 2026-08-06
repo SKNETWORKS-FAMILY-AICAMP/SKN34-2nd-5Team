@@ -1,29 +1,50 @@
 {% extends "base.html" %}
 {% block page_id %}login{% endblock %}
 {% block content %}
-<div class="login-lockup">
-  <img class="login-lockup-word" src="/auth/static/brand/yelp_logo.svg" alt="Yelp" />
-  <p class="login-lockup-caption">MANAGEMENT PANEL</p>
+<div class="login-page">
+  <header class="login-header">
+    <a class="login-brand" href="#service-overview" aria-label="Reviewer Retention 홈">
+      <img src="/auth/static/brand/yelp_logo.svg" alt="Yelp" />
+      <span>REVIEWER RETENTION OPS</span>
+    </a>
+    <nav class="login-navigation" aria-label="로그인 화면 메뉴">
+      <a class="login-signup-link" href="/auth/signup">회원가입</a>
+    </nav>
+  </header>
+
+  <main class="login-main">
+    <section id="service-overview" class="login-hero" aria-labelledby="service-title">
+      <p class="login-kicker">REVIEWER RETENTION OPERATIONS</p>
+      <h1 id="service-title">핵심 리뷰어 리텐션<br />운영 서비스</h1>
+      <p>활동 변화를 확인하고 운영 우선순위를 결정하세요.</p>
+    </section>
+
+    <section class="auth-card auth-card-compact login-card" aria-labelledby="login-title">
+      <div class="login-card-mark" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+      <h2 id="login-title">운영 서비스 로그인</h2>
+      <p class="login-card-lead">계정 정보를 입력해 주세요.</p>
+      <form id="login-form" class="form-stack">
+        <label>
+          <span class="sr-only">이메일 또는 아이디</span>
+          <input name="identifier" autocomplete="username" placeholder="이메일 또는 아이디" aria-label="이메일 또는 아이디" required />
+        </label>
+        <label class="password-label">
+          <span class="sr-only">비밀번호</span>
+          <span class="password-input-wrap">
+            <input name="password" type="password" autocomplete="current-password" maxlength="128" placeholder="비밀번호" aria-label="비밀번호" required />
+            <button type="button" class="password-toggle" data-action="toggle-password" aria-pressed="false">보기</button>
+          </span>
+        </label>
+        <div id="form-message" class="message" role="alert" hidden></div>
+        <button class="primary-button" type="submit">로그인</button>
+      </form>
+      <p class="card-footer">처음 방문하셨나요? <a href="/auth/signup">회원가입 신청</a></p>
+    </section>
+  </main>
+
+  <footer id="operating-principle" class="login-footer">
+    Yelp Open Dataset 기반 비상업 분석 <span aria-hidden="true">·</span>
+    모델 점수는 확률이 아닌 운영 우선순위입니다.
+  </footer>
 </div>
-<section class="auth-card auth-card-compact" aria-labelledby="login-title">
-  <p class="eyebrow">승인된 운영 계정</p>
-  <h1 id="login-title">로그인</h1>
-  <p class="lead">관리자 승인이 완료된 계정만 접속할 수 있습니다.</p>
-  <form id="login-form" class="form-stack">
-    <label>
-      이메일 또는 아이디
-      <input name="identifier" autocomplete="username" required />
-    </label>
-    <label class="password-label">
-      <span class="password-label-row">
-        비밀번호
-        <button type="button" class="password-toggle" data-action="toggle-password" aria-pressed="false">보기</button>
-      </span>
-      <input name="password" type="password" autocomplete="current-password" maxlength="128" required />
-    </label>
-    <div id="form-message" class="message" role="alert" hidden></div>
-    <button class="primary-button" type="submit">로그인</button>
-  </form>
-  <p class="card-footer">계정이 없나요? <a href="/auth/signup">회원가입 신청</a></p>
-</section>
 {% endblock %}
