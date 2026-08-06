@@ -63,7 +63,7 @@ Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **음식 리뷰 활�
       <table border="1" cellpadding="8" style="border-collapse: collapse; width: 220px;">
         <tr><td align="center" height="90"><img src="docs/assets/readme/introduce_dongseop.png" alt="김동섭" width="70"></td></tr>
         <tr><td align="center"><strong>김동섭</strong></td></tr>
-        <tr><td align="center"><a href="https://github.com/GitHub_계정"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
+        <tr><td align="center"><a href="https://github.com/20220348-kim"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
         <tr><td align="center"><small>Streamlit→React 전환<br>v05 DL 실험·Final Test<br>테스트시나리오 생성 및 QA</small></td></tr>
       </table>
     </td>
@@ -73,8 +73,8 @@ Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **음식 리뷰 활�
       <table border="1" cellpadding="8" style="border-collapse: collapse; width: 220px;">
         <tr><td align="center" height="90"><img src="docs/assets/readme/introduce_honggyu.png" alt="이홍규 (팀장)" width="70"></td></tr>
         <tr><td align="center"><strong>이홍규 (팀장)</strong></td></tr>
-        <tr><td align="center"><a href="https://github.com/GitHub_계정"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
-        <tr><td align="center"><small>v04 프로토타입 설계·구현<br>공통 데이터 계약·서비스 통합<br>운영 UI·UX 및 제품 문서 체계화</small></td></tr>
+        <tr><td align="center"><a href="https://github.com/4hglee-ops"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
+        <tr><td align="center"><small>v04 프로토타입 설계·구현<br>공통 데이터 규격·서비스 통합<br>운영 UI·UX 및 제품 문서 체계화</small></td></tr>
       </table>
     </td>
     <td align="center" valign="middle" style="padding: 0 10px;"><b>────</b></td>
@@ -83,7 +83,7 @@ Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **음식 리뷰 활�
       <table border="1" cellpadding="8" style="border-collapse: collapse; width: 220px;">
         <tr><td align="center" height="90"><img src="docs/assets/readme/introduce_kiho.png" alt="김기호" width="70"></td></tr>
         <tr><td align="center"><strong>김기호</strong></td></tr>
-        <tr><td align="center"><a href="https://github.com/GitHub_계정"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
+        <tr><td align="center"><a href="https://github.com/kyo-135"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
         <tr><td align="center"><small>ML 피처 엔지니어링<br>데이터 전처리, 모델 학습 및 검증<br>데이터 전처리/모델 학습 결과서 작성</small></td></tr>
       </table>
     </td>
@@ -100,7 +100,7 @@ Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **음식 리뷰 활�
       <table border="1" cellpadding="8" style="border-collapse: collapse; width: 220px;">
         <tr><td align="center" height="90"><img src="docs/assets/readme/introduce_inyoung.png" alt="최인영" width="70"></td></tr>
         <tr><td align="center"><strong>최인영</strong></td></tr>
-        <tr><td align="center"><a href="https://github.com/GitHub_계정"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
+        <tr><td align="center"><a href="https://github.com/inyoung9629"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub"></a></td></tr>
         <tr><td align="center"><small>AWS Lightsail MySQL 구축<br> 및 데이터 적재, 배포<br> 인프라 설계, 발표</small></td></tr>
       </table>
     </td>
@@ -486,22 +486,123 @@ npm run build
 
 ---
 
-## 모델 재생성
+## 모델 재현 파이프라인 실행 가이드
 
-최종 가중치와 전처리 객체는 `.gitignore` 대상인 `models/experiments/v05_05_dl/`에 생성됩니다. 승인된 별도 보관 위치에서 전달받거나 아래 절차로 재생성해야 합니다.
+### 원본 데이터 준비
 
-```powershell
-python pipeline/v05_05_dl/train.py
-python pipeline/v05_05_dl/evaluate_test.py
+* 원본 데이터셋 출처: [Yelp Open Dataset](https://business.yelp.com/data/resources/open-dataset/)  
+* 다운로드받은 원본 데이터를 아래 디렉터리 구조로 배치합니다.
+
+```python
+data/
+└── raw/
+    ├── yelp_academic_dataset_business.json
+    ├── yelp_academic_dataset_review.json
+    └── yelp_academic_dataset_user.json
 ```
 
-| 산출물 | 경로 |
-|---|---|
-| 3-seed 가중치 | `models/experiments/v05_05_dl/seed_{42,2026,3405}_state_dict.pt` |
-| 전처리 객체 | `models/experiments/v05_05_dl/preprocessing.joblib` |
-| 모델 메타데이터 | `models/experiments/v05_05_dl/metadata.json` |
-| Final Test 예측 프로필 | `data/processed/predictions/test_retention_profiles_v05_05_dl.parquet` |
-| 평가 결과 | `reports/experiments/v05_05_dl/` |
+### 머신러닝 파이프라인 실행
+
+```bash
+python pipeline/v05_ml
+```
+
+#### 1\. 데이터 전처리 산출물 (`preprocessing.py`)
+
+이 단계에서는 원본 JSON 파일들로부터 필터링, 추출, 병합, 피처 엔지니어링을 거쳐 모델 학습을 위한 최종 데이터셋이 만들어집니다.
+
+| 단계 | 산출물 파일명 | 저장 경로 (프로젝트 루트 기준) | 설명 |
+| :---- | :---- | :---- | :---- |
+| **업체 필터링** | `restaurant_businesses.parquet` | `data/interim/` | 핵심 음식점(Restaurants) 카테고리 업체 데이터 |
+|  | `additional_culinary_businesses_v02.parquet` | `data/interim/` | 추가 미식 방문형(카페, 디저트 등) 업체 데이터 |
+| **리뷰 추출** | `restaurant_reviews.parquet` | `data/interim/` | 핵심 음식점의 전체 리뷰 데이터 |
+|  | `additional_culinary_reviews_v02.parquet` | `data/interim/` | 추가 미식 방문형 업체의 전체 리뷰 데이터 |
+| **코호트 생성** | `culinary_rolling_cohort_master_v*.parquet` | `data/interim/rolling/` | (설정 파일 경로 우선) 롤링 코호트 기준 유저, 라벨, 연도 매핑 마스터 데이터 |
+| **데이터셋 결합** | `modeling_dataset_rolling_v05_ml.parquet` | `data/processed/` | **\[최종 결과물\]** 모델 학습에 즉시 투입할 수 있는 43개+ 피처 및 타겟 결합 데이터 |
+
+#### 2\. 모델링 및 평가 산출물 (`modeling.py`)
+
+전처리된 데이터셋을 기반으로 XGBoost 모델을 학습하고 하이퍼파라미터를 탐색한 뒤, 최종 평가 지표 및 리포트를 생성합니다.
+
+| 분류 | 산출물 파일명 | 저장 경로 (프로젝트 루트 기준) | 설명 |
+| :---- | :---- | :---- | :---- |
+| **최종 모델** | `xgboost_final_core_multiclass_v05.joblib` | `models/` | 학습이 완료된 최종 XGBoost 모델 객체 |
+| **메타데이터** | `xgboost_multiclass_metadata_v05.json` | `models/` | 모델 구성, 평가 지표(F1, AUC 등), 선택 파라미터 등을 저장한 JSON 메타데이터 |
+| **CRM 프로필** | `xgboost_final_test_retention_profiles_v05_ml.parquet` | `data/processed/predictions/` | Test 데이터 유저별 예측 확률, 상태(유지/약화/중단) 및 마케팅 타겟팅 우선순위(Rank/Score) 데이터 |
+| **마크다운 리포트** | `xgboost_multiclass_model_performance_v05.md` | `reports/modeling/` | 깃허브나 문서에 바로 활용 가능한 모델 성능 및 Top 20% 정책 요약 마크다운 리포트 |
+| **분석 결과 표** | `xgboost_multiclass_model_candidates_v05.csv` | `reports/tables/` | Grid Search로 탐색한 모든 하이퍼파라미터 및 임계값 조합별 성능 기록 |
+|  | `xgboost_multiclass_validation_results_v05.csv` | `reports/tables/` | Fold별 교차 검증(CV) 및 Test 데이터의 Base 평가 지표 결과 |
+|  | `xgboost_multiclass_confusion_matrix_v05.csv` | `reports/tables/` | OOF 및 Test 데이터에 대한 혼동 행렬(Confusion Matrix) 상세 수치 |
+|  | `xgboost_multiclass_top_k_performance_v05.csv` | `reports/tables/` | 상위 5% \~ 40% 타겟팅 비율(Top-K)에 따른 Precision, Recall, Lift 지표 산출 기록 |
+|  | `xgboost_feature_importance_v05.csv` | `reports/tables/` | Permutation Importance 기법을 통해 산출된 피처별 중요도 및 순위 데이터 |
+
+---
+
+### 딥러닝 파이프라인 실행
+
+```bash
+python pipeline/v05_05_dl/preprocessing.py
+
+python pipeline/v05_05_dl/build_features.py --user-json data/raw/yelp_academic_dataset_user.json --overwrite
+python pipeline/v05_05_dl/train.py --overwrite
+
+python pipeline/v05_05_dl/build_test_features.py --user-json data/raw/yelp_academic_dataset_user.json --overwrite
+python pipeline/v05_05_dl/evaluate_test.py --overwrite
+```
+
+#### 1단계: 학습/검증 피처 생성 (`build_features.py`)
+
+이 단계에서는 2010년\~2017년(Development) 데이터에 대한 시계열 시퀀스와 라이프사이클 피처를 생성합니다.
+
+| 분류 | 산출물 파일명 | 저장 경로 | 설명 |
+| :---- | :---- | :---- | :---- |
+| **피처 데이터** | `lifecycle_features_v05_05.parquet` | `data/processed/experiments/` | 모델 학습용 유저 라이프사이클(Elite 이력, 가입 기간 등) 피처 |
+|  | `monthly_core4_sequence_v05_05.parquet` | `data/processed/experiments/` | 모델 학습용 24개월 활동 시계열 시퀀스 피처 |
+| **메타데이터** | `feature_build_metadata.json` | `reports/experiments/v05_05_dl/` | 피처 생성 과정의 행 개수, 컬럼 정보 및 해시값 기록 |
+
+#### 2단계: 모델 학습 및 OOF 평가 (`train.py`)
+
+생성된 피처를 바탕으로 PyTorch 딥러닝 모델(Lifecycle Fusion H2)을 학습하고, 교차 검증(OOF)을 통해 최적의 임계값(Threshold)을 탐색합니다.
+
+| 분류 | 산출물 파일명 | 저장 경로 | 설명 |
+| :---- | :---- | :---- | :---- |
+| **저장 모델** | `preprocessing.joblib` | `models/experiments/v05_05_dl/` | 시퀀스 및 라이프사이클 스케일러(StandardScaler) 전처리 객체 |
+|  | `seed_{seed}_state_dict.pt` | `models/experiments/v05_05_dl/` | 시드(seed)별로 학습된 PyTorch 모델 가중치(Weights) 파일들 |
+| **정보/리포트** | `metadata.json` | `models/experiments/v05_05_dl/` | 최종 모델의 아키텍처, 검증 점수 등 전체 메타데이터 |
+|  | `performance.md` | `reports/experiments/v05_05_dl/` | OOF 검증 결과 및 성능 비교 요약 마크다운 리포트 |
+| **평가 결과** | `selected_oof_candidate.json` | `reports/experiments/v05_05_dl/` | Grid Search로 선택된 최적의 타겟팅 임계값 및 결과 |
+|  | `oof_predictions.parquet` | `reports/experiments/v05_05_dl/` | 검증 데이터(OOF)에 대한 시드별 및 앙상블 예측 확률 결과 |
+|  | `threshold_candidates.csv` | `reports/experiments/v05_05_dl/` | 모든 임계값 조합에 대한 F1, AUC 성능 탐색 결과표 |
+|  | `oof_confusion.csv` | `reports/experiments/v05_05_dl/` | OOF 예측에 대한 혼동 행렬(Confusion Matrix) |
+|  | `oof_top_k_by_year.csv` | `reports/experiments/v05_05_dl/` | 연도별 Top-K 타겟팅 정밀도(Precision), Lift 등 상세 지표 |
+|  | `oof_top_k_summary.csv` | `reports/experiments/v05_05_dl/` | Top-K 타겟팅 성능 요약 표 |
+|  | `oof_model_comparison.csv` | `reports/experiments/v05_05_dl/` | 이전 기준 모델(v05\_04 등)과의 OOF 성능 수치 비교 표 |
+|  | `paired_bootstrap.csv` | `reports/experiments/v05_05_dl/` | 이전 모델과의 성능 차이에 대한 신뢰구간(Bootstrap) 기록 |
+
+#### 3단계: 테스트 피처 생성 (`build_test_features.py`)
+
+학습 시 전혀 사용되지 않은 2018년(Test) 코호트 유저들을 대상으로만 피처를 생성합니다.
+
+| 분류 | 산출물 파일명 | 저장 경로 | 설명 |
+| :---- | :---- | :---- | :---- |
+| **피처 데이터** | `test_lifecycle_features_v05_05.parquet` | `data/processed/experiments/` | 최종 테스트용 유저 라이프사이클 피처 |
+|  | `test_monthly_core4_sequence_v05_05.parquet` | `data/processed/experiments/` | 최종 테스트용 24개월 활동 시계열 시퀀스 피처 |
+| **메타데이터** | `test_feature_build_metadata.json` | `reports/experiments/v05_05_dl/` | 테스트 피처 생성 설정 및 데이터 무결성(검증) 메타데이터 |
+
+#### 4단계: 최종 테스트 셋 평가 (`evaluate_test.py`)
+
+미리 고정된 딥러닝 모델 가중치와 최적화된 임계값을 Test 피처에 적용하여 2019년 결과를 예측하고, CRM용 프로필을 뽑아냅니다.
+
+| 분류 | 산출물 파일명 | 저장 경로 | 설명 |
+| :---- | :---- | :---- | :---- |
+| **최종 결과** | `test_retention_profiles_v05_05_dl.parquet` | `data/processed/predictions/` | **\[최종 산출물\]** 마케팅팀 전달용 유저별 예측 상태 및 우선순위(Rank) 프로필 |
+| **예측/결과** | `test_predictions.parquet` | `reports/experiments/v05_05_dl/` | 전체 Test 데이터에 대한 예측 확률 및 분류 상태 상세 기록 |
+|  | `test_metrics.csv` | `reports/experiments/v05_05_dl/` | 최종 Test 셋 평가 지표 (F1, PR-AUC, Accuracy 등) 기록표 |
+|  | `test_confusion.csv` | `reports/experiments/v05_05_dl/` | 최종 Test 예측 결과 혼동 행렬 |
+|  | `test_top_k.csv` | `reports/experiments/v05_05_dl/` | Test 셋 대상의 Top-K (상위 마케팅 개입 대상) 성능 타겟팅 지표 |
+| **정보/리포트** | `test_metrics.json` | `reports/experiments/v05_05_dl/` | 평가 지표 종합 및 OOF와의 성능 차이 등을 기록한 JSON |
+|  | `test_performance.md` | `reports/experiments/v05_05_dl/` | 문서나 리드미에 바로 사용할 수 있는 딥러닝 테스트 결과 마크다운 리포트 |
+
 
 ---
 
