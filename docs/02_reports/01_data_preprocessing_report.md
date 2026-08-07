@@ -16,7 +16,11 @@ Yelp 파워 리뷰어(Elite 유저)의 활동 저하 및 이탈을 사전에 방
 | 0 | **`retained`** | 파워 지위 유지 | 리뷰 10건 이상이고 활동 월 3개월 이상 | 2,584건 (39.55%) | 파워 지위 유지군 |
 | 1 | **`weakened`** | 파워 지위 약화 | 리뷰 1건 이상이며 리뷰 10건 미만이거나 활동 월 3개월 미만 | 3,065건 (46.91%) | 지위 상실 (Status Loss) |
 | 2 | **`stopped`** | 리뷰 활동 중단 | 리뷰 0건 | 884건 (13.53%) | CRM 주요 타깃 관리 대상 |
-![3class_retention_distribution](assets\readme\3class_retention_distribution.png)
+
+
+<p align="center">
+  <img src="../assets/readme/3class_retention_distribution.png" alt="3-Class 분포도" width="100%">
+</p>
 
 ### 1.2 코호트 및 시간 구조
 - **개발 코호트 범위**: 2010–2017년 파워 리뷰어 선정 코호트 (총 31,420건)
