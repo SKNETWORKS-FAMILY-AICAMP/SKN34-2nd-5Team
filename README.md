@@ -430,6 +430,8 @@ Macro F1과 Macro PR-AUC의 변화 폭은 작았지만, `Stopped Recall`은 43.2
 
 ## 실행 가이드
 
+> **주의:** DB/서비스 실행 전 모델 재현 파이프라인 실행이 선행되어야 합니다.
+
 ### 1. 사전 준비
 
 - Python 3.12, Node.js, MySQL을 준비합니다.
@@ -499,6 +501,11 @@ data/
     ├── yelp_academic_dataset_business.json
     ├── yelp_academic_dataset_review.json
     └── yelp_academic_dataset_user.json
+```
+
+### v04 파이프라인 실행 (DB 적재 시 선행 필요)
+```bash
+python pipeline/v04
 ```
 
 ### 머신러닝 파이프라인 실행

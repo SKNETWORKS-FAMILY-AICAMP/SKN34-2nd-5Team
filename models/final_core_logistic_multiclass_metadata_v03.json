@@ -1,0 +1,150 @@
+{
+  "version": "v03",
+  "model_name": "Core Multiclass Logistic L1",
+  "model_type": "LogisticRegression",
+  "problem_type": "multiclass_classification",
+  "class_map": {
+    "0": "retained",
+    "1": "weakened",
+    "2": "stopped"
+  },
+  "class_labels_ko": {
+    "0": "파워 지위 유지",
+    "1": "파워 지위 약화",
+    "2": "리뷰 활동 중단"
+  },
+  "label_definition": {
+    "retained": "target_review_count >= 10 and target_active_months >= 3",
+    "weakened": "target_review_count >= 1 and (target_review_count < 10 or target_active_months < 3)",
+    "stopped": "target_review_count == 0"
+  },
+  "model_parameters": {
+    "penalty": "l1",
+    "C": 0.1,
+    "solver": "saga",
+    "class_weight": "balanced",
+    "max_iter": 2500,
+    "tol": 0.001,
+    "random_state": 42
+  },
+  "decision_thresholds": {
+    "stopped_score": 0.45,
+    "weakened_score": 0.36,
+    "evaluation_order": [
+      "stopped",
+      "weakened",
+      "retained"
+    ]
+  },
+  "priority_policy": {
+    "score": "weakened_score + stopped_score",
+    "primary_target_rate": 0.2
+  },
+  "feature_set": "activity+interval+business",
+  "feature_count": 43,
+  "feature_columns": [
+    "baseline_review_count",
+    "baseline_active_months",
+    "baseline_reviews_per_active_month",
+    "recent_review_count",
+    "recent_active_months",
+    "recent_reviews_per_active_month",
+    "review_count_diff",
+    "review_count_ratio",
+    "review_count_decline_rate",
+    "active_month_diff",
+    "active_month_ratio",
+    "active_month_decline_rate",
+    "reviews_per_active_month_diff",
+    "reviews_per_active_month_ratio",
+    "reviews_per_active_month_decline_rate",
+    "baseline_mean_interval_days",
+    "baseline_median_interval_days",
+    "baseline_max_interval_days",
+    "baseline_recency_days",
+    "recent_mean_interval_days",
+    "recent_median_interval_days",
+    "recent_max_interval_days",
+    "recent_recency_days",
+    "recent_interval_available",
+    "mean_interval_increase_days",
+    "median_interval_increase_days",
+    "max_interval_increase_days",
+    "recency_increase_days",
+    "baseline_unique_business_count",
+    "recent_unique_business_count",
+    "recent_revisited_business_count",
+    "recent_new_vs_baseline_count",
+    "unique_business_count_diff",
+    "unique_business_ratio",
+    "unique_business_decline_rate",
+    "recent_revisit_rate",
+    "recent_new_vs_baseline_rate",
+    "baseline_new_business_count",
+    "recent_new_business_count",
+    "baseline_new_business_rate",
+    "recent_new_business_rate",
+    "new_business_count_diff",
+    "new_business_rate_decline"
+  ],
+  "imputed_feature_count": 49,
+  "active_imputed_feature_count": 33,
+  "time_folds": [
+    {
+      "train_selection_years": "2009~2011",
+      "validation_selection_year": 2012
+    },
+    {
+      "train_selection_years": "2009~2012",
+      "validation_selection_year": 2013
+    },
+    {
+      "train_selection_years": "2009~2013",
+      "validation_selection_year": 2014
+    },
+    {
+      "train_selection_years": "2009~2014",
+      "validation_selection_year": 2015
+    },
+    {
+      "train_selection_years": "2009~2015",
+      "validation_selection_year": 2016
+    }
+  ],
+  "final_train_selection_years": "2009~2016",
+  "test_selection_year": 2017,
+  "test_target_year": 2019,
+  "test_metrics": {
+    "accuracy": 0.5915323550637479,
+    "balanced_accuracy": 0.5942871102258162,
+    "macro_precision": 0.5712870423069626,
+    "macro_recall": 0.5942871102258162,
+    "macro_f1": 0.5754081476861521,
+    "weighted_f1": 0.5975057359776581,
+    "macro_pr_auc": 0.5985820398626073,
+    "macro_ovr_roc_auc": 0.7798010866240291,
+    "retained_precision": 0.7157142857142857,
+    "retained_recall": 0.6510721247563352,
+    "retained_f1": 0.6818645797890439,
+    "retained_support": 1539.0,
+    "retained_pr_auc": 0.766126652805386,
+    "retained_roc_auc": 0.8343740118765919,
+    "weakened_precision": 0.6061468412066021,
+    "weakened_recall": 0.5467145790554415,
+    "weakened_f1": 0.5748987854251012,
+    "weakened_support": 1948.0,
+    "weakened_pr_auc": 0.6129953984822331,
+    "weakened_roc_auc": 0.6903178893884734,
+    "stopped_precision": 0.392,
+    "stopped_recall": 0.5850746268656717,
+    "stopped_f1": 0.4694610778443114,
+    "stopped_support": 670.0,
+    "stopped_pr_auc": 0.41662406830020254,
+    "stopped_roc_auc": 0.8147113586070223
+  },
+  "model_sha256": "c9b2bf574796686dd8996fd2c2d1991cbab5ea94573e282860d3a9fc908333f1",
+  "python_version": "3.12.10",
+  "sklearn_version": "1.4.2",
+  "pandas_version": "3.0.3",
+  "score_warning": "클래스별 점수는 확률 보정 전 모델 점수이며 실제 상태 확률로 표현하지 않는다."
+}

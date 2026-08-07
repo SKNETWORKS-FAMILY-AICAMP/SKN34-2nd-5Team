@@ -37,6 +37,11 @@ MySQL에는 다음 두 DB가 서로 분리되어 있어야 한다.
 
 ## 3. 최초 관리자 계정 생성
 
+아래 스크립트를 DBeaver SQL Editor에서 실행한다.
+```sql
+CREATE DATABASE reviewer_retention_auth CHARACTER SET utf8mb4;
+```
+
 새 `reviewer_retention_auth` DB에는 최초 관리자 계정이 필요하다. 프로젝트 루트에서 다음을 한 번 실행한다.
 
 ```powershell
