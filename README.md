@@ -380,7 +380,11 @@ GRU가 24개월 활동 시퀀스를, Lifecycle MLP가 장기 이력을 인코딩
 | Precision@1000 | **90.60%** | 90.04% |
 | 중증 오분류 | **2.19% · 538건** | 2.64% · 650건 |
 
-`v05_05_dl`은 Macro F1과 Macro PR-AUC가 모두 가장 높고 운영 지표도 더 안정적이어서 최종 모델로 선정했습니다.
+> 시계열 데이터의 시간 누수를 방지하기 위해 **2010~2017년 코호트 대상의 교차 검증**을 기반으로 모델을 평가 및 선정하였습니다.
+
+**모델 선정 기준**: Validation Macro F1-Score가 가장 높은 모델을 선정, Validation Macro F1-Score가 동등한 수준일 경우, Validation Macro PR-AUC를 비교해서 가장 높은 모델을 선정
+   
+**Validation Macro F1과 Validation Macro PR-AUC가 모두 가장 우수한 성능을 기록한 `v05_05_dl`을 최종 모델로 선정했습니다.**
 
 ### OOF 수락 기준
 
@@ -622,6 +626,50 @@ python pipeline/v05_05_dl/evaluate_test.py --overwrite
 | **정보/리포트** | `test_metrics.json` | `reports/experiments/v05_05_dl/` | 평가 지표 종합 및 OOF와의 성능 차이 등을 기록한 JSON |
 |  | `test_performance.md` | `reports/experiments/v05_05_dl/` | 문서나 리드미에 바로 사용할 수 있는 딥러닝 테스트 결과 마크다운 리포트 |
 
+```text
+# 산출물 파일 구조도
+├── data/
+│   └── processed/
+│       ├── modeling_dataset_rolling_v05_ml.parquet            # [입력] 롤링 코호트 결합 데이터
+│       ├── experiments/
+│       │   ├── lifecycle_features_v05_05.parquet              # [입력/DL] 2010-2017 라이프사이클 피처
+│       │   └── monthly_core4_sequence_v05_05.parquet          # [입력/DL] 2010-2017 24개월 시퀀스 피처
+│       └── predictions/
+│           ├── xgboost_final_test_retention_profiles_v05_ml.parquet   # [ML 최종 산출] 2018 Test CRM 프로필
+│           └── test_retention_profiles_v05_05_dl.parquet              # [DL 최종 산출] 2018 Test CRM 프로필
+│
+├── models/
+│   ├── xgboost_final_core_multiclass_v05.joblib               # [ML Artifact] 최종 학습 모델
+│   ├── xgboost_multiclass_metadata_v05.json                   # [ML Meta/SHA] 설정 및 model_sha256
+│   └── experiments/
+│       └── v05_05_dl/
+│           ├── preprocessing.joblib                           # [DL Preprocessor] 스케일러 객체
+│           ├── seed_42_state_dict.pt                          # [DL Weights] Seed 42 가중치
+│           ├── seed_2026_state_dict.pt                        # [DL Weights] Seed 2026 가중치
+│           ├── seed_3405_state_dict.pt                        # [DL Weights] Seed 3405 가중치
+│           └── metadata.json                                  # [DL Meta/SHA] weight_sha256 & preproc_sha256
+│
+└── reports/
+    ├── modeling/
+    │   └── xgboost_multiclass_model_performance_v05.md        # [ML Report] XGBoost 최종 성능 리포트
+    ├── tables/
+    │   ├── xgboost_multiclass_model_candidates_v05.csv        # [ML Table] Grid Search 파라미터 탐색표
+    │   ├── xgboost_multiclass_validation_results_v05.csv      # [ML Table] 5-Fold / OOF / Test 검증표
+    │   ├── xgboost_multiclass_confusion_matrix_v05.csv        # [ML Table] OOF & Test 혼동행렬
+    │   ├── xgboost_multiclass_top_k_performance_v05.csv       # [ML Table] Top-K 타깃팅 성능표
+    │   └── xgboost_feature_importance_v05.csv                 # [ML Table] Permutation 중요도
+    └── experiments/
+        └── v05_05_dl/
+            ├── performance.md                                 # [DL Report] OOF 검증 결과 리포트
+            ├── selected_oof_candidate.json                    # [DL Meta] 최적 OOF 임계값 설정
+            ├── oof_predictions.parquet                        # [DL OOF] Fold별/앙상블 예측값
+            ├── threshold_candidates.csv                       # [DL Table] 임계값 조합 탐색표
+            ├── oof_confusion.csv                              # [DL Table] OOF 혼동행렬
+            ├── oof_top_k_by_year.csv                          # [DL Table] 연도별 Top-K 지표
+            ├── oof_top_k_summary.csv                          # [DL Table] Top-K 요약표
+            ├── oof_model_comparison.csv                       # [DL Table] v05_04 대비 성능 비교표
+            └── paired_bootstrap.csv                           # [DL Table] 통계적 유의성 부트스트랩
+```
 
 ---
 
