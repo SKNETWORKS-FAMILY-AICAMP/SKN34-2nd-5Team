@@ -77,11 +77,45 @@ ssh-keyscan -H <AWS 고정 IP>
 | `AWS_FRONTEND_ROOT` | `/var/www/reviewer-retention` |
 | `AWS_API_SERVICE` | `reviewer-retention.service` |
 | `AWS_AUTH_SERVICE` | `reviewer-retention-auth.service` |
-| `VITE_API_BASE_URL` | `http://52.78.194.110` |
+| `VITE_API_BASE_URL` | 필수 설정. 경로가 없는 실제 HTTPS origin(예: `https://retention.example.com`) |
 
 위 서비스 이름은 AWS 서버에서 직접 확인한 값이다.
-`VITE_API_BASE_URL`을 누락하면 React가 관람자의 `localhost:8000`을 조회하게 되므로
-워크플로가 배포를 시작하기 전에 실패하도록 구성되어 있다.
+`VITE_API_BASE_URL`을 누락하거나 HTTP 주소로 지정하면 워크플로가 배포를 시작하기
+전에 실패한다. IP 기반 HTTP 주소는 운영 배포값으로 사용할 수 없다.
+
+## HTTPS 최초 구성
+
+1. 운영 도메인의 DNS A/AAAA 레코드를 AWS 서버로 연결한다.
+2. [`deploy/nginx/reviewer-retention.conf.example`](../../../deploy/nginx/reviewer-retention.conf.example)을
+   서버 설정 경로에 복사하고 도메인·인증서 경로·React 배포 경로를 실제 값으로 바꾼다.
+3. 신뢰할 수 있는 CA의 인증서를 발급하고 자동 갱신을 설정한다.
+4. `sudo nginx -t`가 성공한 경우에만 Nginx를 reload한다.
+5. GitHub의 `VITE_API_BASE_URL`을 같은 HTTPS origin으로 설정한다.
+6. HTTP 요청이 301/308로 HTTPS에 이동하고 `/`, `/api`, `/auth`가 모두 유효한
+   인증서로 응답하는지 확인한다.
+
+배포 스크립트는 Nginx의 443 SSL listener와 HTTP→HTTPS redirect를 확인하고,
+배포 후 공개 HTTPS 주소의 React·API·인증 서비스를 각각 smoke test한다. 실제
+도메인과 인증서가 적용되기 전에는 A03을 PASS로 판정하지 않는다.
+
+서버의 런타임 환경에는 다음 보안 설정이 필요하다.
+
+```dotenv
+# database/.env 또는 분석 API systemd EnvironmentFile
+RETENTION_ENV=production
+RETENTION_ALLOW_DEV_OPERATOR=0
+# 동일 origin 배포이면 비워 둠
+RETENTION_ALLOWED_ORIGINS=
+
+# auth_service/.env
+AUTH_ENV=production
+AUTH_COOKIE_SECURE=true
+# 동일 origin 배포이면 비워 둠
+AUTH_ALLOWED_ORIGINS=
+```
+
+배포 후 `/health`와 `/auth/health`의 비밀값이 아닌 보안 상태를 검사하므로,
+development identity나 비보안 쿠키가 켜진 서버는 배포 성공으로 처리되지 않는다.
 
 ## 배포 실행
 

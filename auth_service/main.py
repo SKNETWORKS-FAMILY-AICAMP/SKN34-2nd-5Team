@@ -574,6 +574,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.mount("/auth/static", StaticFiles(directory=Path(BASE_DIR / "static")), name="auth-static")
     app.include_router(build_api_router())
 
+    @app.get("/auth/health", tags=["health"])
+    def health() -> dict:
+        return {
+            "status": "ok",
+            "environment": resolved_settings.environment,
+            "secureCookie": resolved_settings.cookie_secure,
+        }
+
     @app.get("/auth", include_in_schema=False)
     def auth_home() -> RedirectResponse:
         return RedirectResponse("/auth/login", status_code=status.HTTP_307_TEMPORARY_REDIRECT)

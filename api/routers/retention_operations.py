@@ -33,7 +33,11 @@ from api.services.target_list_service import (
 )
 
 
-router = APIRouter(prefix="/api/retention", tags=["retention-operations"])
+router = APIRouter(
+    prefix="/api/retention",
+    tags=["retention-operations"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 
 class DecisionWrite(BaseModel):
@@ -123,7 +127,12 @@ def _service_error(error: Exception) -> HTTPException:
             status_code=422,
             detail="리뷰어와 모델 표본이 일치하지 않습니다",
         )
-    if isinstance(error, (OperationalError, ProgrammingError)):
+    if isinstance(error, OperationalError):
+        return HTTPException(
+            status_code=503,
+            detail="운영 데이터베이스에 연결할 수 없습니다",
+        )
+    if isinstance(error, ProgrammingError):
         return HTTPException(
             status_code=503,
             detail="운영 데이터 테이블이 아직 적용되지 않았습니다",
@@ -131,10 +140,102 @@ def _service_error(error: Exception) -> HTTPException:
     return HTTPException(status_code=500, detail="운영 데이터 처리에 실패했습니다")
 
 
+def _scope_for_identity(engine, identity: OperatorIdentity) -> tuple[list[str] | None, set[str] | None]:
+    regions = regions_for_identity(engine, identity)
+    reviewers = reviewer_ids_for_regions(engine, regions) if regions is not None else None
+    return regions, reviewers
+
+
+def _require_reviewer_access(engine, identity: OperatorIdentity, reviewer_user_id: str) -> None:
+    _, allowed_reviewers = _scope_for_identity(engine, identity)
+    if allowed_reviewers is not None and reviewer_user_id not in allowed_reviewers:
+        raise PermissionError("배정된 권역의 핵심 리뷰어만 처리할 수 있습니다")
+
+
+def _require_region_access(identity: OperatorIdentity, region_code: str | None) -> None:
+    if identity.access_role != "OPERATOR":
+        return
+    normalized = region_code.strip().upper() if region_code else None
+    if normalized != identity.region_code:
+        raise PermissionError("배정된 권역만 처리할 수 있습니다")
+
+
+def _normalize_region(region_code: str | None) -> str | None:
+    return region_code.strip().upper() if region_code else None
+
+
+def _scoped_target_lists(
+    rows: list[dict],
+    allowed_regions: list[str] | None,
+    allowed_reviewers: set[str] | None,
+) -> list[dict]:
+    if allowed_reviewers is None:
+        return rows
+    scoped = []
+    for row in rows:
+        if row.get("regionCode") and _normalize_region(row["regionCode"]) not in allowed_regions:
+            continue
+        members = [user_id for user_id in row["memberUserIds"] if user_id in allowed_reviewers]
+        if members:
+            scoped.append({**row, "memberUserIds": members, "memberCount": len(members)})
+    return scoped
+
+
+def _scoped_action_plans(
+    rows: list[dict],
+    allowed_regions: list[str] | None,
+    allowed_reviewers: set[str] | None,
+) -> list[dict]:
+    if allowed_reviewers is None:
+        return rows
+    return [
+        row
+        for row in rows
+        if (
+            row["planType"] == "regional"
+            and _normalize_region(row["regionCode"]) in allowed_regions
+        )
+        or (row["planType"] == "individual" and row["reviewerUserId"] in allowed_reviewers)
+    ]
+
+
+def _require_target_list_access(
+    row: dict,
+    identity: OperatorIdentity,
+    allowed_reviewers: set[str] | None,
+) -> None:
+    if allowed_reviewers is None:
+        return
+    _require_region_access(identity, row.get("regionCode") or identity.region_code)
+    if any(user_id not in allowed_reviewers for user_id in row["memberUserIds"]):
+        raise PermissionError("배정된 권역의 대상 명단만 처리할 수 있습니다")
+
+
+def _require_action_plan_access(
+    row: dict,
+    identity: OperatorIdentity,
+    allowed_reviewers: set[str] | None,
+) -> None:
+    if allowed_reviewers is None:
+        return
+    if row["planType"] == "regional":
+        _require_region_access(identity, row.get("regionCode"))
+    elif row.get("reviewerUserId") not in allowed_reviewers:
+        raise PermissionError("배정된 권역의 실행안만 처리할 수 있습니다")
+
+
 @router.get("/decisions")
-def decisions(model_version: str = Query(default="v04", min_length=1, max_length=16)) -> dict:
+def decisions(
+    model_version: str = Query(default="v04", min_length=1, max_length=16),
+    identity: OperatorIdentity = Depends(get_current_identity),
+) -> dict:
     try:
-        return {"items": list_decisions(get_engine(), model_version)}
+        engine = get_engine()
+        rows = list_decisions(engine, model_version)
+        _, allowed_reviewers = _scope_for_identity(engine, identity)
+        if allowed_reviewers is not None:
+            rows = [row for row in rows if row["reviewerUserId"] in allowed_reviewers]
+        return {"items": rows}
     except Exception as error:
         raise _service_error(error) from error
 
@@ -146,6 +247,7 @@ def put_decision(
     operator: OperatorIdentity = Depends(get_current_operator),
 ) -> dict:
     try:
+        _require_reviewer_access(get_engine(), operator, reviewer_user_id)
         payload = body.model_dump(by_alias=False)
         return save_decision(get_engine(), reviewer_user_id, payload, operator)
     except Exception as error:
@@ -158,6 +260,7 @@ def remove_decision(
     operator: OperatorIdentity = Depends(get_current_operator),
 ) -> dict:
     try:
+        _require_reviewer_access(get_engine(), operator, reviewer_user_id)
         return {
             "deleted": delete_decision(get_engine(), reviewer_user_id, operator),
             "reviewerUserId": reviewer_user_id,
@@ -167,16 +270,24 @@ def remove_decision(
 
 
 @router.get("/decisions/{reviewer_user_id}/history")
-def decision_history(reviewer_user_id: str) -> dict:
+def decision_history(
+    reviewer_user_id: str,
+    identity: OperatorIdentity = Depends(get_current_identity),
+) -> dict:
     try:
+        _require_reviewer_access(get_engine(), identity, reviewer_user_id)
         return {"items": list_history(get_engine(), reviewer_user_id)}
     except Exception as error:
         raise _service_error(error) from error
 
 
 @router.get("/reviewers/{reviewer_user_id}/interactions")
-def interactions(reviewer_user_id: str) -> dict:
+def interactions(
+    reviewer_user_id: str,
+    identity: OperatorIdentity = Depends(get_current_identity),
+) -> dict:
     try:
+        _require_reviewer_access(get_engine(), identity, reviewer_user_id)
         return {"items": list_interactions(get_engine(), reviewer_user_id)}
     except Exception as error:
         raise _service_error(error) from error
@@ -189,6 +300,7 @@ def post_interaction(
     operator: OperatorIdentity = Depends(get_current_operator),
 ) -> dict:
     try:
+        _require_reviewer_access(get_engine(), operator, reviewer_user_id)
         return add_interaction(
             get_engine(), reviewer_user_id, body.model_dump(by_alias=False), operator
         )
@@ -197,9 +309,15 @@ def post_interaction(
 
 
 @router.get("/target-lists")
-def target_lists() -> dict:
+def target_lists(identity: OperatorIdentity = Depends(get_current_identity)) -> dict:
     try:
-        return {"items": list_target_lists(get_engine())}
+        engine = get_engine()
+        regions, allowed_reviewers = _scope_for_identity(engine, identity)
+        return {
+            "items": _scoped_target_lists(
+                list_target_lists(engine), regions, allowed_reviewers
+            )
+        }
     except Exception as error:
         raise _service_error(error) from error
 
@@ -210,12 +328,19 @@ def post_target_list(
     operator: OperatorIdentity = Depends(get_current_operator),
 ) -> dict:
     try:
+        engine = get_engine()
+        _require_region_access(operator, body.region_code or operator.region_code)
+        _, allowed_reviewers = _scope_for_identity(engine, operator)
+        if allowed_reviewers is not None and any(
+            member.user_id not in allowed_reviewers for member in body.members
+        ):
+            raise PermissionError("배정된 권역의 핵심 리뷰어만 대상 명단에 저장할 수 있습니다")
         payload = {
             "name": body.name,
             "decision": body.decision,
             "model_version": body.model_version,
             "target_scope": body.target_scope,
-            "region_code": body.region_code,
+            "region_code": _normalize_region(body.region_code),
             "city_key": body.city_key,
             "city_name": body.city_name,
             "members": [
@@ -223,7 +348,7 @@ def post_target_list(
                 for member in body.members
             ],
         }
-        return create_target_list(get_engine(), payload, operator)
+        return create_target_list(engine, payload, operator)
     except Exception as error:
         raise _service_error(error) from error
 
@@ -234,21 +359,39 @@ def remove_target_list(
     operator: OperatorIdentity = Depends(get_current_operator),
 ) -> dict:
     try:
-        return {"deleted": delete_target_list(get_engine(), list_id), "listId": list_id}
+        engine = get_engine()
+        _, allowed_reviewers = _scope_for_identity(engine, operator)
+        existing = next(
+            (row for row in list_target_lists(engine) if row["listId"] == list_id),
+            None,
+        )
+        if existing is not None:
+            _require_target_list_access(existing, operator, allowed_reviewers)
+        return {"deleted": delete_target_list(engine, list_id), "listId": list_id}
     except Exception as error:
         raise _service_error(error) from error
 
 
 @router.get("/action-plans")
-def action_plans(plan_type: str | None = Query(default=None, max_length=16)) -> dict:
+def action_plans(
+    plan_type: str | None = Query(default=None, max_length=16),
+    identity: OperatorIdentity = Depends(get_current_identity),
+) -> dict:
     try:
-        return {"items": list_action_plans(get_engine(), plan_type)}
+        engine = get_engine()
+        regions, allowed_reviewers = _scope_for_identity(engine, identity)
+        return {
+            "items": _scoped_action_plans(
+                list_action_plans(engine, plan_type), regions, allowed_reviewers
+            )
+        }
     except Exception as error:
         raise _service_error(error) from error
 
 
 def _action_payload(body: ActionPlanWrite) -> dict:
     raw = body.model_dump(by_alias=False)
+    raw["region_code"] = _normalize_region(raw.get("region_code"))
     raw["business_ids"] = raw.pop("business_ids")
     raw["milestones"] = [item.model_dump(by_alias=False) for item in body.milestones]
     return raw
@@ -260,7 +403,12 @@ def post_action_plan(
     operator: OperatorIdentity = Depends(get_current_operator),
 ) -> dict:
     try:
-        return save_action_plan(get_engine(), _action_payload(body), operator)
+        engine = get_engine()
+        if body.plan_type == "regional":
+            _require_region_access(operator, body.region_code)
+        elif body.reviewer_user_id:
+            _require_reviewer_access(engine, operator, body.reviewer_user_id)
+        return save_action_plan(engine, _action_payload(body), operator)
     except Exception as error:
         raise _service_error(error) from error
 
@@ -272,7 +420,19 @@ def put_action_plan(
     operator: OperatorIdentity = Depends(get_current_operator),
 ) -> dict:
     try:
-        return save_action_plan(get_engine(), _action_payload(body), operator, plan_id)
+        engine = get_engine()
+        _, allowed_reviewers = _scope_for_identity(engine, operator)
+        existing = next(
+            (row for row in list_action_plans(engine) if row["planId"] == plan_id),
+            None,
+        )
+        if existing is not None:
+            _require_action_plan_access(existing, operator, allowed_reviewers)
+        if body.plan_type == "regional":
+            _require_region_access(operator, body.region_code)
+        elif body.reviewer_user_id:
+            _require_reviewer_access(engine, operator, body.reviewer_user_id)
+        return save_action_plan(engine, _action_payload(body), operator, plan_id)
     except Exception as error:
         raise _service_error(error) from error
 

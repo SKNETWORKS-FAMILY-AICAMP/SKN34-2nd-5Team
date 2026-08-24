@@ -46,7 +46,8 @@ wait_for_http() {
 [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]] || fail 'EXPECTED_SHA must be a full Git commit SHA.'
 [[ "$API_SERVICE" =~ ^[A-Za-z0-9_.@-]+$ ]] || fail 'API_SERVICE is missing or invalid.'
 [[ "$AUTH_SERVICE" =~ ^[A-Za-z0-9_.@-]+$ ]] || fail 'AUTH_SERVICE is missing or invalid.'
-[[ "$VITE_API_BASE_URL" =~ ^https?://[^[:space:]]+$ ]] || fail 'VITE_API_BASE_URL is missing or invalid.'
+[[ "$VITE_API_BASE_URL" =~ ^https://[^/[:space:]]+/?$ ]] || fail 'VITE_API_BASE_URL must be an HTTPS origin without a path.'
+PUBLIC_ORIGIN="${VITE_API_BASE_URL%/}"
 [[ "$FRONTEND_ROOT" =~ ^/var/www/[A-Za-z0-9._/-]+$ ]] || fail 'FRONTEND_ROOT must be a path below /var/www/.'
 [[ "$FRONTEND_ROOT" != *'..'* ]] || fail 'FRONTEND_ROOT must not contain parent-directory traversal.'
 
@@ -147,6 +148,12 @@ nginx_config="$(sudo nginx -T 2>&1)"
 if [[ "$nginx_config" != *"root $CURRENT_DIST;"* ]]; then
   fail "Nginx does not serve the React build directory: $CURRENT_DIST"
 fi
+if [[ "$nginx_config" != *"listen 443 ssl"* ]]; then
+  fail 'Nginx does not expose an HTTPS listener.'
+fi
+if [[ "$nginx_config" != *'return 301 https://'* && "$nginx_config" != *'return 308 https://'* ]]; then
+  fail 'Nginx does not redirect HTTP traffic to HTTPS.'
+fi
 
 restore_previous_frontend() {
   if [[ -d "$PREVIOUS_DIST" ]]; then
@@ -169,8 +176,16 @@ sudo systemctl restart "$API_SERVICE"
 sudo systemctl restart "$AUTH_SERVICE"
 
 wait_for_http 'http://127.0.0.1:8000/health' 'Analysis API'
-wait_for_http 'http://127.0.0.1:8100/auth/login' 'Auth API'
-wait_for_http 'http://127.0.0.1/' 'Nginx/React'
+api_health="$(curl --fail --silent --show-error --max-time 3 'http://127.0.0.1:8000/health')"
+[[ "$api_health" == *'"environment":"production"'* ]] || fail 'Analysis API is not running in production mode.'
+[[ "$api_health" == *'"developmentOperator":false'* ]] || fail 'Analysis API development identity is enabled.'
+wait_for_http 'http://127.0.0.1:8100/auth/health' 'Auth API'
+auth_health="$(curl --fail --silent --show-error --max-time 3 'http://127.0.0.1:8100/auth/health')"
+[[ "$auth_health" == *'"environment":"production"'* ]] || fail 'Auth service is not running in production mode.'
+[[ "$auth_health" == *'"secureCookie":true'* ]] || fail 'Auth service does not enforce Secure cookies.'
+wait_for_http "$PUBLIC_ORIGIN/health" 'Public HTTPS API'
+wait_for_http "$PUBLIC_ORIGIN/auth/health" 'Public HTTPS auth service'
+wait_for_http "$PUBLIC_ORIGIN/" 'Public HTTPS React'
 
 trap - ERR
 sudo rm -rf -- "$PREVIOUS_DIST"

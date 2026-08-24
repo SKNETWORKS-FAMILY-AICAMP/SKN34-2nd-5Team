@@ -42,6 +42,54 @@ def login(client: TestClient, email: str, password: str):
     )
 
 
+def test_production_requires_secure_cookies(tmp_path):
+    with pytest.raises(ValueError, match="AUTH_COOKIE_SECURE=true"):
+        Settings(
+            database_url=f"sqlite:///{(tmp_path / 'auth-insecure.db').as_posix()}",
+            environment="production",
+            cookie_secure=False,
+        )
+
+
+def test_https_login_sets_secure_session_and_csrf_cookies(tmp_path):
+    settings = Settings(
+        database_url=f"sqlite:///{(tmp_path / 'auth-secure.db').as_posix()}",
+        environment="production",
+        cookie_secure=True,
+        after_login_url="/",
+    )
+    secure_app = create_app(settings)
+    with TestClient(secure_app, base_url="https://testserver") as client:
+        with secure_app.state.session_factory() as db:
+            create_admin_user(
+                db,
+                username="secure_admin",
+                email="secure-admin@example.com",
+                password="admin-password-123",
+                full_name="보안 관리자",
+            )
+        response = login(client, "secure_admin", "admin-password-123")
+
+    assert response.status_code == 200
+    cookies = response.headers.get_list("set-cookie")
+    session_cookie = next(item for item in cookies if item.startswith("rr_auth_session="))
+    csrf_cookie = next(item for item in cookies if item.startswith("rr_auth_csrf="))
+    assert "Secure" in session_cookie
+    assert "HttpOnly" in session_cookie
+    assert "SameSite=lax" in session_cookie
+    assert "Secure" in csrf_cookie
+    assert "HttpOnly" not in csrf_cookie
+    assert "SameSite=lax" in csrf_cookie
+
+    health = TestClient(secure_app).get("/auth/health")
+    assert health.status_code == 200
+    assert health.json() == {
+        "status": "ok",
+        "environment": "production",
+        "secureCookie": True,
+    }
+
+
 def test_pending_user_can_be_refreshed_approved_and_logged_in(app_and_client):
     app, client = app_and_client
 

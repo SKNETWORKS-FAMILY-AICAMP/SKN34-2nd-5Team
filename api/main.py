@@ -12,6 +12,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.config import DEVELOPMENT_ORIGIN_REGEX, Settings
 from api.routers import (
     business_photos,
     operations,
@@ -26,43 +27,46 @@ from api.routers import (
     v05_derived,
 )
 
-app = FastAPI(title="Yelp Retention API (v05)")
-app.include_router(business_photos.router)
-app.include_router(regional.router)
-app.include_router(operations.router)
-app.include_router(trust.router)
-app.include_router(playbooks.router)
-app.include_router(retention_operations.router)
-app.include_router(reviewers.router)
-app.include_router(reviewer_details.router)
-app.include_router(reviewer_radius.router)
-app.include_router(v05_derived.router)
-app.include_router(sponsorships.router)
+def create_app(settings: Settings | None = None) -> FastAPI:
+    resolved = settings or Settings.from_env()
+    application = FastAPI(title="Yelp Retention API (v05)")
+    application.state.settings = resolved
 
-# Vite dev 서버. `npm run dev`는 localhost 외에 LAN 주소(예:
-# http://192.168.0.18:5173)로도 열리는데, 그 주소로 접속하면 브라우저가
-# 보내는 Origin이 달라져 API 호출이 CORS에서 막힌다. 개발 편의를 위해
-# 사설 IP 대역까지 허용한다.
-#
-# 개발 전용 설정이다. 배포 시에는 이 정규식을 지우고 실제 오리진만
-# allow_origins에 명시할 것.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origin_regex=(
-        r"^http://("
-        r"localhost"
-        r"|127\.0\.0\.1"
-        r"|10\.\d{1,3}\.\d{1,3}\.\d{1,3}"
-        r"|192\.168\.\d{1,3}\.\d{1,3}"
-        r"|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}"
-        r"):5173$"
-    ),
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-    allow_credentials=True,
-)
+    application.include_router(business_photos.router)
+    application.include_router(regional.router)
+    application.include_router(operations.router)
+    application.include_router(trust.router)
+    application.include_router(playbooks.router)
+    application.include_router(retention_operations.router)
+    application.include_router(reviewers.router)
+    application.include_router(reviewer_details.router)
+    application.include_router(reviewer_radius.router)
+    application.include_router(v05_derived.router)
+    application.include_router(sponsorships.router)
+
+    cors_options: dict = {}
+    if resolved.allowed_origins:
+        cors_options["allow_origins"] = list(resolved.allowed_origins)
+    elif resolved.environment == "development":
+        cors_options["allow_origin_regex"] = DEVELOPMENT_ORIGIN_REGEX
+    if cors_options:
+        application.add_middleware(
+            CORSMiddleware,
+            **cors_options,
+            allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            allow_headers=["Accept", "Content-Type"],
+            allow_credentials=True,
+        )
+
+    @application.get("/health")
+    def health() -> dict:
+        return {
+            "status": "ok",
+            "environment": resolved.environment,
+            "developmentOperator": resolved.allow_dev_operator,
+        }
+
+    return application
 
 
-@app.get("/health")
-def health() -> dict:
-    return {"status": "ok"}
+app = create_app()

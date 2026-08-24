@@ -208,6 +208,22 @@ def save_decision(
             "actor_subject": operator.subject,
             "actor_name": operator.name,
         }
+        if previous is not None:
+            unchanged = all(
+                previous[column] == values[value_key]
+                for column, value_key in (
+                    ("model_version", "model_version"),
+                    ("sample_id", "sample_id"),
+                    ("manager_decision", "decision"),
+                    ("note", "note"),
+                    ("assignee_subject", "assignee_subject"),
+                    ("snooze_until", "snooze_until"),
+                    ("risk_type", "risk_type"),
+                    ("model_judgment", "model_judgment"),
+                )
+            )
+            if unchanged:
+                return _decision_json(previous)
         if previous is None:
             connection.execute(
                 text(
@@ -357,6 +373,12 @@ def list_history(engine: Engine, reviewer_user_id: str) -> list[dict]:
             "action": row["action_type"],
             "fromDecision": row["from_decision"],
             "toDecision": row["to_decision"],
+            "fromNote": row["from_note"],
+            "toNote": row["to_note"],
+            "fromAssigneeSubject": row["from_assignee_subject"],
+            "toAssigneeSubject": row["to_assignee_subject"],
+            "fromSnoozeUntil": _iso(row["from_snooze_until"]),
+            "toSnoozeUntil": _iso(row["to_snooze_until"]),
             "actor": {"subject": row["actor_subject"], "name": row["actor_name"]},
             "changedAt": _iso(row["changed_at"]),
         }
@@ -452,6 +474,12 @@ def list_all_history(engine: Engine, limit: int = 200) -> list[dict]:
             "action": row["action_type"],
             "fromDecision": row["from_decision"],
             "toDecision": row["to_decision"],
+            "fromNote": row["from_note"],
+            "toNote": row["to_note"],
+            "fromAssigneeSubject": row["from_assignee_subject"],
+            "toAssigneeSubject": row["to_assignee_subject"],
+            "fromSnoozeUntil": _iso(row["from_snooze_until"]),
+            "toSnoozeUntil": _iso(row["to_snooze_until"]),
             "actor": {"subject": row["actor_subject"], "name": row["actor_name"]},
             "changedAt": _iso(row["changed_at"]),
         }
@@ -515,20 +543,19 @@ def list_operator_scopes(engine: Engine) -> list[dict]:
 
 
 def regions_for_identity(engine: Engine, identity: OperatorIdentity) -> list[str] | None:
+    del engine
     if identity.access_role in {"ADMIN", "VIEWER"}:
         return None
-    with engine.connect() as connection:
-        rows = connection.execute(
-            text(
-                "SELECT region_code FROM retention_operator_scopes "
-                "WHERE auth_subject = :subject AND is_active = 1 ORDER BY region_code"
-            ),
-            {"subject": identity.subject},
-        ).scalars().all()
-    return list(rows)
+    if identity.access_role != "OPERATOR" or not identity.region_code:
+        raise PermissionError("운영자 담당 권역이 설정되지 않았습니다")
+    return [identity.region_code]
 
 
-def reviewer_ids_for_regions(engine: Engine, regions: list[str]) -> set[str]:
+def reviewer_ids_for_regions(
+    engine: Engine,
+    regions: list[str],
+    model_version: str = "v05_05_dl",
+) -> set[str]:
     if not regions:
         return set()
     from sqlalchemy import bindparam
@@ -538,10 +565,16 @@ def reviewer_ids_for_regions(engine: Engine, regions: list[str]) -> set[str]:
         "INNER JOIN cohort_samples AS sample "
         "ON sample.model_version = region_row.model_version "
         "AND sample.sample_id = region_row.sample_id "
-        "WHERE region_row.state IN :regions"
+        "WHERE region_row.state IN :regions "
+        "AND sample.model_version = :model_version"
     ).bindparams(bindparam("regions", expanding=True))
     with engine.connect() as connection:
-        return set(connection.execute(statement, {"regions": regions}).scalars().all())
+        return set(
+            connection.execute(
+                statement,
+                {"regions": regions, "model_version": model_version},
+            ).scalars().all()
+        )
 
 
 def _alert_json(row) -> dict:

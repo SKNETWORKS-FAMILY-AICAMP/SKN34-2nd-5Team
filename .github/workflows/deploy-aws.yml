@@ -62,7 +62,7 @@ jobs:
           python -m pip install --disable-pip-version-check -r api/requirements.txt -r auth_service/requirements.txt pytest httpx
           python -m compileall -q api auth_service shared
           python -m unittest tests.test_demo_contract tests.test_historical_metric_loaders tests.test_reference_data_seed
-          python -m pytest auth_service/tests -q
+          python -m pytest api/tests auth_service/tests -q
 
   deploy:
     needs: validate
@@ -87,7 +87,7 @@ jobs:
           AWS_AUTH_SERVICE: ${{ vars.AWS_AUTH_SERVICE || 'reviewer-retention-auth.service' }}
           AWS_DEPLOY_PATH: ${{ vars.AWS_DEPLOY_PATH || '/srv/reviewer-retention' }}
           AWS_FRONTEND_ROOT: ${{ vars.AWS_FRONTEND_ROOT || '/var/www/reviewer-retention' }}
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'http://52.78.194.110' }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
         run: |
           : "${AWS_SSH_HOST:?Missing AWS_SSH_HOST secret}"
           : "${AWS_SSH_USER:?Missing AWS_SSH_USER secret}"
@@ -106,7 +106,7 @@ jobs:
           [[ "$AWS_DEPLOY_PATH" =~ ^/[A-Za-z0-9._/-]+$ ]] || { echo "Invalid AWS_DEPLOY_PATH"; exit 1; }
           [[ "$AWS_FRONTEND_ROOT" =~ ^/var/www/[A-Za-z0-9._/-]+$ ]] || { echo "Invalid AWS_FRONTEND_ROOT"; exit 1; }
           [[ "$AWS_FRONTEND_ROOT" != *'..'* ]] || { echo "Invalid AWS_FRONTEND_ROOT"; exit 1; }
-          [[ "$VITE_API_BASE_URL" =~ ^https?://[^[:space:]]+$ ]] || { echo "Invalid VITE_API_BASE_URL"; exit 1; }
+          [[ "$VITE_API_BASE_URL" =~ ^https://[^/[:space:]]+/?$ ]] || { echo "VITE_API_BASE_URL must be an HTTPS origin without a path"; exit 1; }
 
       - name: Configure SSH
         shell: bash
@@ -129,7 +129,7 @@ jobs:
           AWS_AUTH_SERVICE: ${{ vars.AWS_AUTH_SERVICE || 'reviewer-retention-auth.service' }}
           AWS_DEPLOY_PATH: ${{ vars.AWS_DEPLOY_PATH || '/srv/reviewer-retention' }}
           AWS_FRONTEND_ROOT: ${{ vars.AWS_FRONTEND_ROOT || '/var/www/reviewer-retention' }}
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'http://52.78.194.110' }}
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
           EXPECTED_SHA: ${{ needs.validate.outputs.commit_sha }}
         run: |
           remote_script="/tmp/reviewer-retention-deploy-${EXPECTED_SHA}.sh"
