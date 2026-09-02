@@ -1,5 +1,9 @@
 [CmdletBinding()]
-param()
+param(
+    [switch]$Wait,
+    [ValidateRange(0, 300)]
+    [int]$TimeoutSeconds = 0
+)
 
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 
@@ -31,18 +35,57 @@ $services = @(
     [PSCustomObject]@{ Name = 'React'; Port = 5173; Url = 'http://127.0.0.1:5173/' }
 )
 
-$rows = foreach ($service in $services) {
-    $listenerPid = Get-ListenerPid -Port $service.Port
-    $isRunning = $null -ne $listenerPid
-    $isHealthy = if ($isRunning -and $service.Url) { Test-HttpService -Url $service.Url } else { $null }
+function Get-ServiceRows {
+    return @(
+        foreach ($service in $services) {
+            $listenerPid = Get-ListenerPid -Port $service.Port
+            $isRunning = $null -ne $listenerPid
+            $isHealthy = if ($isRunning -and $service.Url) {
+                Test-HttpService -Url $service.Url
+            }
+            else {
+                $null
+            }
 
-    [PSCustomObject]@{
-        Service = $service.Name
-        Port = $service.Port
-        Status = if (-not $isRunning) { 'Stopped' } elseif ($isHealthy -eq $false) { 'Listening (health check failed)' } else { 'Running' }
-        PID = if ($isRunning) { $listenerPid } else { '-' }
-    }
+            [PSCustomObject]@{
+                Service = $service.Name
+                Port = $service.Port
+                Status = if (-not $isRunning) {
+                    'Stopped'
+                }
+                elseif ($isHealthy -eq $false) {
+                    'Listening (health check failed)'
+                }
+                else {
+                    'Running'
+                }
+                PID = if ($isRunning) { $listenerPid } else { '-' }
+            }
+        }
+    )
 }
+
+$deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+do {
+    $rows = @(Get-ServiceRows)
+    $failedRows = @($rows | Where-Object { $_.Status -ne 'Running' })
+    if ($failedRows.Count -eq 0) {
+        break
+    }
+
+    if (-not $Wait -or (Get-Date) -ge $deadline) {
+        break
+    }
+
+    Start-Sleep -Milliseconds 500
+}
+while ($true)
 
 Write-Host "Local service status: $ProjectRoot" -ForegroundColor Cyan
 $rows | Format-Table -AutoSize
+
+if ($failedRows.Count -gt 0) {
+    exit 1
+}
+
+exit 0

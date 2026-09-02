@@ -9,6 +9,27 @@ param(
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $PythonExe = Join-Path $ProjectRoot 'venv\Scripts\python.exe'
 $StatusScript = Join-Path $PSScriptRoot 'check_local_status.ps1'
+$RuntimeRoot = Join-Path $ProjectRoot 'venv\.runtime'
+$LogDir = Join-Path $RuntimeRoot 'logs'
+
+New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+
+function Repair-DuplicatePathEnvironment {
+    $processEnvironment = [Environment]::GetEnvironmentVariables('Process')
+    $pathKeys = @(
+        $processEnvironment.Keys |
+        Where-Object { $_.ToString().Equals('PATH', [System.StringComparison]::OrdinalIgnoreCase) }
+    )
+    if ($pathKeys.Count -le 1) { return }
+
+    $pathValue = $processEnvironment[$pathKeys[0]]
+    foreach ($pathKey in $pathKeys) {
+        [Environment]::SetEnvironmentVariable($pathKey.ToString(), $null, 'Process')
+    }
+    [Environment]::SetEnvironmentVariable('Path', $pathValue, 'Process')
+}
+
+Repair-DuplicatePathEnvironment
 
 function Resolve-NpmCommand {
     $pathCommand = Get-Command 'npm.cmd' -ErrorAction SilentlyContinue
@@ -36,7 +57,7 @@ function Get-ListenerPid {
 }
 
 function Start-UvicornService {
-    param([string]$Application, [int]$Port)
+    param([string]$Application, [int]$Port, [string]$LogName)
 
     if (-not (Test-Path -LiteralPath $PythonExe)) {
         throw "Python virtual environment was not found: $PythonExe"
@@ -44,7 +65,9 @@ function Start-UvicornService {
 
     Start-Process -FilePath $PythonExe `
         -ArgumentList @('-m', 'uvicorn', $Application, '--reload', '--port', $Port) `
-        -WorkingDirectory $ProjectRoot -WindowStyle Hidden
+        -WorkingDirectory $ProjectRoot -WindowStyle Hidden `
+        -RedirectStandardOutput (Join-Path $LogDir "$LogName.out.log") `
+        -RedirectStandardError (Join-Path $LogDir "$LogName.err.log")
 }
 
 if ($RestartApi) {
@@ -58,7 +81,7 @@ if ($RestartApi) {
 
 if ($null -eq (Get-ListenerPid -Port 8000)) {
     Write-Host 'Starting Analysis API on 8000...' -ForegroundColor Cyan
-    Start-UvicornService -Application 'api.main:app' -Port 8000
+    Start-UvicornService -Application 'api.main:app' -Port 8000 -LogName 'analysis-api'
 }
 else {
     Write-Host 'Analysis API is already running on 8000.' -ForegroundColor DarkGray
@@ -69,7 +92,7 @@ $shouldStartReact = -not $ApiOnly -or $StartReact
 
 if ($shouldStartAuth -and $null -eq (Get-ListenerPid -Port 8100)) {
     Write-Host 'Starting Auth API on 8100...' -ForegroundColor Cyan
-    Start-UvicornService -Application 'auth_service.main:app' -Port 8100
+    Start-UvicornService -Application 'auth_service.main:app' -Port 8100 -LogName 'auth-api'
 }
 
 if ($shouldStartReact -and $null -eq (Get-ListenerPid -Port 5173)) {
@@ -77,8 +100,13 @@ if ($shouldStartReact -and $null -eq (Get-ListenerPid -Port 5173)) {
     $npmCommand = Resolve-NpmCommand
     Start-Process -FilePath $npmCommand `
         -ArgumentList @('run', 'dev', '--', '--host', '127.0.0.1') `
-        -WorkingDirectory (Join-Path $ProjectRoot 'app') -WindowStyle Hidden
+        -WorkingDirectory (Join-Path $ProjectRoot 'app') -WindowStyle Hidden `
+        -RedirectStandardOutput (Join-Path $LogDir 'react.out.log') `
+        -RedirectStandardError (Join-Path $LogDir 'react.err.log')
 }
 
-Start-Sleep -Seconds 2
-& $StatusScript
+& $StatusScript -Wait -TimeoutSeconds 30
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "One or more local services failed to start. Check logs in: $LogDir"
+    exit 1
+}

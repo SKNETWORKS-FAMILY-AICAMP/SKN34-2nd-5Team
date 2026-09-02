@@ -2,7 +2,8 @@
 param(
     [switch]$ApiOnly,
     [switch]$StartAuth,
-    [switch]$StartReact
+    [switch]$StartReact,
+    [string]$LanIp
 )
 
 # Same services as start_local.ps1, but bound to 0.0.0.0 so other devices on
@@ -14,6 +15,27 @@ param(
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $PythonExe = Join-Path $ProjectRoot 'venv\Scripts\python.exe'
 $StatusScript = Join-Path $PSScriptRoot 'check_local_status.ps1'
+$RuntimeRoot = Join-Path $ProjectRoot 'venv\.runtime'
+$LogDir = Join-Path $RuntimeRoot 'logs'
+
+New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+
+function Repair-DuplicatePathEnvironment {
+    $processEnvironment = [Environment]::GetEnvironmentVariables('Process')
+    $pathKeys = @(
+        $processEnvironment.Keys |
+        Where-Object { $_.ToString().Equals('PATH', [System.StringComparison]::OrdinalIgnoreCase) }
+    )
+    if ($pathKeys.Count -le 1) { return }
+
+    $pathValue = $processEnvironment[$pathKeys[0]]
+    foreach ($pathKey in $pathKeys) {
+        [Environment]::SetEnvironmentVariable($pathKey.ToString(), $null, 'Process')
+    }
+    [Environment]::SetEnvironmentVariable('Path', $pathValue, 'Process')
+}
+
+Repair-DuplicatePathEnvironment
 
 function Resolve-NpmCommand {
     $pathCommand = Get-Command 'npm.cmd' -ErrorAction SilentlyContinue
@@ -40,35 +62,58 @@ function Get-ListenerPid {
     return [int]$listener.Matches[0].Groups[1].Value
 }
 
-function Stop-ListenerWithParent {
+function Stop-ListenerTree {
     param([int]$Port)
 
     $listenerPid = Get-ListenerPid -Port $Port
     if ($null -eq $listenerPid) { return }
 
-    # uvicorn --reload runs a supervisor process that respawns the worker
-    # the moment it's killed, so the parent has to go too or the port keeps
-    # reopening on 127.0.0.1 from the previous run.
-    $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$listenerPid" -ErrorAction SilentlyContinue
-    if ($proc -and $proc.ParentProcessId) {
-        Stop-Process -Id $proc.ParentProcessId -Force -ErrorAction SilentlyContinue
+    & taskkill.exe /PID $listenerPid /T /F 2>$null | Out-Null
+    Start-Sleep -Milliseconds 750
+
+    if ($null -ne (Get-ListenerPid -Port $Port)) {
+        throw "Could not stop the existing process on port $Port. Close it manually and retry."
     }
-    Stop-Process -Id $listenerPid -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Milliseconds 500
 }
 
 function Get-LanIPAddress {
-    $candidate = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
-        Where-Object { $_.InterfaceAlias -notmatch 'Loopback' -and $_.IPAddress -notlike '169.254.*' -and $_.PrefixOrigin -ne 'WellKnown' } |
-        Select-Object -First 1
-    if ($null -eq $candidate) {
-        throw 'Could not detect a LAN IPv4 address. Check your network adapter and set VITE_API_BASE_URL manually.'
+    param([string]$RequestedAddress)
+
+    if ($RequestedAddress) {
+        $parsed = $null
+        if (-not [System.Net.IPAddress]::TryParse($RequestedAddress, [ref]$parsed)) {
+            throw "Invalid LAN IPv4 address: $RequestedAddress"
+        }
+        return $RequestedAddress
     }
-    return $candidate.IPAddress
+
+    $candidates = @(
+        Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Where-Object { $_.InterfaceAlias -notmatch 'Loopback' -and $_.IPAddress -notlike '169.254.*' -and $_.PrefixOrigin -ne 'WellKnown' } |
+        Select-Object -ExpandProperty IPAddress
+    )
+
+    if ($candidates.Count -eq 0) {
+        $ipconfigText = (& ipconfig.exe | Out-String)
+        $candidates = @(
+            [regex]::Matches($ipconfigText, '(?im)IPv4[^:]*:\s*(\d{1,3}(?:\.\d{1,3}){3})') |
+            ForEach-Object { $_.Groups[1].Value } |
+            Where-Object { $_ -notlike '127.*' -and $_ -notlike '169.254.*' }
+        )
+    }
+
+    $candidate = $candidates |
+        Sort-Object { if ($_ -like '192.168.*') { 0 } elseif ($_ -like '10.*') { 1 } elseif ($_ -match '^172\.(1[6-9]|2\d|3[01])\.') { 2 } else { 3 } } |
+        Select-Object -First 1
+
+    if (-not $candidate) {
+        throw 'Could not detect a LAN IPv4 address. Run start_local_web.ps1 with -LanIp <address>.'
+    }
+    return $candidate
 }
 
 function Start-UvicornService {
-    param([string]$Application, [int]$Port)
+    param([string]$Application, [int]$Port, [string]$LogName)
 
     if (-not (Test-Path -LiteralPath $PythonExe)) {
         throw "Python virtual environment was not found: $PythonExe"
@@ -76,26 +121,28 @@ function Start-UvicornService {
 
     Start-Process -FilePath $PythonExe `
         -ArgumentList @('-m', 'uvicorn', $Application, '--reload', '--host', '0.0.0.0', '--port', $Port) `
-        -WorkingDirectory $ProjectRoot -WindowStyle Hidden
+        -WorkingDirectory $ProjectRoot -WindowStyle Hidden `
+        -RedirectStandardOutput (Join-Path $LogDir "$LogName.out.log") `
+        -RedirectStandardError (Join-Path $LogDir "$LogName.err.log")
 }
 
-$lanIp = Get-LanIPAddress
+$lanIp = Get-LanIPAddress -RequestedAddress $LanIp
 Write-Host "Detected LAN IP: $lanIp" -ForegroundColor Green
 
 Write-Host 'Stopping any existing local-only services (8000/8100/5173)...' -ForegroundColor Yellow
-Stop-ListenerWithParent -Port 8000
-Stop-ListenerWithParent -Port 8100
-Stop-ListenerWithParent -Port 5173
+Stop-ListenerTree -Port 8000
+Stop-ListenerTree -Port 8100
+Stop-ListenerTree -Port 5173
 
 Write-Host 'Starting Analysis API on 0.0.0.0:8000...' -ForegroundColor Cyan
-Start-UvicornService -Application 'api.main:app' -Port 8000
+Start-UvicornService -Application 'api.main:app' -Port 8000 -LogName 'analysis-api'
 
 $shouldStartAuth = -not $ApiOnly -or $StartAuth
 $shouldStartReact = -not $ApiOnly -or $StartReact
 
 if ($shouldStartAuth) {
     Write-Host 'Starting Auth API on 0.0.0.0:8100...' -ForegroundColor Cyan
-    Start-UvicornService -Application 'auth_service.main:app' -Port 8100
+    Start-UvicornService -Application 'auth_service.main:app' -Port 8100 -LogName 'auth-api'
 }
 
 if ($shouldStartReact) {
@@ -106,11 +153,16 @@ if ($shouldStartReact) {
     $npmCommand = Resolve-NpmCommand
     Start-Process -FilePath $npmCommand `
         -ArgumentList @('run', 'dev', '--', '--host', '0.0.0.0') `
-        -WorkingDirectory (Join-Path $ProjectRoot 'app') -WindowStyle Hidden
+        -WorkingDirectory (Join-Path $ProjectRoot 'app') -WindowStyle Hidden `
+        -RedirectStandardOutput (Join-Path $LogDir 'react.out.log') `
+        -RedirectStandardError (Join-Path $LogDir 'react.err.log')
 }
 
-Start-Sleep -Seconds 2
-& $StatusScript
+& $StatusScript -Wait -TimeoutSeconds 30
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "One or more LAN services failed to start. Check logs in: $LogDir"
+    exit 1
+}
 
 Write-Host ''
 Write-Host "Open from another device on the same network: http://${lanIp}:5173" -ForegroundColor Green
