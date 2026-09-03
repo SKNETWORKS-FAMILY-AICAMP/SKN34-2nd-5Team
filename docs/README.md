@@ -28,7 +28,7 @@
 | 경로 | 내용 | 기준 문서 |
 |---|---|---|
 | `01_business/` | 비즈니스 시나리오, 요구사항, WBS | [요구사항](01_business/project_requirements.md) |
-| `02_reports/` | 데이터 전처리·모델 학습·배포 결과서 | [모델 학습 결과서](02_reports/02_model_training_report.md) |
+| `02_reports/` | 데이터 전처리·모델 학습·배포·Finalization 결과서 | [발표 후 개선 및 Finalization 기록](02_reports/05_post_presentation_improvements.md) |
 | `03_data_and_models/` | 데이터·피처 검증 상세 | [데이터 검증](03_data_and_models/data_validation_report.md) |
 | `04_architecture_and_guides/` | 로컬 실행, 배포, 이전 데이터 계약 | [로컬 실행](04_architecture_and_guides/LOCAL_RUN_GUIDE.md) |
 | `05_ui_ux/` | React·Streamlit UI 명세와 구현 이력 | [최종 UX 명세](05_ui_ux/V05_FINAL_PRODUCT_UX_SPEC.md) |
