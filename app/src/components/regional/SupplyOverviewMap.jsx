@@ -285,7 +285,7 @@ function SupplyOverviewMap({
         <button type="button" onClick={onFirstRank} className="min-h-7 w-[60px] shrink-0 whitespace-nowrap rounded border border-[#9CCDB8] px-1 text-[9px] font-black text-[#075C45]">1위 보기</button>
       </div>
 
-      <div className="absolute right-3 top-3 z-[600] flex rounded-lg border border-[#D5DED8] bg-white/96 p-1 shadow-lg">
+      <div className="absolute right-3 top-14 z-[600] flex rounded-lg border border-[#D5DED8] bg-white/96 p-1 shadow-lg">
         <button type="button" onClick={() => onSetScope("city")} className={`min-h-8 rounded-md px-3 text-[10px] font-bold ${scope === "city" ? "bg-[#075C45] text-white" : "text-[#526159] hover:bg-[#F2F6F3]"}`}>도시 상세</button>
         <button type="button" onClick={() => onSetScope("region")} className={`min-h-8 rounded-md px-3 text-[10px] font-bold ${scope === "region" ? "bg-[#075C45] text-white" : "text-[#526159] hover:bg-[#F2F6F3]"}`}>권역 요약</button>
       </div>

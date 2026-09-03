@@ -120,9 +120,8 @@ function ReviewerListPage() {
   if (regionFilter !== "전체") homeParams.set("region", regionFilter);
   if (cityFilter !== "전체") homeParams.set("city", cityFilter);
   const homeHref = `/?${homeParams.toString()}`;
-  const detailParams = new URLSearchParams({ source: scopeFilter });
-  if (regionFilter !== "전체") detailParams.set("region", regionFilter);
-  if (cityFilter !== "전체") detailParams.set("city", cityFilter);
+  const detailParams = new URLSearchParams(searchParams);
+  detailParams.set("source", scopeFilter);
   const evidenceHref = activeReviewer
     ? `/reviewers/${encodeURIComponent(activeReviewer.userId)}?${detailParams.toString()}`
     : null;
@@ -162,7 +161,7 @@ function ReviewerListPage() {
       {visibleReviewers.length === 0 ? <div className="mt-3"><EmptyState title="조건에 맞는 리뷰어가 없습니다" description="범위나 지역·상세 필터를 바꿔 보세요." actionLabel="필터 초기화" onAction={resetFilters} /></div> : (
         <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1.8fr)_minmax(350px,0.85fr)] xl:items-start">
           <div className="min-w-0"><ReviewerSplitList reviewers={visibleReviewers} activeReviewerId={activeReviewer?.userId ?? null} onSelect={(reviewer) => setActiveReviewerId(reviewer.userId)} multiSelect={regionalCampaignMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleSelectAll={toggleSelectAll} scope={scopeFilter} /><Pagination page={page} pageCount={pageCount} pageStart={pageStart} total={filteredReviewers.length} onPage={setPage} /></div>
-          <div className="xl:sticky xl:top-20">{activeReviewer ? <ReviewerSplitPanel key={activeReviewer.userId} reviewer={activeReviewer} scope={scopeFilter} /> : null}</div>
+          <div className="xl:sticky xl:top-20">{activeReviewer ? <ReviewerSplitPanel key={activeReviewer.userId} reviewer={activeReviewer} scope={scopeFilter} detailHref={evidenceHref} /> : null}</div>
         </div>
       )}
 

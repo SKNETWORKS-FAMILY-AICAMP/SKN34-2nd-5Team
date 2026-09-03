@@ -314,7 +314,7 @@ function RegionalCampaignBuilder({
                       </div>
                     </article>
                   ))}
-                  <p className="px-1 pb-1 pt-1 text-[9px] font-black tracking-[0.1em] text-[#626D67]">알고리즘 추천 매장 · {selectedRestaurantIds.size} / {restaurants.length}곳 선택</p>
+                  <p className="px-1 pb-1 pt-1 text-[9px] font-black tracking-[0.1em] text-[#626D67]">로컬 맛집 · {selectedRestaurantIds.size} / {restaurants.length}곳 선택</p>
                 </>
               )}
               {restaurants.map((restaurant) => (

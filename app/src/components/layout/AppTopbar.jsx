@@ -4,6 +4,8 @@ import DataModeBadge from "../DataModeBadge";
 
 const HOME_HELP = "리뷰 공급이 감소 중인 권역을 식별하고 핵심 리뷰어 운영 우선순위를 정하세요.";
 const REVIEWER_HELP = "리뷰 공급 변화의 원인이 될 수 있는 리뷰어를 운영 우선순위에 따라 검토하고 관리자 판단과 실행안으로 연결합니다. 모델 점수는 확률이 아닙니다.";
+const REVIEWER_DETAIL_HELP = "활동 변화와 판단 근거를 확인하고 관리자 판단을 저장한 뒤 개인 운영안을 검토하세요.";
+const PLAYBOOK_HELP = "지역 또는 개인 대상을 확인하고 콘텐츠와 측정 계획을 구성합니다. 저장은 실제 발송이나 효과 확정을 의미하지 않습니다.";
 const OPERATIONS_HISTORY_HELP = "저장된 판단·운영안·대상 명단과 재검토 일정을 확인합니다.";
 const TRUST_HELP = "모델 점수의 의미와 데이터 시점을 공개하고 운영자가 알아야 할 한계를 검증합니다.";
 const SETTINGS_HELP = "로그인 사용자와 담당 권역, 운영 권한을 관리합니다.";
@@ -37,13 +39,17 @@ function AppTopbar() {
     ? HOME_HELP
     : pathname === "/reviewers"
       ? REVIEWER_HELP
-      : pathname === "/operations-history"
-        ? OPERATIONS_HISTORY_HELP
-        : pathname === "/trust"
-          ? TRUST_HELP
-          : pathname === "/settings"
-            ? SETTINGS_HELP
-            : null;
+      : pathname.startsWith("/reviewers/")
+        ? REVIEWER_DETAIL_HELP
+        : pathname === "/playbook"
+          ? PLAYBOOK_HELP
+          : pathname === "/operations-history"
+            ? OPERATIONS_HISTORY_HELP
+            : pathname === "/trust"
+              ? TRUST_HELP
+              : pathname === "/settings"
+                ? SETTINGS_HELP
+                : null;
   const playbookMode = searchParams.has("reviewer") || searchParams.get("mode") === "individual"
     ? "individual"
     : searchParams.has("region") || searchParams.get("mode") === "region"

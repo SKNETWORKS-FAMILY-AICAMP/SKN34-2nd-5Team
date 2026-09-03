@@ -116,7 +116,9 @@ function insightFor(entity) {
     tone: supply === "down" ? "danger" : "neutral", icon: supply === "down" ? "↘" : "→",
     title: supply === "down" ? "리뷰 공급 감소 원인 검토 필요" : "신규 유입 전년 비교 불가",
     description: `리뷰 공급은 ${supplyStatusText(entity.reviewSupplyChangeRate)}이며 신규 유입은 전년 기준이 부족합니다.`,
-    action: supply === "down" ? "핵심 리뷰어와 음식점 활동 변화를 확인하세요." : "공급 상태를 중심으로 운영 우선순위를 판단하세요.",
+    action: supply === "down" && entity.reviewerNetMigration < 0
+      ? `공급 감소와 함께 핵심 리뷰어 ${Math.abs(entity.reviewerNetMigration).toLocaleString()}명의 순유출이 확인됩니다. 핵심 리뷰어와 음식점 활동 변화를 확인하세요.`
+      : supply === "down" ? "핵심 리뷰어와 음식점 활동 변화를 확인하세요." : "공급 상태를 중심으로 운영 우선순위를 판단하세요.",
   };
   return {
     tone: "neutral", icon: "→", title: "리뷰 공급과 신규 유입이 안정적",

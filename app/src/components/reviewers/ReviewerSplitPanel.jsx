@@ -17,7 +17,7 @@ function formatDate(value) {
   return new Intl.DateTimeFormat("ko-KR", { year: "2-digit", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
-function ReviewerSplitPanel({ reviewer, scope = "core" }) {
+function ReviewerSplitPanel({ reviewer, scope = "core", detailHref }) {
   const [history, setHistory] = useState([]);
   const [historyState, setHistoryState] = useState("loading");
   const grade = useMemo(() => operatingGrade(reviewer.priorityTopPercent), [reviewer.priorityTopPercent]);
@@ -106,7 +106,7 @@ function ReviewerSplitPanel({ reviewer, scope = "core" }) {
         )}
         {historyState === "error" && <p className="mt-2 text-[10px] text-[#B46A20]">판단 이력을 불러오지 못했습니다. Reviewer 360에서 다시 확인하세요.</p>}
 
-        <Link to={`/reviewers/${encodeURIComponent(reviewer.userId)}`} className="mt-4 flex min-h-12 items-center justify-center rounded-xl bg-[#075C45] px-4 text-sm font-black text-white transition hover:bg-[#064D3B]">
+        <Link to={detailHref ?? `/reviewers/${encodeURIComponent(reviewer.userId)}`} className="mt-4 flex min-h-12 items-center justify-center rounded-xl bg-[#075C45] px-4 text-sm font-black text-white transition hover:bg-[#064D3B]">
           Reviewer 360에서 검토 <span className="ml-3 text-lg">→</span>
         </Link>
       </section>
