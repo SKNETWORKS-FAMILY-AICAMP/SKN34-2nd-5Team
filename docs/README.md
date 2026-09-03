@@ -18,8 +18,10 @@
 1. [프로젝트 README](../README.md)
 2. [프로젝트 요구사항](01_business/project_requirements.md)
 3. [현재 인수인계](07_history_and_handoff/CODEX_HANDOFF.md)
-4. [의사결정 기록](06_decisions/)
-5. [관리자 UI QA 결과](qa/ADMIN_UI_QA_EXECUTION_2026-08-05.md)
+4. [Finalization 범위·소유권](06_decisions/DEC-015_finalization_scope_and_ownership.md)
+5. [Finalization 실행 계획](07_history_and_handoff/FINALIZATION_EXECUTION_PLAN.md)
+6. [의사결정 기록](06_decisions/)
+7. [관리자 UI QA 결과](qa/ADMIN_UI_QA_EXECUTION_2026-08-05.md)
 
 ## 폴더 안내
 
@@ -30,8 +32,8 @@
 | `03_data_and_models/` | 데이터·피처 검증 상세 | [데이터 검증](03_data_and_models/data_validation_report.md) |
 | `04_architecture_and_guides/` | 로컬 실행, 배포, 이전 데이터 계약 | [로컬 실행](04_architecture_and_guides/LOCAL_RUN_GUIDE.md) |
 | `05_ui_ux/` | React·Streamlit UI 명세와 구현 이력 | [최종 UX 명세](05_ui_ux/V05_FINAL_PRODUCT_UX_SPEC.md) |
-| `06_decisions/` | 승인 결정과 대체 관계 | [DEC-014](06_decisions/DEC-014_unified_operating_context.md) |
-| `07_history_and_handoff/` | 현재 인수인계와 역사 기록 | [현재 인수인계](07_history_and_handoff/CODEX_HANDOFF.md) |
+| `06_decisions/` | 승인 결정과 대체 관계 | [DEC-015](06_decisions/DEC-015_finalization_scope_and_ownership.md) |
+| `07_history_and_handoff/` | 현재 인수인계·Finalization 실행 계획과 역사 기록 | [Finalization 실행 계획](07_history_and_handoff/FINALIZATION_EXECUTION_PLAN.md) |
 | `08_future_roadmap/` | 데이터·모델·서비스 고도화 방향 | [서비스 제품화 로드맵](08_future_roadmap/06_service_productization_and_application.md) |
 | `qa/` | 테스트 계획·케이스·실행 결과 | [QA 안내](qa/README.md) |
 | `assets/` | README와 문서용 시각 자료 | `assets/readme/` |
