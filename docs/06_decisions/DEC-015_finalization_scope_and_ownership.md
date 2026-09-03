@@ -42,10 +42,10 @@ Consumer 서비스, 실제 개입 효과 측정, 신규 데이터 재학습, 추
 | ID | 작업 | 분류 | 현재 상태 | 담당 | 완료 근거/조건 | 대상 PR |
 |---|---|---|---|---|---|---|
 | A01 | Retention 조회 API 인증 적용 | 필수 | 검증 완료 | 김동섭 | 운영 HTTPS 미인증 조회 401 | 완료 근거 유지 |
-| A02 | OPERATOR 담당 권역 서버 강제 | 필수 | 부분 완료 | 김동섭 | 실제 OPERATOR 담당 권역 성공·타 권역 403, VIEWER 403, ADMIN 전체 권역 확인 | `fix/a-app-resilience` |
+| A02 | OPERATOR 담당 권역 서버 강제 | 필수 | 부분 완료 | 김동섭 중심·최종 QA | 실제 OPERATOR 담당 권역 성공·타 권역 403, VIEWER 403, ADMIN 전체 권역 확인 | `test/final-regression` |
 | A03 | HTTPS 적용 | 필수 | 검증 완료 | 김동섭 | 443·유효 인증서·HTTP redirect·자동 갱신 확인 | 완료 근거 유지 |
 | A04 | Secure Cookie 설정 | 필수 | 검증 완료 | 김동섭 | production health와 실제 로그인 쿠키 확인 | 완료 근거 유지 |
-| A05 | Production CORS 설정 정리 | 필수 | 부분 완료 | 김동섭 | 비허용 cross-origin 응답에 허용 헤더가 없음을 운영 환경에서 확인 | `fix/a-app-resilience` |
+| A05 | Production CORS 설정 정리 | 필수 | 부분 완료 | 김동섭 중심·최종 QA | 비허용 cross-origin 응답에 허용 헤더가 없음을 운영 환경에서 확인 | `test/final-regression` |
 | A06 | Snooze 저장·복원 오류 재현 및 수정 | 필수 | 부분 완료 | 김동섭 | 새로고침·재로그인 뒤 저장값 복원 PASS | `fix/a-app-resilience` |
 | A07 | History에 메모·Snooze·담당자 변경 내역 제공 | 필수 | 부분 완료 | 김동섭 | React 상세 UI에서 실제 API 필드와 변경 전후 확인 | `fix/a-app-resilience` |
 | A08 | Operations API 실패 시 전체 앱 차단 제거 | 필수 | 미실행 | 김동섭 | 장애 중 독립 화면 사용 및 부분 오류 안내 PASS | `fix/a-app-resilience` |
@@ -208,8 +208,8 @@ PR 차단 CI는 GitHub 기본 환경에서 준비 가능한 검사만 실행한�
 | I04 | Build date / version 제공 | 고도화 | 미구현 | 개인 | 별도 승인 필요 | 현재 범위 제외 |
 | I05 | Final Regression Report | 필수 | 미작성 | 공동 | 필수 항목 결과와 증거 기록 | `test/final-regression` |
 | I06 | 기존 FAIL 결과 갱신 | 필수 | 미실행 | 공동 | 이전 결과를 덮지 않고 최신 판정 추가 | `test/final-regression` |
-| I07 | Production Approval HOLD 해제 기준 정의 | 필수 | 기존 기준 보완 필요 | 전원 | 필수 게이트와 판정 책임 확정 | `test/final-regression` |
-| I08 | 기준 충족 시 HOLD → PASS 변경 | 필수 | HOLD | 전원 | 모든 필수 게이트 증거 충족 시에만 변경 | Final Release PR |
+| I07 | Production Approval HOLD 해제 기준 정의 | 필수 | 기존 기준 보완 필요 | Finalization 책임자·참여 담당자 | 필수 게이트와 판정 책임 확정 | `test/final-regression` |
+| I08 | 기준 충족 시 HOLD → PASS 변경 | 필수 | HOLD | Finalization 책임자 | 모든 필수 게이트 증거 충족과 Finalization 책임자 승인 후에만 변경 | Final Release PR |
 | I09 | Final Git Tag | 필수 | 미생성 | 공동 | 승인된 main 커밋에 태그 | Final Release 이후 |
 | I10 | GitHub Release 작성 | 필수 | 미작성 | 이홍규·공동 | 태그·변경·한계·검증 결과 게시 | Final Release 이후 |
 | I11 | Demo 영상 재촬영 | 조건부 필수 | 판단 필요 | 이홍규 | 기존 영상에서 최종 오류가 크게 보일 때만 수행 | 별도 승인 |

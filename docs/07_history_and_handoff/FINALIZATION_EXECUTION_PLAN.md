@@ -36,7 +36,7 @@ Team Final Release는 새 기능을 넓히는 작업이 아니라, 승인된 필
 | 5 | `docs/final-product-story` | README·모델 용어·한계·기여 구분 | 2~4 결과 확정 |
 | 6 | `test/final-regression` | 기능 수정 없이 최종 검증과 판정 기록 | 2~5 머지 |
 | 7 | `fix/regression-*` | 회귀에서 발견한 결함만 수정 | 6의 결함별 별도 PR |
-| 8 | `release/finalization` → `main` | Final Release | 필수 게이트 충족·전원 승인 |
+| 8 | `release/finalization` → `main` | Final Release | 필수 게이트 충족·Finalization 책임자 승인 |
 
 계약 PR 이전에 만들어진 브랜치는 계약 PR 머지 후 최신
 `release/finalization`을 merge 또는 rebase하고 충돌을 확인한다.
@@ -66,7 +66,7 @@ Release Regression으로 분리한다. 실행하지 못한 검사를 `continue-o
 
 ### 4.3 A-App
 
-- A02·A05·A06~A10 완료 조건 충족
+- A06~A10 완료 조건 충족
 - 공용 App·Context·Error 영역 변경에 대응하는 검증 수행
 - A01·A03·A04의 기존 완료 결과를 훼손하지 않음
 - 변경한 장애 시나리오의 재현 전·후 증거 기록
@@ -91,7 +91,8 @@ Release Regression으로 분리한다. 실행하지 못한 검사를 `continue-o
 
 - 이 PR에서 기능을 수정하지 않음
 - 기존 FAIL 17건과 핵심 NOT RUN·장애 시나리오를 최신 배포본에서 판정
-- 역할별 Smoke Test, CORS, Snooze·History 복원, 부분 장애 대응 확인
+- A02 역할·권역별 실제 계정 Smoke Test와 A05 비허용 CORS 검증
+- A06·A07 Snooze·History 복원과 A08~A10 부분 장애 대응 확인
 - 배포 commit·모델 버전과 실행 환경 기록
 - 버그는 항목별 `fix/regression-*` PR로 분리
 
@@ -142,7 +143,12 @@ Production Approval을 PASS로 변경하지 않는다.
 - PR 차단 CI 통과
 - Release Regression 완료
 - 정확한 배포 commit과 모델 버전 확인
-- 전원 승인
+- 필수 게이트 충족 및 Finalization 책임자 승인
+- 참여 담당자는 자신의 담당 영역을 우선 검토
+
+담당자가 추가 Finalization에 참여하지 않는 경우 Finalization 책임자는 기존 증거와
+Regression 결과를 근거로 최종 판정할 수 있다. 미참여 팀원의 확인만을 이유로
+Release를 무기한 보류하지 않는다.
 
 승인 후 순서는 `main` 머지 → AWS 재배포 → 최종 Smoke Test → Git tag → GitHub
 Release다.
