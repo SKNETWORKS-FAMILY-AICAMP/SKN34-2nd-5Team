@@ -1,20 +1,22 @@
 # Codex Project Handoff
 
 > **문서 상태: 현재 기준**
-> 최종 갱신: 2026-08-06
+> 최종 갱신: 2026-09-03
 > 제품 방향은 [DEC-012](../06_decisions/DEC-012_review_supply_recovery_operating_flow.md),
 > 운영 컨텍스트는 [DEC-014](../06_decisions/DEC-014_unified_operating_context.md),
+> Finalization 범위는 [DEC-015](../06_decisions/DEC-015_finalization_scope_and_ownership.md),
 > 화면 명세는 [V05_FINAL_PRODUCT_UX_SPEC](../05_ui_ux/V05_FINAL_PRODUCT_UX_SPEC.md)를
 > 따른다.
 
 ## 1. 프로젝트 정의
 
-지역별 음식 리뷰 공급 변화를 감지하고 원인을 분석한 뒤, 핵심 리뷰어 특별 관리 또는
-지역 활성화 캠페인 검토로 연결하는 리뷰 생태계 운영 서비스다.
+Yelp 음식 리뷰 공급을 지역 공급 변화, 기존 핵심 리뷰어, 신규 핵심 리뷰어 유입의
+세 축으로 관찰하고 관리자 판단과 개인·지역 운영안으로 연결하는 운영 서비스다.
 
 ```text
-리뷰 공급 변화 감지
-→ 권역·도시와 핵심 리뷰어 원인 분석
+지역별 리뷰 공급 변화 및 이상 탐지
+→ 기존 핵심 리뷰어의 활동 약화·중단 예측과 우선 검토
+→ 신규 핵심 리뷰어 유입 변화 관찰과 우선 검토 대상 연결
 → 개인 특별 관리 또는 지역 활성화 운영안
 → 판단·대상·접촉·재검토 이력 관리
 ```
@@ -112,23 +114,46 @@ Lifecycle 5개 → MLP(hidden=16) ──────┘
 - PASS 95 / FAIL 17 / PARTIAL 6 / NOT RUN 17
 - React lint·프로덕션 빌드와 주요 자동 검증은 수행됨
 - 운영 서비스와 `v05_05_dl` 연결은 확인됨
+- 2026-09-02 AWS 운영 환경에서 HTTPS·HTTP redirect·Secure Cookie를 확인함
+- 같은 환경에서 미인증 Retention 조회 API의 401 응답을 확인함
 - 최종 배포 승인은 **보류**
 
-주요 배포 차단·미해결 항목:
+2026-09-02 기준 완료된 A 영역:
 
-1. retention API 인증 보호 미흡
-2. OPERATOR 담당 권역 서버 강제 미흡
-3. HTTPS·Secure Cookie 미적용
-4. 스누즈 저장 후 복원 실패
-5. 큐에서 Reviewer 360 이동 시 필터 문맥 유실
-6. 일부 최종 화면 변경 회귀 실패
-7. 배포 커밋 SHA 또는 build ID 부재
+1. A01 Retention 조회 API 인증
+2. A03 HTTPS와 HTTP→HTTPS redirect
+3. A04 Secure Cookie
+
+남은 필수 검증·미해결 항목:
+
+1. A02 실제 VIEWER·OPERATOR·ADMIN 역할·권역 Smoke Test
+2. A05 비허용 cross-origin CORS 검증
+3. A06 Snooze 새로고침·재로그인 복원
+4. A07 History 상세 React UI 연결·검증
+5. A08~A10 React 부분 장애 대응
+6. A11~A13 발표 오류·기존 FAIL·장애 시나리오 회귀
+7. B10 큐에서 Reviewer 360 이동 시 지역·필터 문맥 유지
+8. I02 실제 배포 commit 식별
 
 결함 상태를 임의로 완료 처리하지 않는다. 최신 근거는
 [QA 실행 결과](../qa/ADMIN_UI_QA_EXECUTION_2026-08-05.md)와
-[배포·테스트 결과서](../02_reports/03_model_deployment_test_report.md)를 따른다.
+[A 영역 실행 결과](../qa/A_SECURITY_EXECUTION_2026-08-24.md),
+[AWS HTTPS 재배포 보고서](../02_reports/04_aws_https_redeployment_report_2026-09-02.md)를
+시간순으로 적용한다.
 
-## 7. 변경 보호 원칙
+## 7. Finalization 범위
+
+- 현재는 [DEC-015](../06_decisions/DEC-015_finalization_scope_and_ownership.md)의
+  `필수` 항목만 수행한다.
+- A 영역 앱 안정성·보안 후속 작업은 김동섭 담당 브랜치를 우선한다.
+- 이홍규는 A-App 머지 후 B 영역 제품 UX, CI, 최종 제품 문서와 회귀 기록을 진행한다.
+- C 영역은 모델 구조와 수치를 변경하지 않는다. 용어·버전 역할 문서 정합성만 모델
+  담당 확인 후 별도 PR에서 보완한다.
+- Consumer 구현, 실제 효과 측정, 재학습과 추가 모델 실험은 이번 범위가 아니다.
+- 구체적인 순서는
+  [FINALIZATION_EXECUTION_PLAN](FINALIZATION_EXECUTION_PLAN.md)을 따른다.
+
+## 8. 변경 보호 원칙
 
 - 모델·코호트·시간 분할·기존 성능 수치를 임의로 바꾸지 않는다.
 - 미래 타깃 연도 정보를 입력 피처에 포함하지 않는다.
@@ -137,10 +162,10 @@ Lifecycle 5개 → MLP(hidden=16) ──────┘
 - 권역·도시·반경을 거주지, 직장, 생활 반경 또는 실제 이동 경로로 표현하지 않는다.
 - 운영 효과와 ROI는 실제 실행·성과 데이터 없이 수치로 만들지 않는다.
 
-## 8. 문서 기준
+## 9. 문서 기준
 
 1. [AGENTS.md](../../AGENTS.md)
-2. [의사결정 기록](../06_decisions/)
+2. [의사결정 기록](../06_decisions/) — Finalization은 DEC-015 우선
 3. 이 문서
 4. [프로젝트 요구사항](../01_business/project_requirements.md)
 5. 기타 명세·보고서·역사 문서
