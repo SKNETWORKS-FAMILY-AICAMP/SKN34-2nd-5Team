@@ -128,7 +128,7 @@ Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **음식 리뷰 활�
 
 핵심 리뷰어는 음식 콘텐츠 공급과 커뮤니티 활성화에 중요한 사용자입니다. 하지만 활동 감소를 사후에 발견하면 운영자가 적절한 시점에 대응하기 어렵습니다.
 
-이 프로젝트는 다음 질문에 답하는 운영 제품을 목표로 합니다.
+이 프로젝트는 Yelp 콘텐츠·커뮤니티 운영자와 리뷰어 CRM 담당자를 위한 관리자용 운영 제품으로, 다음 질문에 답하는 것을 목표로 합니다.
 
 > 어느 지역의 리뷰 공급이 약해졌고, 누구를 먼저 검토하며, 어떤 근거로 무엇을 실행할 것인가?
 
@@ -140,6 +140,16 @@ Yelp 음식 리뷰 활동을 바탕으로 다음 연도의 **음식 리뷰 활�
 | 분석 결과와 운영 행동이 분리됨 | 관리자 판단, 대상 명단, 개인·권역 운영안과 재검토 기록을 서버에 저장 |
 
 > `risk_score`는 보정된 이탈 확률이 아니라 **상대적인 위험 순위를 정하기 위한 모델 점수**입니다. 모델은 운영자의 결정을 대신하지 않습니다.
+
+### 리뷰 공급 관리의 세 축
+
+| 축 | 확인하는 질문 | 다음 단계 |
+|---|---|---|
+| 공급 변화 | 어느 권역·도시의 음식 리뷰 공급이 줄었나? | 우선 확인할 지역 선택 |
+| 핵심 리뷰어 | 어떤 리뷰어의 활동이 약화·중단될 위험이 큰가? | Reviewer 360에서 근거 검토 |
+| 신규 유입 | 신규 핵심 리뷰어 유입이 공급 감소를 보완하는가? | 우선 검토 대상과 지역 운영안 연결 |
+
+세 축은 독립 지표가 아니라 `지역 → 원인 → 사람 → 행동` 순서로 연결됩니다. 일반 사용자를 위한 맛집·리뷰어 탐색 Consumer 서비스는 구현 기능이 아니며, 별도 검증과 승인이 필요한 향후 확장 방향입니다.
 
 **Primary CRM 선정 흐름:** 세 개 seed에서 산출한 약화·중단 위험 점수를 평균해 `risk_score`를 생성합니다. Final Test 6,533명을 이 점수의 내림차순으로 정렬하고, 상위 20%인 1,307명을 Primary CRM 검토 대상으로 지정합니다.
 
@@ -315,6 +325,14 @@ Yelp 원천 데이터에서 음식 관련 범위를 확정하고, 시점 안전 
 
 전체 37,953건은 개발 코호트 31,420건과 Final Test 6,533건으로 구성됩니다. OOF 24,596건은 별도 표본이 아니라 개발 코호트 중 2013~2017년 공통 평가 부분집합입니다.
 
+| 버전 표기 | 역할 |
+|---|---|
+| 코호트 `v04` | 선정 기준·시간 구조와 분석 대상 정의 |
+| 운영 모델 `v05_05_dl` | 현재 위험 상태·순위 산출에 사용하는 최종 모델 |
+| DB `model_version` | 저장된 예측·판단의 모델 문맥을 식별하는 데이터 계약 값 |
+
+세 표기는 서로 다른 대상을 설명하므로 숫자를 억지로 일치시키지 않습니다.
+
 ### Final Test 상태 분포
 
 <p align="center">
@@ -380,11 +398,11 @@ GRU가 24개월 활동 시퀀스를, Lifecycle MLP가 장기 이력을 인코딩
 | Precision@1000 | **90.60%** | 90.04% |
 | 중증 오분류 | **2.19% · 538건** | 2.64% · 650건 |
 
-> 시계열 데이터의 시간 누수를 방지하기 위해 **2010~2017년 코호트 대상의 교차 검증**을 기반으로 모델을 평가 및 선정하였습니다.
+> 시계열 데이터의 시간 누수를 방지하기 위해 **2010~2017년 개발 코호트의 Expanding-Time OOF 검증**을 기반으로 모델을 평가하고 선정했습니다.
 
-**모델 선정 기준**: Validation Macro F1-Score가 가장 높은 모델을 선정, Validation Macro F1-Score가 동등한 수준일 경우, Validation Macro PR-AUC를 비교해서 가장 높은 모델을 선정
+**모델 선정 기준:** 동일 OOF 표본에서 Macro F1을 우선 비교하고, 동등한 수준이면 Macro PR-AUC와 Precision@1000·중증 오분류 등 운영 지표를 함께 검토했습니다.
    
-**Validation Macro F1과 Validation Macro PR-AUC가 모두 가장 우수한 성능을 기록한 `v05_05_dl`을 최종 모델로 선정했습니다.**
+**OOF Macro F1과 OOF Macro PR-AUC가 모두 가장 우수하고 운영 지표의 균형도 확인된 `v05_05_dl`을 최종 모델로 선정했습니다.**
 
 ### OOF 수락 기준
 
@@ -398,6 +416,8 @@ GRU가 24개월 활동 시퀀스를, Lifecycle MLP가 장기 이력을 인코딩
 ### Final Test
 
 Final Test는 모델 선정에 사용하지 않은 2018년 선정 코호트로 수행했습니다. 가중치와 임계값은 OOF 검증까지만 사용해 고정했으며, 사전에 Final Test 합격 임계값을 확정하지 않았으므로 OOF 기준을 소급 적용해 PASS·FAIL로 판정하지 않습니다.
+
+> **용어 구분:** OOF는 개발 코호트 안에서 모델·임계값을 선택하는 검증 결과이고, Final Test는 선택이 끝난 모델을 별도의 미래 시점 코호트에서 평가한 결과입니다. Final Test를 모델 선택 근거로 사용하지 않습니다.
 
 <p align="center">
   <img src="docs/assets/readme/10_oof_final_test_comparison.png" alt="OOF와 Final Test 주요 성능 비교" width="100%">
@@ -462,7 +482,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt -r api\requirements.txt -r auth_service\requirements.txt
 
 cd app
-npm install
+npm ci
 cd ..
 ```
 
@@ -493,9 +513,9 @@ Windows에서는 `RUN_LOCAL.cmd`로 로컬 서비스를 함께 시작할 수 있
 ### 3. 기본 검증
 
 ```powershell
-python -m compileall -q api auth_service shared
+python -m compileall -q api auth_service shared scripts
 python -m unittest tests.test_demo_contract tests.test_historical_metric_loaders tests.test_reference_data_seed
-python -m pytest auth_service/tests -q
+python -m pytest api/tests auth_service/tests -q
 
 cd app
 npm run lint
@@ -675,20 +695,23 @@ python pipeline/v05_05_dl/evaluate_test.py --overwrite
 
 ## 현재 검증·배포 상태
 
-서비스 접속과 `v05_05_dl` 연동은 확인됐지만 최종 운영 승인은 보류 상태입니다.
+HTTPS 서비스 접속과 `v05_05_dl` 연동은 확인됐지만, 역할별 실환경 검증과 앱 부분 장애 대응·최종 회귀가 남아 있어 최종 운영 승인은 보류 상태입니다.
 
 | 검증 | 결과 |
 |---|---|
 | React lint / build | PASS |
+| PR 차단 CI | PASS — Python·API/Auth·React artifact-free 검증 |
 | 배포 워크플로 단위 테스트 | 9건 PASS |
 | v05 운영 컨텍스트·UI·모델 로더 계약 | 19건 PASS |
-| 인증 서비스 테스트 | 문서 기준 4건 PASS · 1건 FAIL |
+| 운영 인증·HTTPS·Secure Cookie | PASS |
+| 역할·권역 실제 계정 / 비허용 CORS | PARTIAL — 최종 회귀 필요 |
+| Snooze·History / 부분 장애 대응 | PARTIAL·NOT RUN — A 영역 담당 작업 필요 |
 | 관리자 UI 전체 QA | 135건 중 PASS 95 · FAIL 17 · PARTIAL 6 · NOT RUN 17 |
 | 서비스 배포 | 완료 — 운영 주소 접속 가능 |
 | v05 모델 서비스 연동 | 완료 — `v05_05_dl` 운영 표시 확인 |
 | 최종 배포 승인 | **보류** |
 
-주요 배포 차단 항목은 비인증 API 접근 허용, 운영자 권역 정책 우회 가능, HTTPS 미적용, 스누즈 복원 실패, 배포 식별자 부재와 회귀 테스트 미완료입니다. 상세 근거는 [모델 배포·테스트 결과서](docs/02_reports/03_model_deployment_test_report.md)와 [QA 실행 결과](docs/qa/ADMIN_UI_QA_EXECUTION_2026-08-05.md)에 기록했습니다.
+미인증 Retention API 401, HTTPS 전환과 Secure Cookie는 최신 운영 검증에서 PASS했습니다. 남은 차단 항목은 실제 계정 기반 권역·CORS 검증, Snooze·History React 검산, 부분 장애 대응, 배포 식별자와 최종 회귀입니다. 과거 QA 결과는 당시 기록으로 보존하며 최신 판정은 [AWS HTTPS 재배포 보고서](docs/02_reports/04_aws_https_redeployment_report_2026-09-02.md)와 이후 Final Regression을 따릅니다.
 
 ---
 
@@ -724,12 +747,12 @@ python pipeline/v05_05_dl/evaluate_test.py --overwrite
 
 현재는 기능 확장보다 운영 기준선을 안정화하는 작업을 우선합니다.
 
-- 비인증 API 접근, 권역 우회, HTTPS와 스누즈 영속성 등 P0 결함 수정
-- 동일 배포본 기준 전체 QA 재실행과 배포 게이트 자동화
+- 역할·권역 실제 계정, 비허용 CORS와 부분 장애 시나리오 검증
+- Snooze·History React 복원 검산과 동일 배포본 기준 전체 QA 재실행
 - 모델 가중치·메타데이터의 공식 보관 위치, 체크섬과 버전 정책 확정
 - 모바일 `/trust` 가로 넘침과 접근 가능한 이름 등 반응형·접근성 보완
 
-이후 실행·성과 데이터 계약, 월 단위 조기경보, 약화·중단 상태별 운영, 효과 실험과 지속 개선 순으로 확장합니다. 단계별 목표와 완료 기준은 [서비스 제품화 및 적용 로드맵](docs/08_future_roadmap/06_service_productization_and_application.md)에서 확인할 수 있습니다.
+이후 실행·성과 데이터 계약, 월 단위 조기경보, 약화·중단 상태별 운영, 효과 실험과 지속 개선 순으로 확장합니다. Consumer용 맛집·리뷰어 탐색은 현재 관리자 서비스와 분리된 향후 후보이며 구현된 기능으로 보지 않습니다. 단계별 목표와 완료 기준은 [서비스 제품화 및 적용 로드맵](docs/08_future_roadmap/06_service_productization_and_application.md)에서 확인할 수 있습니다.
 
 ---
 
@@ -742,6 +765,7 @@ python pipeline/v05_05_dl/evaluate_test.py --overwrite
 | [데이터 전처리 결과서](docs/02_reports/01_data_preprocessing_report.md) | 코호트·결측·피처·시간 분할·전처리 검증 |
 | [모델 학습 결과서](docs/02_reports/02_model_training_report.md) | 후보 비교, `v05_05_dl`, OOF·Final Test, 산출물 계약 |
 | [모델 배포·테스트 결과서](docs/02_reports/03_model_deployment_test_report.md) | 정적 검증, 운영 선택 재검증, 배포 게이트 판정 |
+| [발표 후 개선 및 Finalization 기록](docs/02_reports/05_post_presentation_improvements.md) | 문제, 변경, 검증 근거와 팀·개인 범위 구분 |
 | [비즈니스 시나리오](docs/01_business/business_scenarios.md) | 운영 문제와 활용 시나리오 |
 | [로컬 실행 가이드](docs/04_architecture_and_guides/LOCAL_RUN_GUIDE.md) | MySQL·API·인증·React 실행 절차 |
 | [AWS 배포 가이드](docs/04_architecture_and_guides/AWS_DEPLOYMENT.md) | 배포 구성과 운영 절차 |
