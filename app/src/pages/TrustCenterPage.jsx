@@ -232,6 +232,9 @@ function TrustCenterPage() {
             </p>
           </Panel>
 
+          <details className="rounded-xl border border-[#DDE4DF] bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-black text-[#17211D]">상세 모델 검증 보기</summary>
+            <div className="grid gap-4 border-t border-[#DDE4DF] p-4">
           <Panel title="모델 평가 요약" info="선택한 스냅샷의 최종 테스트 결과입니다.">
             {snapshotData.available ? (
               <>
@@ -298,6 +301,8 @@ function TrustCenterPage() {
               />
             </Panel>
           )}
+            </div>
+          </details>
       </div>
 
       <Panel className="mt-4" title="데이터 계보 타임라인" info="선정 시점 이후 정보가 모델 입력에 섞이지 않도록 역할을 분리했습니다.">
@@ -350,7 +355,7 @@ function TrustCenterPage() {
 
       <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         <ReferenceCard title="코호트 정의">
-          음식점 리뷰 10건 이상, 활동 월 3개월 이상을 충족한 선정 연도 파워 리뷰어를 기준으로 합니다.
+          음식점 리뷰 10건 이상, 활동 월 3개월 이상을 충족한 선정 연도 핵심 리뷰어를 기준으로 합니다.
         </ReferenceCard>
         <ReferenceCard title="시간 누수 방지">
           선정·피처 마감 이후의 리뷰와 상태 라벨은 모델 입력에서 제외하고 사후 검증에만 사용합니다.

@@ -472,7 +472,9 @@ function PlaybookPage() {
   }
 
   if (contextRegion) {
-    const regionalQueueHref = `/reviewers?mode=regional&region=${encodeURIComponent(contextRegion)}`;
+    const regionalQueueParams = new URLSearchParams({ mode: "region", scope: targetScope, region: contextRegion });
+    if (contextCityKey) regionalQueueParams.set("city", contextCityKey);
+    const regionalQueueHref = `/reviewers?${regionalQueueParams.toString()}`;
     return (
       <section className="pb-5">
         <GlobalWorkflowStepper steps={operationWorkflowSteps({ targetHref: regionalQueueHref, evidenceHref: regionalQueueHref })} currentStep={4} />
